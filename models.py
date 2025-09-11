@@ -27,7 +27,7 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128)) # Armazena o hash da senha
+    password_hash = db.Column(db.String(200)) # Armazena o hash da senha
     role = db.Column(db.String(20), default='user', nullable=False) # 'user', 'project_manager', 'admin'
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg') # Adicionado: Arquivo de imagem do perfil
 

@@ -10,7 +10,8 @@ import click
 import os
 import json
 import ast
-from sqlalchemy import text # NOVO: Importação para usar o texto SQL direto
+from sqlalchemy import text # Importação para usar o texto SQL direto
+from sqlalchemy.inspection import inspect # NOVO: Importação para inspecionar o banco de dados
 
 def create_app():
     app = Flask(__name__)
@@ -185,19 +186,11 @@ def create_app():
     app.register_blueprint(main_blueprint)
     app.register_blueprint(admin_bp)
 
-    # NOVO: Comando CLI personalizado para criar o banco de dados e usuário admin
+    # Comando CLI personalizado para criar o banco de dados e usuário admin
     @app.cli.command('create-db')
     def create_db_command():
         """Cria as tabelas do banco de dados e um usuário administrador inicial."""
         with app.app_context():
-            # Nota: Em um ambiente com migrações, 'db.create_all()' geralmente não é usado
-            # para criar o esquema principal, pois 'flask db upgrade' faz isso.
-            # Este comando é mais para criar o usuário admin após o upgrade.
-            # Se você usar db.create_all() sem migrações, ele criará as tabelas.
-            # Mas com migrações, o upgrade já cuidou disso.
-            # Mantido aqui para compatibilidade com o seu setup.
-            # db.create_all() # Removido o create_all aqui para evitar conflitos com migrações
-
             if User.query.count() == 0:
                 click.echo("Criando usuário administrador padrão...")
                 admin_user = User(username='admin', email='admin@example.com', role='admin')
@@ -209,7 +202,7 @@ def create_app():
                 click.echo("Usuário administrador já existe.")
             click.echo('Operação create-db concluída.')
 
-    # NOVO: Comando CLI personalizado para resetar o banco de dados
+    # Comando CLI personalizado para resetar o banco de dados
     @app.cli.command("reset-db")
     def reset_db_command():
         """Apaga todas as tabelas e limpa o histórico do Alembic."""
@@ -223,10 +216,13 @@ def create_app():
 
                 # 2. Apagar a tabela de controle do Alembic (alembic_version)
                 with db.engine.connect() as connection:
-                    inspector = db.inspect(db.engine)
+                    # Usamos a importação 'inspect' para obter o inspetor do banco de dados
+                    # que é uma maneira mais robusta de listar tabelas.
+                    inspector = inspect(db.engine) 
                     table_names = inspector.get_table_names()
                     if 'alembic_version' in table_names:
                         try:
+                            # Use text() para executar SQL literal
                             connection.execute(text("DROP TABLE alembic_version CASCADE;"))
                             connection.commit()
                             print("Tabela 'alembic_version' apagada.")
@@ -242,6 +238,20 @@ def create_app():
                 print("2. Execute 'python -m flask create-db' para criar o usuário administrador inicial.")
         else:
             print("Operação de reset de banco de dados cancelada.")
+
+    # NOVO: Comando CLI temporário para listar tabelas do banco de dados
+    @app.cli.command("list-tables")
+    def list_tables_command():
+        "Lista todas as tabelas atualmente no banco de dados."
+        with app.app_context():
+            inspector = inspect(db.engine) # Usamos a importação 'inspect'
+            table_names = inspector.get_table_names()
+            if table_names:
+                click.echo("Tabelas existentes no banco de dados:")
+                for table in sorted(table_names):
+                    click.echo(f"- {table}")
+            else:
+                click.echo("Nenhuma tabela encontrada no banco de dados.")
 
     return app
 

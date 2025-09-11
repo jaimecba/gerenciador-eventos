@@ -1,7 +1,7 @@
 # app.py
 
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv() # Isso é para seu ambiente local, no Render as variáveis serão definidas no painel
 from flask import Flask
 from extensions import db, login_manager, mail
 from datetime import datetime
@@ -13,25 +13,37 @@ import ast
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'uma_chave_secreta_muito_segura_e_longa_aqui' # Use uma chave segura e complexa
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///events.db'
+
+    # --- Configuração da SECRET_KEY ---
+    # Use os.environ.get() para ler a SECRET_KEY de uma variável de ambiente.
+    # O segundo argumento é um fallback para desenvolvimento local, se desejar.
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_longa_aqui_fallback_dev')
+
+    # --- Configuração do Banco de Dados ---
+    # Use os.environ.get() para ler a URI do banco de dados.
+    # O Render fornecerá uma variável de ambiente 'DATABASE_URL' para o PostgreSQL.
+    # Para desenvolvimento local, você pode usar o SQLite como fallback.
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///events.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # --- LINHAS NOVAS PARA DEPURAR A SECRET_KEY ---
-    print(f"DEBUG: Tipo da SECRET_KEY: {type(app.config['SECRET_KEY'])}")
-    print(f"DEBUG: Valor da SECRET_KEY: {app.config['SECRET_KEY']}")
-    # --- FIM DAS LINHAS DE DEPURACÃO ---
+    # Remove as linhas de DEBUG que imprimiam a SECRET_KEY no console de depuração
+    # print(f"DEBUG: Tipo da SECRET_KEY: {type(app.config['SECRET_KEY'])}")
+    # print(f"DEBUG: Valor da SECRET_KEY: {app.config['SECRET_KEY']}")
 
-    # --- NOVAS CONFIGURAÇÕES PARA FLASK-MAIL ---
+    # --- Configurações para FLASK-MAIL ---
     app.config['MAIL_SERVER'] = 'smtp.googlemail.com' # Exemplo para Gmail
     app.config['MAIL_PORT'] = 587
     app.config['MAIL_USE_TLS'] = True
     app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_USER') # Use variável de ambiente
     app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_PASS') # Use variável de ambiente
-    app.config['MAIL_DEFAULT_SENDER'] = 'seu_email@example.com' # Seu e-mail padrão
+    # Recomendado: tornar o MAIL_DEFAULT_SENDER uma variável de ambiente também
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'seu_email@example.com')
 
 
-    # --- NOVO: Configuração para uploads de áudio ---
+    # --- Configuração para uploads de áudio ---
+    # ATENÇÃO: O sistema de arquivos do Render é efêmero.
+    # Arquivos salvos aqui serão perdidos em reinícios/redeploys.
+    # Para persistência, considere armazenamento de objetos (ex: AWS S3).
     app.config['UPLOAD_FOLDER_AUDIO'] = os.path.join(app.instance_path, 'uploads', 'audio')
     os.makedirs(app.config['UPLOAD_FOLDER_AUDIO'], exist_ok=True)
     # --- FIM NOVO: Configuração para uploads de áudio ---
@@ -39,7 +51,7 @@ def create_app():
     # Inicializa as extensões com o app
     db.init_app(app)
     login_manager.init_app(app)
-    mail.init_app(app) # NOVA INICIALIZAÇÃO PARA FLASK-MAIL
+    mail.init_app(app)
     login_manager.login_view = 'main.login'
     login_manager.login_message_category = 'info'
 

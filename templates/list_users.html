@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4 text-center">Gerenciar Usuários</h1>
+        <p class="lead text-center">Aqui você pode visualizar, editar e deletar usuários do sistema.</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Lista de Usuários</h5>
+                {# Botão para adicionar novo usuário #}
+                <a href="{{ url_for('main.new_user') }}" class="btn btn-light btn-sm"><i class="fas fa-plus me-1"></i> Adicionar Novo Usuário</a>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                <div class="table-responsive">
+                    {# Adicionadas classes table-sm e user-data-table #}
+                    <table class="table table-hover align-middle table-sm user-data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Nome de Usuário</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Papel</th>
+                                <th scope="col">Criado Em</th>
+                                <th scope="col">Última Atualização</th>
+                                <th scope="col" class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <th scope="row">{{ user.id }}</th>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.role == 'admin' %}
+                                        <span class="badge bg-danger">Administrador</span>
+                                    {% elif user.role == 'project_manager' %}
+                                        <span class="badge bg-info">Gerente de Projeto</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Usuário Comum</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>{{ user.updated_at.strftime('%d/%m/%Y %H:%M') if user.updated_at else 'N/A' }}</td>
+                                <td class="text-center">
+                                    <a href="{{ url_for('main.update_user', user_id=user.id) }}" class="btn btn-sm btn-warning me-2" title="Editar Usuário">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if user.id != current_user.id %} {# Não permite que o admin se delete #}
+                                    <form action="{{ url_for('main.delete_user', user_id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja deletar o usuário {{ user.username }}? Esta ação é irreversível.');">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Deletar Usuário">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-outline-danger disabled" title="Não é possível deletar sua própria conta">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info text-center" role="alert">
+                    Nenhum usuário encontrado no sistema.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

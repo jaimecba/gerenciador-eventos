@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+        <div class="row">
+            {# Coluna principal centralizada para o Evento e suas Ações #}
+            <div class="col-md-8 mx-auto">
+                {# Card de Detalhes do Evento #}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {# Título do Evento - Manter destaque #}
+                        <h1 class="mb-3 fs-4 fw-bold text-uppercase">{{ event.title }}</h1>
+                        {# Detalhes do Evento - Reduzir fonte de labels e margens #}
+                        <p class="text-muted small lh-sm mb-1">Criado em: {{ event.created_at.strftime('%d/%m/%Y às %H:%M') }}</p>
+                        <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Descrição:</span> {{ event.description }}</p>
+                        <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Prazo:</span> {{ event.due_date.strftime('%d/%m/%Y') }}</p>
+                        {% if event.end_date %}
+                            <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Conclusão:</span> {{ event.end_date.strftime('%d/%m/%Y') }}</p>
+                        {% endif %}
+                        {% if event.location %}
+                            <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Local:</span> {{ event.location }}</p>
+                        {% endif %}
+                        {% if event.category %}
+                            <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Categoria:</span> {{ event.category.name }}</p>
+                        {% endif %}
+                        <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Status do Evento:</span> {{ event.status.name if event.status else 'N/A' }}</p>
+                        
+                        {# Botões de Evento - Já são btn-sm e alinhados à direita #}
+                        <div class="d-flex justify-content-end mt-3">
+                            <a href="{{ url_for('main.update_event', event_id=event.id) }}" class="btn btn-primary btn-sm me-2">Editar Evento</a>
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteEventModal">Excluir Evento</button>
+                        </div>
+                    </div>
+                </div>
+
+                {# Card de Ações Rápidas - Abaixo dos Detalhes do Evento, dentro da mesma coluna centralizada #}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Ações do Evento
+                    </div>
+                    <div class="card-body">
+                        <p class="small lh-sm mb-0">Aqui você pode gerenciar o evento. Mais opções podem ser adicionadas futuramente.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Seção de Tarefas - Ocupando a largura total da página (já é col-12) #}
+        <div class="row">
+            <div class="col-12">
+                <hr class="mt-4 mb-4">
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    {# TÍTULO DA SEÇÃO DE TAREFAS - Bold e custom font-size já estão no CSS #}
+                    <h4 class="mb-3 text-secondary task-section-title"><strong>Tarefas do Evento</strong></h4>
+                    {# Botão "Adicionar Tarefa" - Adicionado btn-sm #}
+                    <a href="{{ url_for('main.new_task', event_id=event.id) }}" class="btn btn-success btn-sm">Adicionar Tarefa</a>
+                </div>
+
+                {# Legenda para as cores dos cards de tarefas #}
+                <div class="alert alert-info small py-2 mb-4" role="alert">
+                    <strong>Legenda de Cores dos Cartões de Tarefas:</strong><br>
+                    <span class="badge" style="background-color: #FF0000; color: white;">Vencida</span>
+                    <span class="badge" style="background-color: #008000; color: white;">Prazo Longo (>10 dias)</span>
+                    <span class="badge" style="background-color: #FF4500; color: white;">Urgência de Prazo (<=5 dias)</span>
+                    <span class="badge" style="background-color: #FFD700; color: black;">Alerta de Prazo (6-10 dias)</span>
+                </div>
+
+                {# Seção de Tarefas ATIVAS #}
+                <h5 class="mb-3 text-secondary">Tarefas Ativas ({{ active_tasks|length }})</h5>
+                {% if active_tasks %}
+                    <div class="row g-4"> 
+                        {% for task in active_tasks %}
+                            {% set days_left = (task.due_date.date() - current_date).days %}
+
+                            {# Define a classe de borda de status e a classe de cor de texto para o prazo #}
+                            {% set status_border_class = '' %}
+                            {% set due_date_text_color_class = '' %}
+                            {% if task.due_date.date() < current_date %}
+                                {% set status_border_class = 'status-border-overdue' %}
+                                {% set due_date_text_color_class = 'text-overdue-red' %}
+                            {% elif days_left <= 5 %}
+                                {% set status_border_class = 'status-border-urgent' %}
+                                {% set due_date_text_color_class = 'text-urgent-orange' %}
+                            {% elif days_left <= 10 %}
+                                {% set status_border_class = 'status-border-alert' %}
+                                {% set due_date_text_color_class = 'text-alert-yellow' %}
+                            {% else %}
+                                {% set status_border_class = 'status-border-long-term' %}
+                                {% set due_date_text_color_class = 'text-long-term-green' %}
+                            {% endif %}
+
+                            <div class="col-lg-4 col-md-6 mb-4"> 
+                                {# Card com fundo branco e borda de status #}
+                                <div class="card task-card h-100 {{ status_border_class }}">
+                                    <div class="card-body d-flex flex-column">
+                                        {# Título da tarefa - Agora fs-6 (16px) para consistência com evento #}
+                                        <h6 class="card-title mb-2 fs-6 fw-bold text-truncate"><strong>{{ task.title }}</strong></h6>
+                                        
+                                        {# Prazo: destaque o campo. Agora text-size-12px e sem negrito #}
+                                        <p class="task-due-date mb-1 text-size-12px">
+                                            <span class="text-muted">Prazo:</span>
+                                            <span class="{{ due_date_text_color_class }}">{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}</span>
+                                        </p>
+
+                                        {# Descrição: exibir apenas uma linha. Agora text-size-12px e sem negrito #}
+                                        {% if task.description %}
+                                            <div class="task-text-truncate mb-1 text-size-12px"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#taskDetailsModal"
+                                                data-task-title="{{ task.title }}"
+                                                data-task-description="{{ task.description }}"
+                                                data-task-notes="{{ task.notes }}"
+                                                data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                                data-task-category="{{ task.category.name if task.category else '' }}"
+                                                data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                                data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                                data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                                data-task-link-notes="{{ task.link_notes }}">
+                                                <span class="text-muted">Descrição:</span> <span>{{ task.description }} <i class="fas fa-ellipsis-h text-primary ms-1 fa-xs"></i></span>
+                                            </div>
+                                        {% endif %}
+                                        {# Notas: seguir o mesmo tratamento. Agora text-size-12px e sem negrito #}
+                                        {% if task.notes %}
+                                            <div class="task-text-truncate mb-1 text-size-12px"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#taskDetailsModal"
+                                                data-task-title="{{ task.title }}"
+                                                data-task-description="{{ task.description }}"
+                                                data-task-notes="{{ task.notes }}"
+                                                data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                                data-task-category="{{ task.category.name if task.category else '' }}"
+                                                data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                                data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                                data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                                data-task-link-notes="{{ task.link_notes }}">
+                                                <span class="text-muted">Notas:</span> <span>{{ task.notes }} <i class="fas fa-ellipsis-h text-primary ms-1 fa-xs"></i></span>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {# Link: represente o campo apenas com o ícone de 'link externo'. Ícone agora fa-xs #}
+                                        {% if task.cloud_storage_link %}
+                                            <div class="text-start mb-1"> 
+                                                <a href="{{ task.cloud_storage_link }}"  rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a>
+                                            </div>
+                                        {% endif %}
+                                        {# Obs. do Link: manter truncado. Agora text-size-12px e sem negrito #}
+                                        {% if task.link_notes %}
+                                            <div class="task-text-truncate mb-1 text-size-12px"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#taskDetailsModal"
+                                                data-task-title="{{ task.title }}"
+                                                data-task-description="{{ task.description }}"
+                                                data-task-notes="{{ task.notes }}"
+                                                data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                                data-task-category="{{ task.category.name if task.category else '' }}"
+                                                data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                                data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                                data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                                data-task-link-notes="{{ task.link_notes }}">
+                                                <span class="text-muted">Obs. do Link:</span> <span>{{ task.link_notes }} <i class="fas fa-ellipsis-h text-primary ms-1 fa-xs"></i></span>
+                                            </div>
+                                        {% endif %}
+
+                                        {# Instruções de áudio: Agora text-size-12px e sem negrito #}
+                                        {% if task.audio_path %}
+                                            <div class="audio-player-display mb-1 text-size-12px">
+                                                <span class="text-muted">Instruções de Áudio:</span>
+                                                <audio controls style="width: 100%;">
+                                                    <source src="{{ url_for('main.static_audio_files', filename=task.audio_path) }}" type="audio/webm">
+                                                    Seu navegador não suporta o elemento de áudio.
+                                                </audio>
+                                                <p class="text-muted mb-0">Duração: {{ task.audio_duration_seconds // 60 }}:{{ '%02d' % (task.audio_duration_seconds % 60) }}</p>
+                                            </div>
+                                        {% endif %}
+
+                                        {# Status da Tarefa: Agora text-size-12px e sem negrito nos rótulos #}
+                                        <p class="card-text mb-1 text-size-12px">
+                                            <span class="text-muted">Status:</span> <span class="badge bg-primary">{{ task.task_status.name }}</span>
+                                        </p>
+                                        {# Atribuída a: Agora text-size-12px e sem negrito nos rótulos #}
+                                        {% if task.assignees_associations %}
+                                            <p class="card-text mb-2 text-size-12px">
+                                                <span class="text-muted">Atribuída a:</span>
+                                                    {% for task_assignment in task.assignees_associations %}
+                                                        {% if task_assignment.user %}
+                                                            <span class="badge bg-info text-dark">{{ task_assignment.user.username }}</span>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                            </p>
+                                        {% endif %}
+                                        
+                                        {# Grupo de Botões de Ação - Ícones agora fa-xs #}
+                                        <div class="d-flex justify-content-end align-items-center pt-2 mt-auto task-action-buttons">
+                                            {# Botão "Concluir" (novo) #}
+                                            <button type="button" class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#completeTaskModal" data-task-id="{{ task.id }}" data-task-title="{{ task.title }}" title="Concluir Tarefa">
+                                                <i class="fas fa-check fa-xs"></i>
+                                            </button>
+                                            {# Botão "Detalhes" (ícone) #}
+                                            <a href="#" class="btn btn-outline-info btn-sm me-2" data-bs-toggle="modal" data-bs-target="#taskDetailsModal"
+                                               data-task-title="{{ task.title }}"
+                                               data-task-description="{{ task.description }}"
+                                               data-task-notes="{{ task.notes }}"
+                                               data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                               data-task-category="{{ task.category.name if task.category else '' }}"
+                                               data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                               data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                               data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                               data-task-link-notes="{{ task.link_notes }}"
+                                               title="Ver Detalhes"><i class="fas fa-info-circle fa-xs"></i></a>
+                                            {# NOVO: Botão "Histórico" #}
+                                            <a href="{{ url_for('main.task_history_view', task_id=task.id) }}" class="btn btn-outline-secondary btn-sm me-2" title="Ver Histórico">
+                                                <i class="fas fa-history fa-xs"></i>
+                                            </a>
+                                            {# Botão Editar (ícone) #}
+                                            <a href="{{ url_for('main.update_task', task_id=task.id) }}" class="btn btn-outline-primary btn-sm me-2" title="Editar Tarefa"><i class="fas fa-edit fa-xs"></i></a>
+                                            {# Botão Excluir (ícone) - dispara modal #}
+                                            <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteTaskModal" data-task-id="{{ task.id }}" title="Excluir Tarefa"><i class="fas fa-trash-alt fa-xs"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer bg-white border-top-0 pt-0 pb-1">
+                                        <p class="text-muted text-size-12px mb-0">Criado em: {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>Nenhuma tarefa ativa para este evento.</p>
+                {% endif %}
+
+                {# Seção de Tarefas FINALIZADAS #}
+                <h5 class="mb-3 mt-5 text-secondary">Tarefas Finalizadas ({{ completed_tasks|length }})
+                    <button class="btn btn-link btn-sm p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#completedTasksCollapse" aria-expanded="true" aria-controls="completedTasksCollapse" title="Mostrar/Esconder Tarefas Finalizadas">
+                        <i class="fas fa-chevron-down fa-xs"></i>
+                    </button>
+                </h5>
+                <div class="collapse show" id="completedTasksCollapse">
+                    {% if completed_tasks %}
+                        <div class="row g-4"> 
+                            {% for task in completed_tasks %}
+                                {# Card para Tarefas Finalizadas: estilo mais suave, sem bordas de status de prazo #}
+                                <div class="col-lg-4 col-md-6 mb-4"> 
+                                    <div class="card task-card h-100 text-muted opacity-75"> {# text-muted e opacity para indicar que está concluída #}
+                                        <div class="card-body d-flex flex-column">
+                                            {# Título da tarefa #}
+                                            <h6 class="card-title mb-2 fs-6 fw-bold text-truncate"><strong>{{ task.title }}</strong></h6>
+                                            
+                                            {# Data de Conclusão e por quem #}
+                                            <p class="task-due-date mb-1 text-size-12px">
+                                                <span class="text-muted">Concluída em:</span>
+                                                <span>{{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                                                {% if task.completed_by_user %}
+                                                    <br><small>Por: {{ task.completed_by_user.username }}</small>
+                                                {% endif %}
+                                            </p>
+
+                                            {# Descrição (truncada) #}
+                                            {% if task.description %}
+                                                <div class="task-text-truncate mb-1 text-size-12px"
+                                                    data-bs-toggle="modal" data-bs-target="#taskDetailsModal"
+                                                    data-task-title="{{ task.title }}"
+                                                    data-task-description="{{ task.description }}"
+                                                    data-task-notes="{{ task.notes }}"
+                                                    data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                                    data-task-category="{{ task.category.name if task.category else '' }}"
+                                                    data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                                    data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                                    data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                                    data-task-link-notes="{{ task.link_notes }}">
+                                                    <span class="text-muted">Descrição:</span> <span>{{ task.description }} <i class="fas fa-ellipsis-h text-primary ms-1 fa-xs"></i></span>
+                                                </div>
+                                            {% endif %}
+                                            {# Notas (truncadas) #}
+                                            {% if task.notes %}
+                                                <div class="task-text-truncate mb-1 text-size-12px"
+                                                    data-bs-toggle="modal" data-bs-target="#taskDetailsModal"
+                                                    data-task-title="{{ task.title }}"
+                                                    data-task-description="{{ task.description }}"
+                                                    data-task-notes="{{ task.notes }}"
+                                                    data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                                    data-task-category="{{ task.category.name if task.category else '' }}"
+                                                    data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                                    data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                                    data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                                    data-task-link-notes="{{ task.link_notes }}">
+                                                    <span class="text-muted">Notas:</span> <span>{{ task.notes }} <i class="fas fa-ellipsis-h text-primary ms-1 fa-xs"></i></span>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            {# Link de Armazenamento #}
+                                            {% if task.cloud_storage_link %}
+                                                <div class="text-start mb-1"> 
+                                                    <a href="{{ task.cloud_storage_link }}"  rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a>
+                                                </div>
+                                            {% endif %}
+                                            {# Obs. do Link #}
+                                            {% if task.link_notes %}
+                                                <div class="task-text-truncate mb-1 text-size-12px"
+                                                    data-bs-toggle="modal" data-bs-target="#taskDetailsModal"
+                                                    data-task-title="{{ task.title }}"
+                                                    data-task-description="{{ task.description }}"
+                                                    data-task-notes="{{ task.notes }}"
+                                                    data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                                    data-task-category="{{ task.category.name if task.category else '' }}"
+                                                    data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                                    data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                                    data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                                    data-task-link-notes="{{ task.link_notes }}">
+                                                    <span class="text-muted">Obs. do Link:</span> <span>{{ task.link_notes }} <i class="fas fa-ellipsis-h text-primary ms-1 fa-xs"></i></span>
+                                                </div>
+                                            {% endif %}
+
+                                            {# Instruções de áudio #}
+                                            {% if task.audio_path %}
+                                                <div class="audio-player-display mb-1 text-size-12px">
+                                                    <span class="text-muted">Instruções de Áudio:</span>
+                                                    <audio controls style="width: 100%;">
+                                                        <source src="{{ url_for('main.static_audio_files', filename=task.audio_path) }}" type="audio/webm">
+                                                        Seu navegador não suporta o elemento de áudio.
+                                                    </audio>
+                                                    <p class="text-muted mb-0">Duração: {{ task.audio_duration_seconds // 60 }}:{{ '%02d' % (task.audio_duration_seconds % 60) }}</p>
+                                                </div>
+                                            {% endif %}
+
+                                            {# Status da Tarefa #}
+                                            <p class="card-text mb-1 text-size-12px">
+                                                <span class="text-muted">Status:</span> <span class="badge bg-primary">{{ task.task_status.name }}</span>
+                                            </p>
+                                            {# Atribuída a #}
+                                            {% if task.assignees_associations %}
+                                                <p class="card-text mb-2 text-size-12px">
+                                                    <span class="text-muted">Atribuída a:</span>
+                                                        {% for task_assignment in task.assignees_associations %}
+                                                            {% if task_assignment.user %}
+                                                                <span class="badge bg-info text-dark">{{ task_assignment.user.username }}</span>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                </p>
+                                            {% endif %}
+                                            
+                                            {# Grupo de Botões de Ação (apenas Ver Detalhes) #}
+                                            <div class="d-flex justify-content-end align-items-center pt-2 mt-auto task-action-buttons">
+                                                <a href="#" class="btn btn-outline-info btn-sm me-2" data-bs-toggle="modal" data-bs-target="#taskDetailsModal"
+                                                   data-task-title="{{ task.title }}"
+                                                   data-task-description="{{ task.description }}"
+                                                   data-task-notes="{{ task.notes }}"
+                                                   data-task-due-date="{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}"
+                                                   data-task-category="{{ task.category.name if task.category else '' }}"
+                                                   data-task-status="{{ task.task_status.name if task.task_status else '' }}"
+                                                   data-task-assignees="{{ task.assignees_associations | map(attribute='user.username') | join(', ') if task.assignees_associations else '' }}"
+                                                   data-task-cloud-link="{{ task.cloud_storage_link }}"
+                                                   data-task-link-notes="{{ task.link_notes }}"
+                                                   title="Ver Detalhes"><i class="fas fa-info-circle fa-xs"></i></a>
+                                                {# NOVO: Botão "Histórico" para tarefas concluídas #}
+                                                <a href="{{ url_for('main.task_history_view', task_id=task.id) }}" class="btn btn-outline-secondary btn-sm me-2" title="Ver Histórico">
+                                                    <i class="fas fa-history fa-xs"></i>
+                                                </a>
+                                                {# Você pode adicionar um botão para reabrir a tarefa aqui futuramente #}
+                                            </div>
+                                        </div>
+                                        <div class="card-footer bg-white border-top-0 pt-0 pb-1">
+                                            <p class="text-muted text-size-12px mb-0">Criado em: {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>Nenhuma tarefa finalizada para este evento.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (sem alterações aqui na lógica, apenas no HTML de display se precisar) -->
+    <!-- Modal de Confirmação de Exclusão do Evento -->
+    <div class="modal fade" id="deleteEventModal" tabindex="-1" aria-labelledby="deleteEventModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteEventModalLabel">Confirmar Exclusão do Evento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Tem certeza que deseja excluir o evento "{{ event.title }}"? Esta ação excluirá também todas as tarefas associadas e não pode ser desfeita.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="{{ url_for('main.delete_event', event_id=event.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Excluir</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão de Tarefa -->
+    <div class="modal fade" id="deleteTaskModal" tabindex="-1" aria-labelledby="deleteTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteTaskModalLabel">Confirmar Exclusão da Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="deleteTaskForm" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Excluir</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Detalhes da Tarefa (ajustado para classes CSS) -->
+    <div class="modal fade" id="taskDetailsModal" tabindex="-1" aria-labelledby="taskDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskDetailsModalLabel">Detalhes da Tarefa: <span id="modalTaskTitle"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-size-12px">
+                    <p><strong>Prazo:</strong> <span id="modalTaskDueDate"></span></p>
+                    <p><strong>Categoria:</strong> <span id="modalTaskCategory"></span></p>
+                    <p><strong>Status:</strong> <span id="modalTaskStatus"></span></p>
+                    <p><strong>Atribuída a:</strong> <span id="modalTaskAssignees"></span></p>
+                    
+                    {# Exibe Link de Armazenamento se presente #}
+                    <div id="modalTaskCloudLinkSection" style="display: none;">
+                        <p><strong>Link de Armazenamento:</strong> <a id="modalTaskCloudLink" href="#" rel="noopener noreferrer"></a></p>
+                    </div>
+                    {# Exibe Observações do Link se presente #}
+                    <div id="modalTaskLinkNotesSection" style="display: none;">
+                        <p><strong>Obs. do Link:</strong> <br><span id="modalTaskLinkNotes" style="white-space: pre-wrap;"></span></p>
+                    </div>
+
+                    <hr>
+                    <p><strong>Descrição Completa:</strong> <br><span id="modalTaskDescription" style="white-space: pre-wrap;"></span></p>
+                    <p><strong>Notas Completas:</strong> <br><span id="modalTaskNotes" style="white-space: pre-wrap;"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOVO: Modal de Conclusão da Tarefa -->
+    <div class="modal fade" id="completeTaskModal" tabindex="-1" aria-labelledby="completeTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="completeTaskModalLabel">Concluir Tarefa: <span id="modalCompleteTaskTitle"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="completeTaskForm" method="POST">
+                    <div class="modal-body">
+                        <p>Tem certeza que deseja marcar esta tarefa como concluída?</p>
+                        <div class="mb-3">
+                            <label for="completionComment" class="form-label text-size-12px">Comentários/Observações (Opcional):</label>
+                            <textarea class="form-control text-size-12px" id="completionComment" name="completion_comment" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Concluir Tarefa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Script para o modal de exclusão de tarefa (mantido)
+            var deleteTaskModal = document.getElementById('deleteTaskModal');
+            if (deleteTaskModal) {
+                deleteTaskModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget;
+                    var taskId = button.getAttribute('data-task-id');
+                    var form = deleteTaskModal.querySelector('#deleteTaskForm');
+                    form.action = "{{ url_for('main.delete_task', task_id=0) }}".replace('0', taskId);
+                });
+            }
+
+            // Script para o modal de detalhes da tarefa (mantido)
+            var taskDetailsModal = document.getElementById('taskDetailsModal');
+            if (taskDetailsModal) {
+                taskDetailsModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget;
+                    
+                    var taskTitle = button.getAttribute('data-task-title');
+                    var taskDescription = button.getAttribute('data-task-description');
+                    var taskNotes = button.getAttribute('data-task-notes');
+                    var taskDueDate = button.getAttribute('data-task-due-date');
+                    var taskCategory = button.getAttribute('data-task-category');
+                    var taskStatus = button.getAttribute('data-task-status');
+                    var taskAssignees = button.getAttribute('data-task-assignees');
+                    var taskCloudLink = button.getAttribute('data-task-cloud-link');
+                    var taskLinkNotes = button.getAttribute('data-task-link-notes');
+
+                    taskDetailsModal.querySelector('#modalTaskTitle').textContent = taskTitle;
+                    taskDetailsModal.querySelector('#modalTaskDueDate').textContent = taskDueDate;
+                    taskDetailsModal.querySelector('#modalTaskDescription').textContent = taskDescription;
+                    taskDetailsModal.querySelector('#modalTaskNotes').textContent = taskNotes;
+                    taskDetailsModal.querySelector('#modalTaskCategory').textContent = taskCategory || 'N/A';
+                    taskDetailsModal.querySelector('#modalTaskStatus').textContent = taskStatus;
+                    taskDetailsModal.querySelector('#modalTaskAssignees').textContent = taskAssignees || 'Nenhum';
+
+                    var cloudLinkSection = taskDetailsModal.querySelector('#modalTaskCloudLinkSection');
+                    var cloudLinkElement = taskDetailsModal.querySelector('#modalTaskCloudLink');
+                    if (taskCloudLink && taskCloudLink !== 'None') { 
+                        cloudLinkSection.style.display = 'block';
+                        cloudLinkElement.href = taskCloudLink;
+                        cloudLinkElement.textContent = taskCloudLink;
+                    } else {
+                        cloudLinkSection.style.display = 'none';
+                    }
+
+                    var linkNotesSection = taskDetailsModal.querySelector('#modalTaskLinkNotesSection');
+                    var linkNotesElement = taskDetailsModal.querySelector('#modalTaskLinkNotes');
+                    if (taskLinkNotes && taskLinkNotes !== 'None') { 
+                        linkNotesSection.style.display = 'block';
+                        linkNotesElement.textContent = taskLinkNotes;
+                    } else {
+                        linkNotesSection.style.display = 'none';
+                    }
+                });
+            }
+
+            // NOVO SCRIPT para o Modal de Conclusão da Tarefa
+            var completeTaskModal = document.getElementById('completeTaskModal');
+            if (completeTaskModal) {
+                completeTaskModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget; // Botão que acionou o modal
+                    var taskId = button.getAttribute('data-task-id');
+                    var taskTitle = button.getAttribute('data-task-title');
+                    
+                    var modalTitleSpan = completeTaskModal.querySelector('#modalCompleteTaskTitle');
+                    var completeTaskForm = completeTaskModal.querySelector('#completeTaskForm');
+                    
+                    modalTitleSpan.textContent = taskTitle;
+                    // Define a action do formulário para a nova rota de conclusão
+                    completeTaskForm.action = "{{ url_for('main.complete_task', task_id=0) }}".replace('0', taskId);
+                });
+            }
+        });
+    </script>
+{% endblock content %}

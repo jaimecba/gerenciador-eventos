@@ -1,0 +1,309 @@
+{# app/templates/changelog.html #}
+{% extends "base.html" %}
+
+{% block content %}
+    {# Novos estilos adicionados para exibir as diferenças no modal #}
+    <style>
+        .diff-item {
+            display: flex;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            align-items: flex-start; /* Alinha o início do texto */
+        }
+        .diff-label {
+            flex: 0 0 140px; /* Largura fixa para os rótulos, um pouco maior para acomodar */
+            font-weight: bold;
+            color: #555;
+            padding-right: 10px; /* Espaço entre o rótulo e o valor */
+            text-align: right; /* Alinha o rótulo à direita */
+        }
+        .diff-value {
+            flex-grow: 1;
+            word-break: break-word; /* Quebra palavras longas */
+        }
+        .old-value {
+            text-decoration: line-through; /* Risca o valor antigo */
+            color: #dc3545; /* Vermelho para valores antigos */
+            margin-right: 8px; /* Espaço antes da seta */
+        }
+        .new-value {
+            color: #28a745; /* Verde para valores novos */
+        }
+        .added-value {
+            color: #28a745; /* Verde para campos adicionados */
+        }
+        .removed-value {
+            text-decoration: line-through;
+            color: #dc3545; /* Vermelho para campos removidos */
+        }
+        .diff-section h6 {
+            margin-top: 15px;
+            margin-bottom: 5px;
+            color: #343a40;
+            font-weight: bold;
+        }
+        /* Estilos para o JSON bruto no modal */
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto; /* Permite rolagem horizontal */
+        }
+        code {
+            color: #212529;
+        }
+    </style>
+
+    <div class="container mt-4">
+        <h2>{{ title }}</h2>
+        <hr>
+        {% if changelogs.items %} {# Loop sobre .items do objeto Pagination #}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover changelog-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Data/Hora</th>
+                            <th scope="col">Usuário</th>
+                            <th scope="col">Ação</th>
+                            <th scope="col">Tipo de Registro</th>
+                            <th scope="col">ID do Registro</th>
+                            <th scope="col">Descrição</th>
+                            <th scope="col">Detalhes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in changelogs.items %} {# Loop sobre .items do objeto Pagination #}
+                        <tr>
+                            {# Usa strftime para formatar o objeto datetime #}
+                            <td>{{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                            {# Acessa o username via relacionamento, conforme models.py #}
+                            <td>{{ log.user.username if log.user else 'Desconhecido' }}</td>
+                            <td>{{ log.action | capitalize }}</td>
+                            <td>{{ log.record_type }}</td>
+                            <td>{% if log.record_id %}{{ log.record_id }}{% else %}N/A{% endif %}</td>
+                            <td>{{ log.description if log.description else 'N/A' }}</td>
+                            <td>
+                                {% if log.old_data or log.new_data %}
+                                    {# NOVO: Ícone de informação substituindo o botão "Ver Detalhes" #}
+                                    <a href="#" class="text-info"
+                                       data-bs-toggle="modal"
+                                       data-bs-target="#logDetailsModal"
+                                       {# Passamos o ID para a função JS #}
+                                       onclick="showLogDetails({{ log.id }})"
+                                       title="Detalhes do Registro" {# Tooltip text #}
+                                       data-bs-placement="top"> {# Tooltip position #}
+                                        <i class="fas fa-info-circle fa-lg"></i>
+                                    </a>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            <div class="d-flex justify-content-center">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination">
+                        {% if changelogs.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('main.changelog', page=changelogs.prev_num) }}">Anterior</a>
+                            </li>
+                        {% endif %}
+                        {% for page_num in changelogs.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                            {% if page_num %}
+                                {% if changelogs.page == page_num %}
+                                    <li class="page-item active"><a class="page-link" href="{{ url_for('main.changelog', page=page_num) }}">{{ page_num }}</a></li>
+                                {% else %}
+                                    <li class="page-item"><a class="page-link" href="{{ url_for('main.changelog', page=page_num) }}">{{ page_num }}</a></li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled"><a class="page-link" href="#">...</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if changelogs.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('main.changelog', page=changelogs.next_num) }}">Próximo</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        {% else %}
+            <p>Nenhum registro de mudança encontrado.</p>
+        {% endif %}
+    </div>
+
+    {# MODAL DE DETALHES DO CHANGELOG - AGORA COM SEÇÃO PARA DIFERENÇAS #}
+    <div class="modal fade" id="logDetailsModal" tabindex="-1" aria-labelledby="logDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg"> {# Modal grande para melhor visualização #}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logDetailsModalLabel">Detalhes do Registro de Mudança</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Nova Seção para as Diferenças Detalhadas -->
+                    <div id="modal-differences" class="diff-section" style="display: none;">
+                        <h6>Detalhes das Alterações:</h6>
+                        <div id="differencesContent"></div>
+                    </div>
+                    <hr id="diffsHr" style="display: none;"> <!-- Separador -->
+
+                    <div id="modal-old-data" style="display: none;">
+                        <h6>Dados Anteriores (JSON Completo):</h6>
+                        <pre><code class="language-json" id="oldDataContent">N/A</code></pre>
+                    </div>
+                    <div id="modal-new-data" style="display: none;">
+                        <h6>Dados Novos (JSON Completo):</h6>
+                        <pre><code class="language-json" id="newDataContent">N/A</code></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Transfere os dados do changelogs para uma variável JavaScript
+        // AGORA com os 'differences' incluídos em cada item!
+        const changelogsData = {{ serialized_changelogs_items | tojson | safe }};
+
+        function showLogDetails(logId) {
+            // Encontra o log pelo ID na lista de dicionários
+            const log = changelogsData.find(item => item.id === logId);
+
+            const oldDataContentElement = document.getElementById('oldDataContent');
+            const newDataContentElement = document.getElementById('newDataContent');
+            const differencesContentElement = document.getElementById('differencesContent');
+
+            const modalOldDataDiv = document.getElementById('modal-old-data');
+            const modalNewDataDiv = document.getElementById('modal-new-data');
+            const modalDifferencesDiv = document.getElementById('modal-differences');
+            const diffsHr = document.getElementById('diffsHr');
+
+            // Limpa o conteúdo anterior e esconde todas as seções
+            oldDataContentElement.textContent = 'N/A';
+            newDataContentElement.textContent = 'N/A';
+            differencesContentElement.innerHTML = ''; // Limpa o HTML interno
+            modalOldDataDiv.style.display = 'none';
+            modalNewDataDiv.style.display = 'none';
+            modalDifferencesDiv.style.display = 'none';
+            diffsHr.style.display = 'none';
+
+            if (log) {
+                // 1. Exibir Diferenças Detalhadas (se houver)
+                const diffs = log.differences;
+                let hasDiffsToDisplay = false;
+
+                let diffHtml = '';
+
+                // Campos Alterados
+                if (Object.keys(diffs.changed).length > 0) {
+                    hasDiffsToDisplay = true;
+                    diffHtml += '<h6>Campos Alterados:</h6>';
+                    for (const key in diffs.changed) {
+                        const values = diffs.changed[key];
+                        // Formatação para nomes de campos como "due_date" -> "Due Date"
+                        const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+                        diffHtml += `<div class="diff-item">
+                                        <span class="diff-label">${formattedKey}:</span>
+                                        <span class="diff-value">
+                                            <span class="old-value">${values.old !== null ? values.old : 'Vazio'}</span> &rarr;
+                                            <span class="new-value">${values.new !== null ? values.new : 'Vazio'}</span>
+                                        </span>
+                                    </div>`;
+                    }
+                }
+
+                // Campos Adicionados
+                if (Object.keys(diffs.added).length > 0) {
+                    hasDiffsToDisplay = true;
+                    diffHtml += '<h6>Campos Adicionados:</h6>';
+                    for (const key in diffs.added) {
+                        const value = diffs.added[key];
+                        const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+                        diffHtml += `<div class="diff-item">
+                                        <span class="diff-label">${formattedKey}:</span>
+                                        <span class="diff-value">
+                                            <span class="added-value">${value !== null ? value : 'Vazio'}</span>
+                                        </span>
+                                    </div>`;
+                    }
+                }
+
+                // Campos Removidos
+                if (Object.keys(diffs.removed).length > 0) {
+                    hasDiffsToDisplay = true;
+                    diffHtml += '<h6>Campos Removidos:</h6>';
+                    for (const key in diffs.removed) {
+                        const value = diffs.removed[key];
+                        const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+                        diffHtml += `<div class="diff-item">
+                                        <span class="diff-label">${formattedKey}:</span>
+                                        <span class="diff-value">
+                                            <span class="removed-value">${value !== null ? value : 'Vazio'}</span>
+                                        </span>
+                                    </div>`;
+                    }
+                }
+
+                if (hasDiffsToDisplay) {
+                    differencesContentElement.innerHTML = diffHtml;
+                    modalDifferencesDiv.style.display = 'block';
+                    // Mostra o separador se houver diffs E dados brutos para mostrar
+                    if ((log.old_data && Object.keys(log.old_data).length > 0) || (log.new_data && Object.keys(log.new_data).length > 0)) {
+                        diffsHr.style.display = 'block';
+                    }
+                } else {
+                    // Se não houver diferenças, mas os dados forem 'CREATE' ou 'DELETE', mostrar mensagem apropriada
+                    if (log.action === 'create') {
+                        differencesContentElement.innerHTML = '<p>Item criado. Detalhes completos nos Dados Novos.</p>';
+                        modalDifferencesDiv.style.display = 'block';
+                        if ((log.old_data && Object.keys(log.old_data).length > 0) || (log.new_data && Object.keys(log.new_data).length > 0)) {
+                            diffsHr.style.display = 'block';
+                        }
+                    } else if (log.action === 'delete') {
+                        differencesContentElement.innerHTML = '<p>Item excluído. Detalhes completos nos Dados Anteriores.</p>';
+                        modalDifferencesDiv.style.display = 'block';
+                        if ((log.old_data && Object.keys(log.old_data).length > 0) || (log.new_data && Object.keys(log.new_data).length > 0)) {
+                            diffsHr.style.display = 'block';
+                        }
+                    } else {
+                        differencesContentElement.innerHTML = '<p>Nenhuma mudança detalhada para exibir.</p>';
+                        modalDifferencesDiv.style.display = 'block'; // Ainda mostra a seção, mas com essa mensagem
+                    }
+                }
+
+
+                // 2. Exibir Dados Anteriores (JSON)
+                if (log.old_data && Object.keys(log.old_data).length > 0) {
+                    try {
+                        oldDataContentElement.textContent = JSON.stringify(log.old_data, null, 2);
+                        modalOldDataDiv.style.display = 'block';
+                    } catch (e) {
+                        oldDataContentElement.textContent = String(log.old_data); // fallback
+                        modalOldDataDiv.style.display = 'block';
+                    }
+                }
+
+                // 3. Exibir Dados Novos (JSON)
+                if (log.new_data && Object.keys(log.new_data).length > 0) {
+                    try {
+                        newDataContentElement.textContent = JSON.stringify(log.new_data, null, 2);
+                        modalNewDataDiv.style.display = 'block';
+                    } catch (e) {
+                        newDataContentElement.textContent = String(log.new_data); // fallback
+                        modalNewDataDiv.style.display = 'block';
+                    }
+                }
+            }
+        }
+    </script>
+{% endblock content %}

@@ -1,0 +1,6 @@
+from app import app, db  # Ajuste para o nome do seu app
+from models import User  # Importe todos os modelos (User, Evento, etc.)
+
+with app.app_context():
+    db.create_all()
+    print("Tabelas criadas com sucesso!")

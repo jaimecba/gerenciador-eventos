@@ -1,0 +1,364 @@
+{# create_edit_task.html (CÓDIGO COMPLETO E REFORMULADO) #}
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+        <div class="row"> 
+            <div class="col-12">
+                <div class="card p-4 shadow-sm">
+                    <h2 class="card-title text-center mb-4 fs-5">{{ legend }}</h2> 
+                    <form method="POST" id="taskForm">
+                        {{ form.hidden_tag() }}
+
+                        {% if form.errors %}
+                            <div class="alert alert-danger" role="alert">
+                                <h4 class="alert-heading">Erros de Validação:</h4>
+                                <ul>
+                                    {% for field_name, errors in form.errors.items() %}
+                                        {% if field_name != 'csrf_token' %}
+                                            {% for error in errors %}
+                                                <li>{{ form[field_name].label.text if form[field_name].label else field_name|capitalize }}: {{ error }}</li>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if form.csrf_token.errors %}
+                                        <li>CSRF Token: {{ form.csrf_token.errors|join(', ') }}</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label small") }}
+                            {{ form.title(class="form-control form-control-sm", placeholder="Nome da Tarefa") }}
+                            {% if form.title.errors %}
+                                {% for error in form.title.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label small") }}
+                            {{ form.description(class="form-control", rows=8, placeholder="Detalhes completos da tarefa...") }}
+                            {% if form.description.errors %}
+                                {% for error in form.description.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.notes.label(class="form-label small") }}
+                            {{ form.notes(class="form-control", rows=6, placeholder="Notas ou observações adicionais...") }}
+                            {% if form.notes.errors %}
+                                {% for error in form.notes.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.cloud_storage_link.label(class="form-label small") }}
+                            {{ form.cloud_storage_link(class="form-control form-control-sm", placeholder="Ex: https://drive.google.com/...") }}
+                            {% if form.cloud_storage_link.errors %}
+                                {% for error in form.cloud_storage_link.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                            {% if form.cloud_storage_link.description %}
+                                <small class="form-text text-muted">{{ form.cloud_storage_link.description }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.link_notes.label(class="form-label small") }}
+                            {{ form.link_notes(class="form-control", rows=4, placeholder="Detalhes sobre o conteúdo do link, permissões, etc.") }}
+                            {% if form.link_notes.errors %}
+                                {% for error in form.link_notes.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                            {% if form.link_notes.description %}
+                                <small class="form-text text-muted">{{ form.link_notes.description }}</small>
+                            {% endif %}
+                        </div>
+                        
+                        {# --- Bloco para Gravação de Áudio --- #}
+                        <div class="mb-3">
+                            <label class="form-label small">Instruções de Áudio (Opcional):</label>
+                            <div class="audio-recorder-container"
+                                 data-task-id="{{ task.id if task else '' }}"
+                                 data-existing-audio-path="{{ url_for('main.static_audio_files', filename=task.audio_path) if task and task.audio_path else '' }}"
+                                 data-existing-audio-duration="{{ task.audio_duration_seconds if task and task.audio_duration_seconds else '0' }}">
+                                
+                                <button type="button" class="btn btn-primary btn-sm record-button">
+                                    <i class="fas fa-microphone"></i> Gravar
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm stop-button" style="display:none;">
+                                    <i class="fas fa-stop"></i> Parar
+                                </button>
+                                <button type="button" class="btn btn-success btn-sm play-button" style="display:none;">
+                                    <i class="fas fa-play"></i> Reproduzir
+                                </button>
+                                <button type="button" class="btn btn-warning btn-sm delete-audio-button" style="display:none;">
+                                    <i class="fas fa-trash-alt"></i> Excluir Áudio
+                                </button>
+
+                                <span class="duration-display ms-2" style="display:none;">00:00</span>
+                                <span class="status-display ms-2 text-muted">Pronto para gravar</span>
+                                <audio class="audio-player" controls style="display:none; width: 100%; margin-top: 10px;"></audio>
+                            </div>
+                        </div>
+                        {# --- FIM Bloco para Gravação de Áudio --- #}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.due_date.label(class="form-label small") }}
+                                {{ form.due_date(class="form-control form-control-sm", type="datetime-local") }} 
+                                {% if form.due_date.errors %}
+                                    {% for error in form.due_date.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                {{ form.category.label(class="form-label small") }}
+                                {{ form.category(class="form-select form-select-sm") }}
+                                {% if form.category.errors %}
+                                    {% for error in form.category.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.status.label(class="form-label small") }}
+                                {{ form.status(class="form-select form-select-sm") }}
+                                {% if form.status.errors %}
+                                    {% for error in form.status.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                {# ALTERAÇÃO AQUI: Garante que o label aponte para o ID correto do Select2 #}
+                                {{ form.assignees.label(for="assignees-select", class="form-label small") }} 
+                                {{ form.assignees(class="form-select form-select-sm", id="assignees-select", multiple="multiple") }} 
+                                {% if form.assignees.errors %}
+                                    {% for error in form.assignees.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-secondary btn-sm" id="backButton">
+                                <i class="fas fa-arrow-left me-2"></i>Voltar
+                            </a>
+                            {{ form.submit(class="btn btn-primary btn-sm") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block scripts %}
+    {{ super() }} {# MUITO IMPORTANTE: Garante que os scripts do base.html sejam carregados primeiro #}
+
+    {# Custom CSS para o Select2 (movido para cá) #}
+    <style>
+        /* Ajusta o tamanho da fonte para os itens selecionados e opções no dropdown */
+        .select2-container .select2-selection--multiple .select2-selection__choice,
+        .select2-container .select2-results__option {
+            font-size: 0.875rem; /* Corresponde a 'small' */
+        }
+        /* Ajusta o tamanho da fonte da caixa de pesquisa dentro do Select2 */
+        .select2-container .select2-search__field {
+            font-size: 0.875rem; /* Menor que o padrão */
+            padding: 0.25rem 0.5rem; /* Ajuste o padding */
+            height: calc(1.5em + 0.5rem + 2px); /* Altura do form-control-sm */
+        }
+        /* Garantir que o Select2 e o input comum tenham a mesma altura visualmente */
+        .select2-container .select2-selection--single,
+        .select2-container .select2-selection--multiple {
+            min-height: calc(1.5em + 0.5rem + 2px) !important; /* Altura do form-control-sm */
+        }
+        /* Ajusta o padding do Select2 para estar alinhado com form-control-sm */
+        .select2-container .select2-selection--multiple {
+            padding: 0.25rem 0.5rem; /* Ajuste o padding para coincidir com form-control-sm */
+            line-height: 1.5; /* Garante que o texto dentro esteja alinhado */
+        }
+        /* Ajusta a altura da linha dos itens selecionados */
+        .select2-container .select2-selection--multiple .select2-selection__rendered {
+            line-height: 1.5; /* Ajusta a altura da linha para corresponder ao padding */
+        }
+        /* Pequeno ajuste para o placeholder do Select2 */
+        .select2-container .select2-selection__placeholder {
+            line-height: calc(1.5em + 0.5rem + 2px); /* Ajusta a altura da linha do placeholder */
+        }
+
+    </style>
+
+    {# Inicialização do Select2 (movido para cá) #}
+    <script>
+        $(document).ready(function() {
+            $('#assignees-select').select2({
+                theme: 'bootstrap-5', // Usa o tema Bootstrap 5 para Select2
+                width: '100%', // Define a largura para 100% do pai
+                placeholder: "Selecione usuários", // Texto placeholder
+                language: "pt-BR", // Traduz para português
+                closeOnSelect: false // Mantém o dropdown aberto após selecionar um item
+            });
+        });
+    </script>
+
+    {# Script JavaScript para salvar/carregar dados e gerenciar o botão Voltar (movido para cá) #}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('taskForm');
+            const backButton = document.getElementById('backButton');
+            
+            const eventId = {{ event.id | tojson }}; 
+            
+            let taskId = null;
+            {% if task %} 
+            taskId = {{ task.id | tojson | default('null') }}; 
+            {% endif %}
+            
+            const formKey = taskId ? `taskFormData_event_${eventId}_task_${taskId}_edit` : `taskFormData_event_${eventId}_new`;
+
+            let initialFormData = {}; 
+
+            // Função para salvar os dados do formulário no sessionStorage
+            function saveFormData() {
+                const formData = {};
+                form.querySelectorAll('input, textarea, select').forEach(element => {
+                    if (element.name && element.name !== 'csrf_token') {
+                        if (element.type === 'checkbox') {
+                            if (!formData[element.name]) {
+                                formData[element.name] = [];
+                            }
+                            if (element.checked) {
+                                formData[element.name].push(element.value);
+                            }
+                        } else if (element.type === 'radio') {
+                            if (element.checked) {
+                                formData[element.name] = element.value;
+                            }
+                        } else if (element.tagName === 'SELECT' && element.multiple) {
+                            formData[element.name] = $(element).val(); // Obter valores do Select2
+                        } else {
+                            formData[element.name] = element.value;
+                        }
+                    }
+                });
+                sessionStorage.setItem(formKey, JSON.stringify(formData));
+            }
+
+            // Função para carregar os dados do formulário do sessionStorage
+            function loadFormData() {
+                const savedData = JSON.parse(sessionStorage.getItem(formKey));
+                if (savedData) {
+                    Object.keys(savedData).forEach(name => {
+                        if (name === 'csrf_token') return;
+                        const elements = form.querySelectorAll(`[name="${name}"]`);
+                        if (elements.length === 0) return; // Se o elemento não existe no DOM atual
+
+                        const element = elements[0]; // Pega o primeiro elemento com esse nome
+
+                        if (element.type === 'checkbox') {
+                            elements.forEach(cb => cb.checked = savedData[name].includes(cb.value));
+                        } else if (element.type === 'radio') {
+                            elements.forEach(rb => rb.checked = (rb.value === savedData[name]));
+                        } else if (element.tagName === 'SELECT' && element.multiple) {
+                            $(element).val(savedData[name]).trigger('change');
+                        } else {
+                            element.value = savedData[name];
+                        }
+                    });
+                }
+                // Captura o estado inicial APÓS o carregamento do sessionStorage (se houver)
+                initialFormData = {};
+                form.querySelectorAll('input, textarea, select').forEach(element => {
+                    if (element.name && element.name !== 'csrf_token') {
+                        if (element.type === 'checkbox') {
+                            if (!initialFormData[element.name]) initialFormData[element.name] = [];
+                            if (element.checked) initialFormData[element.name].push(element.value);
+                        } else if (element.type === 'radio') {
+                            if (element.checked) initialFormData[element.name] = element.value;
+                        } else if (element.tagName === 'SELECT' && element.multiple) {
+                            initialFormData[element.name] = $(element).val();
+                        } else {
+                            initialFormData[element.name] = element.value;
+                        }
+                    }
+                });
+            }
+
+            // Função para verificar se há dados não salvos comparando o estado atual com o inicial
+            function hasUnsavedChanges() {
+                const currentData = {};
+                form.querySelectorAll('input, textarea, select').forEach(element => {
+                    if (element.name && element.name !== 'csrf_token') {
+                        if (element.type === 'checkbox') {
+                            if (!currentData[element.name]) currentData[element.name] = [];
+                            if (element.checked) currentData[element.name].push(element.value);
+                        } else if (element.type === 'radio') {
+                            if (element.checked) currentData[element.name] = element.value;
+                        } else if (element.tagName === 'SELECT' && element.multiple) {
+                            currentData[element.name] = $(element).val();
+                        } else {
+                            currentData[element.name] = element.value;
+                        }
+                    }
+                });
+                return JSON.stringify(currentData) !== JSON.stringify(initialFormData);
+            }
+
+            // --- Event Listeners ---
+
+            // 1. Carrega os dados quando a página é carregada
+            loadFormData(); 
+
+            // 2. Salva os dados no sessionStorage a cada mudança nos campos do formulário
+            form.addEventListener('input', saveFormData);
+            $('#assignees-select').on('change', saveFormData); // O Select2 dispara um 'change'
+
+            // 3. Lida com o clique do botão "Voltar"
+            backButton.addEventListener('click', function(e) {
+                if (hasUnsavedChanges()) {
+                    const confirmLeave = confirm("Você tem dados não salvos. Deseja sair e perder essas alterações?");
+                    if (!confirmLeave) {
+                        e.preventDefault(); 
+                    } else {
+                        sessionStorage.removeItem(formKey); 
+                    }
+                } else {
+                    sessionStorage.removeItem(formKey); 
+                }
+            });
+
+            // 4. Limpa o sessionStorage ao submeter o formulário com sucesso (para não recarregar dados antigos)
+            form.addEventListener('submit', function(e) {
+                sessionStorage.removeItem(formKey);
+            });
+
+            // 5. Opcional: Avisa o usuário se tentar fechar a aba ou navegar para longe com dados não salvos
+            window.addEventListener('beforeunload', function (e) {
+                if (hasUnsavedChanges()) {
+                    e.preventDefault(); 
+                    e.returnValue = ''; 
+                }
+            });
+        });
+    </script>
+    {# NOVO: Importa o script de gravação de áudio #}
+    <script src="{{ url_for('static', filename='js/audio_recorder.js') }}"></script>
+{% endblock scripts %}

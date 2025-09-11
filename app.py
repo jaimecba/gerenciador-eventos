@@ -10,6 +10,7 @@ import click
 import os
 import json
 import ast
+from sqlalchemy import text # NOVO: Importação para usar o texto SQL direto
 
 def create_app():
     app = Flask(__name__)
@@ -25,10 +26,6 @@ def create_app():
     # Para desenvolvimento local, você pode usar o SQLite como fallback.
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///events.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-    # Remove as linhas de DEBUG que imprimiam a SECRET_KEY no console de depuração
-    # print(f"DEBUG: Tipo da SECRET_KEY: {type(app.config['SECRET_KEY'])}")
-    # print(f"DEBUG: Valor da SECRET_KEY: {app.config['SECRET_KEY']}")
 
     # --- Configurações para FLASK-MAIL ---
     app.config['MAIL_SERVER'] = 'smtp.googlemail.com' # Exemplo para Gmail
@@ -191,9 +188,16 @@ def create_app():
     # NOVO: Comando CLI personalizado para criar o banco de dados e usuário admin
     @app.cli.command('create-db')
     def create_db_command():
-        """Creates the database tables and an initial admin user."""
+        """Cria as tabelas do banco de dados e um usuário administrador inicial."""
         with app.app_context():
-            db.create_all()
+            # Nota: Em um ambiente com migrações, 'db.create_all()' geralmente não é usado
+            # para criar o esquema principal, pois 'flask db upgrade' faz isso.
+            # Este comando é mais para criar o usuário admin após o upgrade.
+            # Se você usar db.create_all() sem migrações, ele criará as tabelas.
+            # Mas com migrações, o upgrade já cuidou disso.
+            # Mantido aqui para compatibilidade com o seu setup.
+            # db.create_all() # Removido o create_all aqui para evitar conflitos com migrações
+
             if User.query.count() == 0:
                 click.echo("Criando usuário administrador padrão...")
                 admin_user = User(username='admin', email='admin@example.com', role='admin')
@@ -201,7 +205,43 @@ def create_app():
                 db.session.add(admin_user)
                 db.session.commit()
                 click.echo("Usuário 'admin' criado com sucesso!")
-            click.echo('Database tables created.')
+            else:
+                click.echo("Usuário administrador já existe.")
+            click.echo('Operação create-db concluída.')
+
+    # NOVO: Comando CLI personalizado para resetar o banco de dados
+    @app.cli.command("reset-db")
+    def reset_db_command():
+        """Apaga todas as tabelas e limpa o histórico do Alembic."""
+        if click.confirm("ATENÇÃO: Esta operação irá apagar TODAS as tabelas do seu banco de dados e resetar o histórico de migrações. Deseja continuar? (Esta ação é IRREVERSÍVEL!)"):
+            with app.app_context():
+                print("Iniciando reset do banco de dados...")
+                
+                # 1. Apagar todas as tabelas gerenciadas pelo SQLAlchemy
+                db.drop_all()
+                print("Tabelas definidas nos modelos foram apagadas.")
+
+                # 2. Apagar a tabela de controle do Alembic (alembic_version)
+                with db.engine.connect() as connection:
+                    inspector = db.inspect(db.engine)
+                    table_names = inspector.get_table_names()
+                    if 'alembic_version' in table_names:
+                        try:
+                            connection.execute(text("DROP TABLE alembic_version CASCADE;"))
+                            connection.commit()
+                            print("Tabela 'alembic_version' apagada.")
+                        except Exception as e:
+                            print(f"Erro ao tentar apagar a tabela 'alembic_version': {e}. Pode ser que já tenha sido apagada ou não existisse.")
+                            connection.rollback()
+                    else:
+                        print("Tabela 'alembic_version' não encontrada ou já apagada.")
+                
+                print("Banco de dados limpo com sucesso!")
+                print("Próximos passos:")
+                print("1. Execute 'python -m flask db upgrade' para recriar todas as tabelas.")
+                print("2. Execute 'python -m flask create-db' para criar o usuário administrador inicial.")
+        else:
+            print("Operação de reset de banco de dados cancelada.")
 
     return app
 

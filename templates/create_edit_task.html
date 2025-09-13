@@ -122,11 +122,12 @@
                                 {% endif %}
                             </div>
 
+                            {# CORREÇÃO APLICADA AQUI: form.category -> form.task_category #}
                             <div class="col-md-6 mb-3">
-                                {{ form.category.label(class="form-label small") }}
-                                {{ form.category(class="form-select form-select-sm") }}
-                                {% if form.category.errors %}
-                                    {% for error in form.category.errors %}
+                                {{ form.task_category.label(class="form-label small") }}
+                                {{ form.task_category(class="form-select form-select-sm") }}
+                                {% if form.task_category.errors %}
+                                    {% for error in form.task_category.errors %}
                                         <div class="text-danger small">{{ error }}</div>
                                     {% endfor %}
                                 {% endif %}

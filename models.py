@@ -1,5 +1,3 @@
-# models.py
-
 from extensions import db, login_manager
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -73,6 +71,7 @@ class User(db.Model, UserMixin):
     
     @property
     def is_admin(self):
+        # A propriedade is_admin agora usa a coluna 'role'
         return self.role == 'admin'
 
     def to_dict(self):
@@ -123,7 +122,7 @@ class Event(db.Model):
     # Relacionamentos
     category = db.relationship('Category', backref='events', lazy=True)
     status = db.relationship('EventStatus', backref='events', lazy=True) # Este é o objeto EventStatus
-    tasks = db.relationship('Task', backref='event', lazy=True, cascade="all, delete-orphan")
+    tasks = db.relationship('Task', backref='event', lazy='selectin', cascade="all, delete-orphan")
 
     # Relação um-para-muitos com EventPermission (um evento pode ter várias permissões)
     event_permissions = db.relationship('EventPermission', back_populates='event', lazy=True, cascade='all, delete-orphan')
@@ -169,6 +168,7 @@ class Category(db.Model):
 
 # =========================================================================
 # NOVO MODELO: TaskCategory - para gerenciar categorias de tarefas
+# (Este modelo já estava correto na sua versão)
 # =========================================================================
 class TaskCategory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -256,11 +256,10 @@ class Task(db.Model):
     task_status_id = db.Column(db.Integer, db.ForeignKey('task_status.id', name='fk_task_status_id'), nullable=False)
     
     # =========================================================================
-    # ALTERAÇÕES NO MODELO TASK:
+    # ALTERAÇÕES NO MODELO TASK (já estavam corretas na sua versão):
     # 1. REMOVIDO: category_id (que apontava para Category de Eventos)
     # 2. ADICIONADO: task_category_id (que apontará para a nova TaskCategory)
     # =========================================================================
-    # REMOVIDO: category_id = db.Column(db.Integer, db.ForeignKey('category.id', name='fk_task_category_id'), nullable=True)
     task_category_id = db.Column(db.Integer, db.ForeignKey('task_category.id', name='fk_task_task_category_id'), nullable=True)
     
     is_completed = db.Column(db.Boolean, default=False, nullable=False)
@@ -269,7 +268,7 @@ class Task(db.Model):
 
     # Relacionamentos
     task_status = db.relationship('TaskStatus', backref='tasks', lazy=True)
-    # REMOVIDO: category = db.relationship('Category', backref='tasks', lazy=True)
+    # O relacionamento 'category' antigo foi removido, agora usamos 'task_category'
     task_category = db.relationship('TaskCategory', back_populates='tasks', lazy=True) # Novo relacionamento com TaskCategory
 
     assignees_associations = db.relationship('TaskAssignment', back_populates='task', lazy=True, cascade='all, delete-orphan')
@@ -299,11 +298,10 @@ class Task(db.Model):
             'event_id': self.event_id,
             'task_status_id': self.task_status_id,
             # =========================================================================
-            # ALTERAÇÕES NO TO_DICT DO MODELO TASK:
+            # ALTERAÇÕES NO TO_DICT DO MODELO TASK (já estavam corretas na sua versão):
             # 1. REMOVIDO: 'category_id'
             # 2. ADICIONADO: 'task_category_id' e 'task_category_name'
             # =========================================================================
-            # REMOVIDO: 'category_id': self.category_id,
             'task_category_id': self.task_category_id,
             'task_category_name': self.task_category.name if self.task_category else None, # Nome da categoria da tarefa
             
@@ -318,7 +316,9 @@ class Task(db.Model):
         }
 
     def __repr__(self):
-        return f"Task('{self.title}', '{self.due_date}')"
+        # Corrigido para mostrar a categoria da tarefa
+        category_name = self.task_category.name if self.task_category else 'N/A'
+        return f"Task('{self.title}', '{self.due_date}', Category: '{category_name}')"
 
 class TaskAssignment(db.Model):
     __tablename__ = 'task_assignment'

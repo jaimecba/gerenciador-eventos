@@ -1,4 +1,4 @@
-# C:\\\\\\\\\\\\\\gerenciador-eventos\\\\\\\\\\\\\\app.py
+# C:\\\\\gerenciador-eventos\\\\\app.py
 
 from dotenv import load_dotenv
 load_dotenv() # Isso é para seu ambiente local, no Render as variáveis serão definidas no painel
@@ -21,6 +21,8 @@ from flask_login import current_user
 from werkzeug.security import generate_password_hash
 from models import User, Role, Status, Category, TaskCategory, Group, Event # Importar todos os modelos relevantes
 from forms import UserForm, AdminRoleForm, AdminGroupForm, AdminCategoryForm, AdminTaskCategoryForm, AdminStatusForm, AdminEventForm # Importar todos os forms necessários
+# --- NOVO: Importar MenuLink para adicionar links personalizados ---
+from flask_admin.menu import MenuLink
 # --- FIM: Flask-Admin Imports ---
 
 def create_app():
@@ -238,6 +240,10 @@ def create_app():
 
     admin = Admin(app, name='Gerenciador de Eventos', template_mode='bootstrap4',
                   index_view=MyAdminIndexView(name='Home Admin', url='/admin'))
+
+    # --- MODIFICADO: Adicionado ícone ao link "Ir para Home do Site" ---
+    admin.add_link(MenuLink(name='Ir para Home do Site', url='/home', target="_top", icon_type='fa', icon_value='fa-home'))
+    # --- FIM MODIFICADO ---
 
     admin.add_view(UserAdminView(User, db.session, name='Usuários', category='Administração'))
     admin.add_view(RoleAdminView(Role, db.session, name='Papéis', category='Administração'))

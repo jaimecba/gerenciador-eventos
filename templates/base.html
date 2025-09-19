@@ -22,9 +22,8 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
         <div class="container">
-            {# Ajustes para o nome da marca/logomarca: texto azul e negrito #}
-            <a class="navbar-brand fs-6 text-primary fw-bold" href="{{ url_for('main.home') }}">
-                <i class="fas fa-calendar-check me-2"></i> Eventos
+            <a class="navbar-brand fs-6 text-primary fw-bold" href="{{ url_for('main.home') }}" target="_top">
+                <i class="fas fa-calendar-check me-2"></i> Gerenciador de Eventos
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -32,35 +31,21 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        {# Link Home: texto azul. Continua sendo o ponto de entrada geral. #}
-                        <a class="nav-link fs-6 text-primary" href="{{ url_for('main.home') }}">
+                        <a class="nav-link fs-6 text-primary" href="{{ url_for('main.home') }}" target="_top">
                             <i class="fas fa-home me-1"></i> Home
                         </a>
                     </li>
                     {% if current_user.is_authenticated %}
-                        {# CORREÇÃO AQUI: Usando current_user.is_admin #}
                         {% if current_user.is_admin %}
-                            {# MODIFIED: Painel Admin agora é um Dropdown #}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle fs-6 text-primary" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-user-cog me-1"></i> Painel Admin
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                                    <li><a class="dropdown-item" href="{{ url_for('main.admin_panel') }}">Visão Geral Admin</a></li>
-                                    {# NOVO: Link para o Painel Flask-Admin #}
-                                    <li><a class="dropdown-item" href="/admin/">Painel Flask-Admin</a></li>
+                                    {# REMOVIDOS: "Visão Geral Admin" e "Home do Aplicativo" #}
+                                    <li><a class="dropdown-item" href="/admin/" target="_top">Painel Flask-Admin</a></li>
                                     <li><hr class="dropdown-divider"></li> {# Separador #}
-                                    <li><a class="dropdown-item" href="{{ url_for('main.list_users') }}">Gerenciar Usuários</a></li>
-                                    <li><hr class="dropdown-divider"></li> {# Separador #}
-                                    <li><a class="dropdown-item" href="{{ url_for('main.list_categories') }}">Gerenciar Categorias de Evento</a></li>
-                                    {# NEW: Link para gerenciar categorias de tarefa #}
-                                    <li><a class="dropdown-item" href="{{ url_for('main.list_task_categories') }}">Gerenciar Categorias de Tarefa</a></li>
-                                    <li><hr class="dropdown-divider"></li> {# Separador #}
-                                    <li><a class="dropdown-item" href="{{ url_for('main.list_statuses', status_type='event') }}">Gerenciar Status de Evento</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('main.list_statuses', status_type='task') }}">Gerenciar Status de Tarefa</a></li>
-                                    <li><hr class="dropdown-divider"></li> {# Separador #}
-                                    {# NEW: Link para o histórico de alterações #}
-                                    <li><a class="dropdown-item" href="{{ url_for('main.changelog') }}">Histórico de Alterações</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('main.changelog') }}" target="_top">Histórico de Alterações</a></li>
                                 </ul>
                             </li>
                         {% endif %}
@@ -68,29 +53,26 @@
                 </ul>
                 <ul class="navbar-nav ms-auto"> {# ms-auto para alinhar à direita #}
                     {% if current_user.is_authenticated %}
-                        {# Olá, admin!: texto azul e negrito #}
                         <li class="nav-item">
                             <span class="nav-link text-primary fw-bold fs-6">
                                 <i class="fas fa-user-circle me-1"></i> Olá, {{ current_user.username }}!
                             </span>
                         </li>
-                        {# Botão Sair: agora com borda azul (btn-outline-primary) #}
                         <li class="nav-item">
-                            <a class="nav-link btn btn-outline-primary px-3 ms-lg-2 fs-6" href="{{ url_for('main.logout') }}">
+                            <a class="nav-link btn btn-outline-primary px-3 ms-lg-2 fs-6" href="{{ url_for('main.logout') }}" target="_top">
                                 <i class="fas fa-sign-out-alt me-2"></i> Sair
                             </a>
                         </li>
                     {% else %}
-                        {# Links Login e Registrar: texto azul #}
                         <li class="nav-item">
-                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.login') }}">
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.login') }}" target="_top">
                                 <i class="fas fa-sign-in-alt me-1"></i> Login
                             </a>
                         </li>
                         {# Removido/Comentado: O link de registro público #}
                         {#
                         <li class="nav-item">
-                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.register') }}">
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.register') }}" target="_top">
                                 <i class="fas fa-user-plus me-1"></i> Registrar
                             </a>
                         </li>
@@ -101,13 +83,12 @@
         </div>
     </nav>
 
-    {# ALTERADO: main agora usa container-fluid e o conteúdo é envolvido por main-content-wrapper #}
     <main class="container-fluid mt-4">
-        <div class="main-content-wrapper"> {# Adicionado para controlar a largura máxima #}
+        <div class="main-content-wrapper">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div class="row">
-                        <div class="col-12 flash-messages-container"> {# Adicionado classe para o JS do áudio #}
+                        <div class="col-12 flash-messages-container">
                             {% for category, message in messages %}
                                 <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
                                     {{ message }}
@@ -119,7 +100,7 @@
                 {% endif %}
             {% endwith %}
             {% block content %}{% endblock %}
-        </div> {# Fim de main-content-wrapper #}
+        </div>
     </main>
 
     <footer class="footer mt-5 py-3 bg-light border-top">
@@ -129,16 +110,11 @@
             </span>
         </div>
 
-    {# NOVO: jQuery deve ser carregado PRIMEIRO #}
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    {# JavaScript do Bootstrap (bundle com Popper.js) - Carregado DEPOIS do jQuery #}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    {# NOVO: Select2 JS - Carregado DEPOIS do jQuery e Bootstrap JS #}
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    {# Opcional: Localização do Select2 #}
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
 
-    {# SCRIPT PARA INICIALIZAR TODOS OS TOOLTIPS DO BOOTSTRAP #}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -147,7 +123,6 @@
             })
         });
     </script>
-    {# Onde os scripts específicos de cada página serão carregados #}
     {% block scripts %}{% endblock %}
 </body>
 </html>

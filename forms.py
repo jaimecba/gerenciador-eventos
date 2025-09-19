@@ -1,16 +1,47 @@
+# C:\\\\\\\\\\\gerenciador-eventos\\\\\\\\\\\forms.py
+
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField, DateTimeLocalField, SelectField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, Optional, Regexp
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, Optional, Regexp, URL
 from wtforms.widgets import ListWidget, CheckboxInput
-from wtforms_sqlalchemy.fields import QuerySelectMultipleField # Importado no seu código
-# =========================================================================
-# ALTERAÇÃO: Importado TaskCategory
-# =========================================================================
-from models import User, Category, EventStatus, TaskStatus, Group, Event, TaskCategory
+from wtforms_sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
 from flask_login import current_user
-from wtforms_sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField # Já estava aqui
+from models import User, Category, Status, Group, Event, TaskCategory, Role
+from datetime import datetime
 
+# =========================================================================
+# Funções auxiliares para QuerySelectField
+# =========================================================================
+def get_event_statuses():
+    return Status.query.filter_by(type='event').order_by(Status.name).all()
+
+def get_task_statuses():
+    return Status.query.filter_by(type='task').order_by(Status.name).all()
+
+def get_event_categories():
+    return Category.query.order_by(Category.name).all()
+
+def get_task_categories():
+    return TaskCategory.query.order_by(TaskCategory.name).all()
+
+def get_roles():
+    # Retorna todas as roles, incluindo suas capacidades de evento.
+    # Pode ser filtrado se você quiser exibir apenas roles específicas para permissões de evento.
+    return Role.query.order_by(Role.name).all()
+
+def get_users():
+    # Incluindo 'is_active_db=True' para garantir que apenas usuários ativos sejam listados
+    return User.query.filter_by(is_active_db=True).order_by(User.username).all()
+
+def get_groups():
+    return Group.query.order_by(Group.name).all()
+
+def get_events():
+    return Event.query.order_by(Event.title).all()
+# =========================================================================
+# FIM das Funções auxiliares
+# =========================================================================
 
 class RegistrationForm(FlaskForm):
     username = StringField('Usuário', validators=[
@@ -79,12 +110,12 @@ class EventForm(FlaskForm):
     title = StringField('Título', validators=[DataRequired(), Length(min=2, max=100)])
     description = TextAreaField('Descrição', validators=[Optional(), Length(max=500)])
     due_date = DateTimeLocalField('Data de Início', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
-    end_date = DateTimeLocalField('Data de Término', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    end_date = DateTimeLocalField('Data de Término (Opcional)', format='%Y-%m-%dT%H:%M', validators=[Optional()])
     location = StringField('Local', validators=[Optional(), Length(max=100)])
 
     category = QuerySelectField(
         'Categoria',
-        query_factory=lambda: Category.query.order_by(Category.name).all(),
+        query_factory=get_event_categories,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.name,
         allow_blank=True,
@@ -93,7 +124,7 @@ class EventForm(FlaskForm):
 
     status = QuerySelectField(
         'Status do Evento',
-        query_factory=lambda: EventStatus.query.order_by(EventStatus.name).all(),
+        query_factory=get_event_statuses,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.name,
         validators=[DataRequired()]
@@ -116,9 +147,7 @@ class CategoryForm(FlaskForm):
             if category:
                 raise ValidationError('Este nome de categoria já existe. Por favor, escolha outro.')
 
-# =========================================================================
-# NOVO FORMULÁRIO: TaskCategoryForm - para gerenciar categorias de tarefas
-# =========================================================================
+
 class TaskCategoryForm(FlaskForm):
     name = StringField('Nome da Categoria da Tarefa', validators=[DataRequired(), Length(min=2, max=50)])
     description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
@@ -133,25 +162,25 @@ class TaskCategoryForm(FlaskForm):
             task_category = TaskCategory.query.filter_by(name=name.data).first()
             if task_category:
                 raise ValidationError('Este nome de categoria de tarefa já existe. Por favor, escolha outro.')
-# =========================================================================
-# FIM NOVO FORMULÁRIO: TaskCategoryForm
-# =========================================================================
+
 
 class StatusForm(FlaskForm):
     name = StringField('Nome do Status', validators=[DataRequired(), Length(min=2, max=50)])
+    type = SelectField('Tipo de Status', choices=[('event', 'Evento'), ('task', 'Tarefa')], validators=[DataRequired()])
     description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
     submit = SubmitField('Salvar Status')
 
-    def __init__(self, original_name=None, *args, **kwargs):
+    def __init__(self, original_name=None, original_type=None, *args, **kwargs):
         super(StatusForm, self).__init__(*args, **kwargs)
         self.original_name = original_name
+        self.original_type = original_type
 
     def validate_name(self, name):
-        if name.data != self.original_name:
-            event_status = EventStatus.query.filter_by(name=name.data).first()
-            task_status = TaskStatus.query.filter_by(name=name.data).first()
-            if event_status or task_status:
-                raise ValidationError('Este nome de status já existe. Por favor, escolha outro.')
+        if self.original_name is None or (name.data != self.original_name or self.type.data != self.original_type):
+            status = Status.query.filter_by(name=name.data, type=self.type.data).first()
+            if status:
+                raise ValidationError(f"Um status com o nome '{name.data}' e tipo '{self.type.data}' já existe. Por favor, escolha outro nome ou tipo.")
+
 
 class TaskForm(FlaskForm):
     title = StringField('Título', validators=[DataRequired(), Length(min=2, max=100)])
@@ -159,38 +188,43 @@ class TaskForm(FlaskForm):
     notes = TextAreaField('Notas', validators=[Optional(), Length(max=500)])
     due_date = DateTimeLocalField('Data de Vencimento', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
 
-    cloud_storage_link = StringField('Link de Armazenamento em Nuvem', validators=[Optional(), Length(max=500)])
+    cloud_storage_link = StringField('Link de Armazenamento em Nuvem', validators=[Optional(), Length(max=500), URL()])
     link_notes = TextAreaField('Observações do Link', validators=[Optional()])
 
-    # =========================================================================
-    # ALTERAÇÃO: O campo 'category' foi renomeado para 'task_category'
-    # e agora usa o modelo TaskCategory.
-    # =========================================================================
-    # REMOVIDO: category = QuerySelectField(...)
     task_category = QuerySelectField(
-        'Categoria da Tarefa', # Alterado o rótulo
-        query_factory=lambda: TaskCategory.query.order_by(TaskCategory.name).all(), # Agora usa TaskCategory
+        'Categoria da Tarefa',
+        query_factory=get_task_categories,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.name,
         allow_blank=True,
-        blank_text='-- Selecione uma Categoria de Tarefa (Opcional) --' # Alterado o texto em branco
+        blank_text='-- Selecione uma Categoria de Tarefa (Opcional) --'
     )
 
     status = QuerySelectField(
         'Status da Tarefa',
-        query_factory=lambda: TaskStatus.query.order_by(TaskStatus.name).all(),
+        query_factory=get_task_statuses,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.name,
         validators=[DataRequired()]
     )
 
+    # Este campo está correto para seleção múltipla de usuários
     assignees = QuerySelectMultipleField(
         'Atribuir a',
-        query_factory=lambda: User.query.order_by(User.username).all(),
+        query_factory=get_users,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.username,
-        allow_blank=True,
-        blank_text='-- Selecione Usuários (Opcional) --'
+        # widget=ListWidget(prefix_label=False),  # Você pode descomentar e usar se preferir checkboxes
+        # option_widget=CheckboxInput()           # ou manter o dropdown múltiplo padrão
+    )
+    
+    event = QuerySelectField(
+        'Evento Relacionado',
+        query_factory=get_events,
+        get_pk=lambda a: a.id,
+        get_label=lambda a: a.title,
+        validators=[DataRequired()],
+        render_kw={'disabled': True}
     )
 
     submit = SubmitField('Salvar Tarefa')
@@ -204,7 +238,16 @@ class UserForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Senha')
     confirm_password = PasswordField('Confirmar Senha')
-    role = SelectField('Papel', choices=[('user', 'Usuário'), ('project_manager', 'Gerente de Projeto'), ('admin', 'Administrador')], validators=[DataRequired()])
+    
+    role_obj = QuerySelectField(
+        'Papel',
+        query_factory=get_roles,
+        get_pk=lambda a: a.id,
+        get_label=lambda a: a.name,
+        allow_blank=False,
+        blank_text='-- Selecione um Papel --',
+        validators=[DataRequired()]
+    )
     submit = SubmitField('Salvar Alterações')
 
     def __init__(self, original_username=None, original_email=None, is_new_user=False, *args, **kwargs):
@@ -252,7 +295,7 @@ class GroupForm(FlaskForm):
 class AssignUsersToGroupForm(FlaskForm):
     users = QuerySelectMultipleField(
         'Membros do Grupo',
-        query_factory=lambda: User.query.order_by(User.username).all(),
+        query_factory=get_users,
         get_label='username',
         widget=ListWidget(prefix_label=False),
         option_widget=CheckboxInput()
@@ -263,14 +306,14 @@ class AssignUsersToGroupForm(FlaskForm):
 class EventPermissionForm(FlaskForm):
     event = QuerySelectField(
         'Selecionar Evento',
-        query_factory=lambda: Event.query.order_by(Event.title).all(),
+        query_factory=get_events,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.title,
         validators=[DataRequired()]
     )
     user = QuerySelectField(
         'Selecionar Usuário Específico (Opcional)',
-        query_factory=lambda: User.query.order_by(User.username).all(),
+        query_factory=get_users,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.username,
         allow_blank=True,
@@ -278,14 +321,23 @@ class EventPermissionForm(FlaskForm):
     )
     group = QuerySelectField(
         'Selecionar Grupo (Opcional)',
-        query_factory=lambda: Group.query.order_by(Group.name).all(),
+        query_factory=get_groups,
         get_pk=lambda a: a.id,
         get_label=lambda a: a.name,
         allow_blank=True,
         blank_text='--- N/A ---'
     )
-    can_view = BooleanField('Pode Visualizar', default=True)
-    can_edit = BooleanField('Pode Editar', default=False)
+    # --- NOVO CAMPO: Selecionar a Role para a permissão ---
+    role = QuerySelectField(
+        'Selecionar Papel (Permissão)',
+        query_factory=get_roles,
+        get_pk=lambda a: a.id,
+        get_label=lambda a: a.name,
+        validators=[DataRequired()]
+    )
+    # --- CAMPOS REMOVIDOS: can_view e can_edit ---
+    # can_view = BooleanField('Pode Visualizar', default=True)
+    # can_edit = BooleanField('Pode Editar', default=False)
     submit = SubmitField('Definir Permissões')
 
     def validate(self, extra_validators=None):
@@ -295,6 +347,7 @@ class EventPermissionForm(FlaskForm):
 
         user_selected = self.user.data is not None
         group_selected = self.group.data is not None
+        role_selected = self.role.data is not None # Verifica se uma role foi selecionada
 
         if not (user_selected or group_selected):
             self.user.errors.append('Selecione um usuário OU um grupo para definir a permissão.')
@@ -305,5 +358,92 @@ class EventPermissionForm(FlaskForm):
             self.user.errors.append('Permissões podem ser atribuídas a um usuário OU a um grupo, não ambos.')
             self.group.errors.append('Permissões podem ser atribuídas a um usuário OU a um grupo, não ambos.')
             return False
+        
+        if not role_selected:
+            self.role.errors.append('Selecione um papel para a permissão.')
+            return False
 
         return True
+
+# Formulário simples para o modelo Role para uso no Admin
+class AdminRoleForm(FlaskForm):
+    name = StringField('Nome do Papel', validators=[DataRequired(), Length(min=2, max=80)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
+    # --- Permissões de Evento (existentes) ---
+    can_view_event = BooleanField('Pode Visualizar Eventos', default=False)
+    can_edit_event = BooleanField('Pode Editar Eventos', default=False)
+    can_manage_permissions = BooleanField('Pode Gerenciar Permissões de Evento', default=False)
+    can_create_event = BooleanField('Pode Criar Eventos', default=False) # <--- NOVO CAMPO AQUI
+    # --- NOVAS Permissões específicas de Tarefa ---
+    can_create_task = BooleanField('Pode Criar Tarefas', default=False)
+    can_edit_task = BooleanField('Pode Editar Tarefas', default=False)
+    can_delete_task = BooleanField('Pode Excluir Tarefas', default=False)
+    can_complete_task = BooleanField('Pode Concluir Tarefas', default=False)
+    can_uncomplete_task = BooleanField('Pode Reabrir Tarefas Concluídas', default=False)
+    can_upload_task_audio = BooleanField('Pode Fazer Upload de Áudio em Tarefas', default=False)
+    can_delete_task_audio = BooleanField('Pode Excluir Áudio de Tarefas', default=False)
+    can_view_task_history = BooleanField('Pode Visualizar Histórico de Tarefas', default=False)
+    # --- FIM NOVAS Permissões de Tarefa ---
+    submit = SubmitField('Salvar Papel') # Adicionado botão de submit, caso não houvesse
+
+# NOVO: Formulário simples para o modelo Group para uso no Admin
+class AdminGroupForm(FlaskForm):
+    name = StringField('Nome do Grupo', validators=[DataRequired(), Length(min=2, max=50)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
+    submit = SubmitField('Salvar Grupo') # Adicionado botão de submit
+
+# NOVO: Formulário simples para o modelo Category para uso no Admin
+class AdminCategoryForm(FlaskForm):
+    name = StringField('Nome da Categoria', validators=[DataRequired(), Length(min=2, max=50)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
+    submit = SubmitField('Salvar Categoria') # Adicionado botão de submit
+
+# NOVO: Formulário simples para o modelo TaskCategory para uso no Admin
+class AdminTaskCategoryForm(FlaskForm):
+    name = StringField('Nome da Categoria da Tarefa', validators=[DataRequired(), Length(min=2, max=50)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
+    submit = SubmitField('Salvar Categoria da Tarefa') # Adicionado botão de submit
+
+# NOVO: Formulário simples para o modelo Status para uso no Admin
+class AdminStatusForm(FlaskForm):
+    name = StringField('Nome do Status', validators=[DataRequired(), Length(min=2, max=50)])
+    type = SelectField('Tipo de Status', choices=[('event', 'Evento'), ('task', 'Tarefa')], validators=[DataRequired()])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
+    submit = SubmitField('Salvar Status') # Adicionado botão de submit
+
+# NOVO: Formulário simples para o modelo Event para uso no Admin
+class AdminEventForm(FlaskForm):
+    title = StringField('Título', validators=[DataRequired(), Length(min=2, max=100)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=500)])
+    due_date = DateTimeLocalField('Data de Início', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
+    end_date = DateTimeLocalField('Data de Término (Opcional)', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    location = StringField('Local', validators=[Optional(), Length(max=100)])
+
+    # Seleção do autor do evento (User)
+    author = QuerySelectField(
+        'Autor',
+        query_factory=get_users,
+        get_pk=lambda a: a.id,
+        get_label=lambda a: a.username,
+        validators=[DataRequired()]
+    )
+
+    # Seleção da categoria do evento
+    category = QuerySelectField(
+        'Categoria',
+        query_factory=get_event_categories,
+        get_pk=lambda a: a.id,
+        get_label=lambda a: a.name,
+        allow_blank=True,
+        blank_text='-- Selecione uma Categoria (Opcional) --'
+    )
+
+    # Seleção do status do evento
+    status = QuerySelectField(
+        'Status do Evento',
+        query_factory=get_event_statuses,
+        get_pk=lambda a: a.id,
+        get_label=lambda a: a.name,
+        validators=[DataRequired()]
+    )
+    submit = SubmitField('Salvar Evento') # Adicionado botão de submit

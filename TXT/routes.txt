@@ -1,4 +1,4 @@
-# C:\\\\\\\\\\\\\\\\\\\\\\gerenciador-eventos\\\\\\\\\\\\\\\\\\\\\\routes.py
+# C:\\\\\\\\\\\gerenciador-eventos\\\\\\\\\\\routes.py
 
 from flask import render_template, url_for, flash, redirect, request, Blueprint, jsonify, current_app, abort
 from flask_login import login_user, current_user, logout_user, login_required
@@ -233,7 +233,7 @@ def login():
     form = LoginForm()
 
     if request.method == 'POST':
-        print(f"\\n--- DEBUG: Tentativa de Login ---")
+        print(f"\n--- DEBUG: Tentativa de Login ---")
         print(f"--- DEBUG: E-mail recebido (form.email.data): '{form.email.data}' ---")
         print(f"--- DEBUG: Senha preenchida? {bool(form.password.data)} ---")
 
@@ -281,12 +281,9 @@ def logout():
 def account():
     form = UpdateAccountForm()
     if form.validate_on_submit():
-        # save_picture é uma função auxiliar que deve ser definida ou importada
-        # Caso não esteja definida, essa linha pode causar um erro.
-        # Por enquanto, vou manter o que estava no seu código.
         if form.picture.data and form.picture.data.filename:
-            # save_picture(form.picture.data) # Descomente e implemente se necessário
-            pass # Apenas um placeholder se save_picture não estiver definida
+            picture_file = save_picture(form.picture.data)
+            current_user.image_file = picture_file
         current_user.username = form.username.data
         current_user.email = form.email.data
         db.session.commit()
@@ -294,8 +291,7 @@ def account():
         return redirect(url_for('main.account'))
     elif request.method == 'GET':
         pass
-    # Certifique-se de que current_user.image_file está definido para evitar erro
-    image_file = url_for('static', filename='profile_pics/' + (current_user.image_file if current_user.image_file else 'default.jpg'))
+    image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
     return render_template('account.html', title='Minha Conta',
                            image_file=image_file, form=form)
 
@@ -389,22 +385,11 @@ def reset_token(token):
 
 
 # =========================================================================
-# =========================================================================
 # Rotas de Eventos
 # =========================================================================
 @main.route("/event/new", methods=['GET', 'POST'])
 @login_required
 def new_event():
-    # NOVO: Verificação de permissão para criar eventos
-    can_create_event_permission = (
-        current_user.is_admin or
-        (current_user.role_obj and current_user.role_obj.can_create_event)
-    )
-            
-    if not can_create_event_permission:
-        flash('Você não tem permissão para criar novos eventos.', 'danger')
-        abort(403) # Forbidden
-
     form = EventForm()
 
     available_categories = Category.query.all()
@@ -437,100 +422,35 @@ def new_event():
     return render_template('create_edit_event.html', title='Novo Evento', form=form, legend='Novo Evento')
 
 @main.route("/event/<int:event_id>")
-@login_required
 def event(event_id):
-    # Eager loading para tarefas e seus atribuídos para evitar problemas de N+1 queries.
-    event_obj = Event.query.options(
-        joinedload(Event.tasks).joinedload(Task.assignees_associations).joinedload(TaskAssignment.user),
-        joinedload(Event.author), # Load event author for permission checks
-        joinedload(Event.event_permissions).joinedload(EventPermission.role), # Load event permissions and their roles
-        joinedload(Event.event_permissions).joinedload(EventPermission.user),
-        joinedload(Event.event_permissions).joinedload(EventPermission.group),
-    ).get_or_404(event_id)
+    event_obj = Event.query.get_or_404(event_id)
 
-    # Revalidação da permissão de visualização do evento
+    # Verificação de permissão de visualização
     can_view_event = False
     if current_user.is_authenticated:
-        is_admin = current_user.is_admin
-        is_event_author = (event_obj.author == current_user)
-
-        if is_admin: # Admins podem sempre visualizar
+        if event_obj.author == current_user:
             can_view_event = True
-        elif is_event_author: # Autor do evento
+        elif current_user.is_admin: # Admins podem sempre visualizar
             can_view_event = True
         else:
-            # Usuário não é admin nem autor, mas pode estar atribuído a uma tarefa no evento
-            # Usando a função any() do Python para iterar sobre a lista já carregada de tarefas.
-            if any(current_user in task.assignees for task in event_obj.tasks):
+            # Novo: Permite visualizar o evento se for autor OU se o usuário estiver atribuído a alguma tarefa dentro deste evento
+            if (
+                event_obj.author == current_user or
+                event_obj.tasks.any(Task.assignees_associations.any(TaskAssignment.user == current_user))
+            ):
                 can_view_event = True
+            # As antigas verificações de EventPermission com Role.can_view_event foram removidas
+            # pois a nova lógica prioriza vínculo com tarefa ou autoria para visualização.
     
     if not can_view_event:
-        flash('Você não tem permissão para visualizar este evento.', 'danger')
-        abort(403) # Ou return redirect(url_for('main.home')) para uma experiência mais suave
+        abort(403) # Forbidden
 
-    # --- Lógica de filtragem de tarefas para o usuário atual ---
-    filtered_active_tasks = []
-    filtered_completed_tasks = []
-
-    if is_admin or is_event_author:
-        filtered_active_tasks = sorted([task for task in event_obj.tasks if not task.is_completed], key=lambda t: t.due_date)
-        filtered_completed_tasks = sorted([task for task in event_obj.tasks if task.is_completed], key=lambda t: t.completed_at if t.completed_at else datetime.min, reverse=True)
-    else:
-        # Usuário COMUM (não admin, não autor) só vê as tarefas a que está diretamente atribuído
-        for task in event_obj.tasks:
-            # task.assignees é uma @property que acessa a lista de usuários atribuídos.
-            # Graças ao joinedload acima, esta chamada não fará uma nova consulta ao DB para cada tarefa.
-            if current_user in task.assignees:
-                if not task.is_completed:
-                    filtered_active_tasks.append(task)
-                else:
-                    filtered_completed_tasks.append(task)
-        
-        # Classificar as listas filtradas
-        filtered_active_tasks.sort(key=lambda t: t.due_date)
-        filtered_completed_tasks.sort(key=lambda t: t.completed_at if t.completed_at else datetime.min, reverse=True)
+    active_tasks = sorted([task for task in event_obj.tasks if not task.is_completed], key=lambda t: t.due_date)
+    completed_tasks = sorted([task for task in event_obj.tasks if task.is_completed], key=lambda t: t.completed_at if t.completed_at else datetime.min, reverse=True)
 
     current_date = date.today()
 
-    # --- Permissões para controle de botões de EVENTO no template ---
-    # Permissão para Gerenciar Permissões do Evento
-    can_manage_event_permissions = is_admin or is_event_author
-    if not can_manage_event_permissions: # Só verifica individual/grupo se não for admin/autor
-        for ep in event_obj.event_permissions:
-            if ep.user == current_user and ep.role and ep.role.can_manage_permissions:
-                can_manage_event_permissions = True
-                break
-            if ep.group and current_user.user_groups.filter_by(group=ep.group).first() and ep.role and ep.role.can_manage_permissions:
-                can_manage_event_permissions = True
-                break
-
-    # Permissão para Editar/Deletar Evento
-    can_edit_event = is_admin or is_event_author
-    if not can_edit_event: # Só verifica individual/grupo se não for admin/autor
-        for ep in event_obj.event_permissions:
-            if ep.user == current_user and ep.role and ep.role.can_edit_event:
-                can_edit_event = True
-                break
-            if ep.group and current_user.user_groups.filter_by(group=ep.group).first() and ep.role and ep.role.can_edit_event:
-                can_edit_event = True
-                break
-
-    # Permissão para Criar Tarefas no Evento
-    can_create_tasks = is_admin or is_event_author or \
-                       (current_user.role_obj and current_user.role_obj.can_create_task)
-
-    return render_template('event.html',
-                           title=event_obj.title,
-                           event=event_obj,
-                           active_tasks=filtered_active_tasks,
-                           completed_tasks=filtered_completed_tasks,
-                           current_date=current_date,
-                           is_admin=is_admin, # Já definida acima
-                           is_event_author=is_event_author, # Já definida acima
-                           can_manage_event_permissions=can_manage_event_permissions,
-                           can_edit_event=can_edit_event,
-                           can_create_tasks=can_create_tasks
-                           )
+    return render_template('event.html', title=event_obj.title, event=event_obj, active_tasks=active_tasks, completed_tasks=completed_tasks, current_date=current_date)
 
 
 @main.route("/event/<int:event_id>/update", methods=['GET', 'POST'])
@@ -994,6 +914,7 @@ def new_task(event_id):
             print(f"--- DEBUG: new_task - ERRO: {e} ---")
     else:
         print(f"--- DEBUG: new_task - Validação do formulário FALHOU. Erros: {form.errors} ---")
+            
     return render_template('create_edit_task.html', title='Nova Tarefa', form=form, legend='Criar Tarefa', event=event_obj)
 
 @main.route("/task/<int:task_id>", methods=['GET'])
@@ -1435,6 +1356,8 @@ def uncomplete_task(task_id):
             task_obj.task_status = pending_status
         else:
             flash("Status 'Pendente' para tarefas não encontrado, por favor, crie-o no admin.", 'warning')
+
+
         history_entry = TaskHistory(
             task_id=task_obj.id,
             action_type='uncompletion',
@@ -1645,7 +1568,7 @@ def manage_event_permissions(event_id):
     if form.validate_on_submit():
         user = form.user.data
         group = form.group.data
-        role = form.role.data # Obter a role do formulário
+        role = form.role.data # <<< Obter a role do formulário
 
         existing_permission = EventPermission.query.filter(
             and_(
@@ -1659,12 +1582,12 @@ def manage_event_permissions(event_id):
 
         if existing_permission:
             old_data = existing_permission.to_dict()
-            existing_permission.role = role # Atualiza a role
+            existing_permission.role = role # <<< Atualiza a role
             db.session.commit()
             ChangeLogEntry.log_update(current_user.id, 'EventPermission', existing_permission.id, old_data=old_data, new_data=existing_permission.to_dict(), description=f"Permissão para {user.username if user else group.name} no evento '{event_obj.title}' atualizada para a role '{role.name}'.")
             flash('Permissão atualizada com sucesso!', 'success')
         else:
-            permission = EventPermission(event=event_obj, user=user, group=group, role=role) # Atribui a role
+            permission = EventPermission(event=event_obj, user=user, group=group, role=role) # <<< Atribui a role
             db.session.add(permission)
             db.session.commit()
             ChangeLogEntry.log_creation(current_user.id, 'EventPermission', permission.id, new_data=permission.to_dict(), description=f"Permissão para {user.username if user else group.name} no evento '{event_obj.title}' criada com a role '{role.name}'.")
@@ -1811,7 +1734,7 @@ def new_user():
                 flash(f'Erro: O papel não foi encontrado ou selecionado.', 'danger')
                 return render_template('create_edit_user.html', title='Novo Usuário', form=form, legend='Criar Novo Usuário')
 
-            user = User(username=form.username.data, email=form.email.data, password_hash=form.password.data, role_obj=user_role)
+            user = User(username=form.username.data, email=form.email.data, role_obj=user_role)
             user.set_password(form.password.data) 
 
             db.session.add(user)
@@ -1846,6 +1769,7 @@ def update_user(user_id):
     user = User.query.get_or_404(user_id)
     # CORRIGIDO: Passa o objeto Role do usuário para o formulário
     form = UserForm(obj=user, original_username=user.username, original_email=user.email, is_new_user=False, role_obj=user.role_obj)
+
     if form.validate_on_submit():
         print(f"--- DEBUG: update_user - Formulário validado com sucesso! ---") 
         try:
@@ -2117,7 +2041,6 @@ def new_role():
                 can_view_event=form.can_view_event.data,
                 can_edit_event=form.can_edit_event.data,
                 can_manage_permissions=form.can_manage_permissions.data,
-                can_create_event=form.can_create_event.data, # <-- ADICIONADO AQUI
                 can_create_task=form.can_create_task.data,
                 can_edit_task=form.can_edit_task.data,
                 can_delete_task=form.can_delete_task.data,
@@ -2159,7 +2082,6 @@ def update_role(role_id):
             role.can_view_event = form.can_view_event.data
             role.can_edit_event = form.can_edit_event.data
             role.can_manage_permissions = form.can_manage_permissions.data
-            role.can_create_event = form.can_create_event.data # <-- ADICIONADO AQUI
             role.can_create_task = form.can_create_task.data
             role.can_edit_task = form.can_edit_task.data
             role.can_delete_task = form.can_delete_task.data

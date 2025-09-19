@@ -38,7 +38,8 @@
                         </a>
                     </li>
                     {% if current_user.is_authenticated %}
-                        {% if current_user.role == 'admin' %}
+                        {# CORREÇÃO AQUI: Usando current_user.is_admin #}
+                        {% if current_user.is_admin %}
                             {# MODIFIED: Painel Admin agora é um Dropdown #}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle fs-6 text-primary" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -46,9 +47,12 @@
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="adminDropdown">
                                     <li><a class="dropdown-item" href="{{ url_for('main.admin_panel') }}">Visão Geral Admin</a></li>
+                                    {# NOVO: Link para o Painel Flask-Admin #}
+                                    <li><a class="dropdown-item" href="/admin/">Painel Flask-Admin</a></li>
+                                    <li><hr class="dropdown-divider"></li> {# Separador #}
                                     <li><a class="dropdown-item" href="{{ url_for('main.list_users') }}">Gerenciar Usuários</a></li>
                                     <li><hr class="dropdown-divider"></li> {# Separador #}
-                                    <li><a class="dropdown-item" href="{{ url_for('main.categories') }}">Gerenciar Categorias de Evento</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('main.list_categories') }}">Gerenciar Categorias de Evento</a></li>
                                     {# NEW: Link para gerenciar categorias de tarefa #}
                                     <li><a class="dropdown-item" href="{{ url_for('main.list_task_categories') }}">Gerenciar Categorias de Tarefa</a></li>
                                     <li><hr class="dropdown-divider"></li> {# Separador #}
@@ -83,11 +87,14 @@
                                 <i class="fas fa-sign-in-alt me-1"></i> Login
                             </a>
                         </li>
+                        {# Removido/Comentado: O link de registro público #}
+                        {#
                         <li class="nav-item">
                             <a class="nav-link fs-6 text-primary" href="{{ url_for('main.register') }}">
                                 <i class="fas fa-user-plus me-1"></i> Registrar
                             </a>
                         </li>
+                        #}
                     {% endif %}
                 </ul>
             </div>

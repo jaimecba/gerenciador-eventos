@@ -1,0 +1,244 @@
+{# C:\gerenciador-eventos\templates\manage_event_permissions.html #}
+{% extends "base.html" %}
+
+{# Adicione o CSS do Select2 aqui ou no seu base.html #}
+{% block head_extra %}
+    {{ super() }}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="content-section">
+                    <h2 class="border-bottom pb-2 mb-4">Gerenciar Permissões para Evento: {{ event.title }}</h2>
+                    <p class="text-muted">Autor do Evento: {{ event.author.username }}</p>
+
+                    <form method="POST" action="{{ url_for('main.manage_event_permissions', event_id=event.id) }}">
+                        {{ form.hidden_tag() }}
+                        <fieldset class="form-group">
+                            <legend class="border-bottom mb-4">Adicionar/Atualizar Permissão</legend>
+                            
+                            <div class="form-group mb-3">
+                                {{ form.user.label(class="form-control-label") }}
+                                {# Adicionamos um ID para o Select2 #}
+                                {{ form.user(class="form-control", id="user_select") }} 
+                                {% if form.user.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.user.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                {{ form.group.label(class="form-control-label") }}
+                                {# Adicionamos um ID para o Select2 #}
+                                {{ form.group(class="form-control", id="group_select") }} 
+                                {% if form.group.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.group.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            {# Campo de Seleção de Papel (Role) #}
+                            <div class="form-group mb-3">
+                                {{ form.role.label(class="form-control-label") }}
+                                {# Adicionamos um ID para o Select2 #}
+                                {{ form.role(class="form-control", id="role_select") }} 
+                                {% if form.role.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.role.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                        </fieldset>
+                        <div class="form-group">
+                            {{ form.submit(class="btn btn-outline-info") }}
+                        </div>
+                    </form>
+                </div>
+
+                <div class="content-section mt-4">
+                    <h3 class="border-bottom pb-2 mb-4">Permissões Existentes</h3>
+                    {% if permissions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Atribuído a</th>
+                                        <th>Papel (Role)</th>
+                                        <th>Visualizar Evento</th>
+                                        <th>Editar Evento</th>
+                                        <th>Gerenciar Permissões</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for permission in permissions %}
+                                        <tr>
+                                            <td>{% if permission.user %}Usuário{% else %}Grupo{% endif %}</td>
+                                            <td>{% if permission.user %}{{ permission.user.username }}{% else %}{{ permission.group.name }}{% endif %}</td>
+                                            <td>{{ permission.role.name }}</td>
+                                            <td>
+                                                {% if permission.role.can_view_event %}
+                                                    <span class="badge bg-success">Sim</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Não</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if permission.role.can_edit_event %}
+                                                    <span class="badge bg-success">Sim</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Não</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if permission.role.can_manage_permissions %}
+                                                    <span class="badge bg-success">Sim</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Não</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <form action="{{ url_for('main.delete_event_permission', permission_id=permission.id) }}" method="POST" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover esta permissão?')">Remover</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>Nenhuma permissão adicional concedida para este evento.</p>
+                    {% endif %}
+                </div>
+                <div class="mt-4">
+                    <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-secondary">Voltar para o Evento</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    {# Adicione o JS do Select2 aqui ou no seu base.html, mas APÓS o jQuery #}
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            var $userField = $('#user_select');
+            var $groupField = $('#group_select');
+            var $roleField = $('#role_select');
+
+            // Logs para verificar se jQuery encontrou os elementos e seus valores iniciais
+            console.log("jQuery found user_select:", $userField.length > 0, "group_select:", $groupField.length > 0, "role_select:", $roleField.length > 0);
+            console.log("Initial values - user_select:", $userField.val(), "group_select:", $groupField.val());
+
+            // 1. Inicializa Select2 para todos os campos
+            // Verifique se o jQuery está carregado ANTES deste script.
+            // Se as caixas não aparecem, verifique o console do navegador (F12) para erros JS.
+            try {
+                $userField.select2({
+                    placeholder: "--- Selecione um Usuário (Opcional) ---",
+                    allowClear: true // Permite limpar a seleção
+                });
+                console.log("Select2 initialized for user_select.");
+            } catch (e) {
+                console.error("Error initializing Select2 for user_select:", e);
+            }
+
+            try {
+                $groupField.select2({
+                    placeholder: "--- Selecione um Grupo (Opcional) ---",
+                    allowClear: true // Permite limpar a seleção
+                });
+                console.log("Select2 initialized for group_select.");
+            } catch (e) {
+                console.error("Error initializing Select2 for group_select:", e);
+            }
+            
+            try {
+                $roleField.select2({
+                    placeholder: "-- Selecione um Papel --", // Adiciona placeholder para o campo de Role
+                    allowClear: false // Role é obrigatória, então não permite limpar
+                });
+                console.log("Select2 initialized for role_select.");
+            } catch (e) {
+                console.error("Error initializing Select2 for role_select:", e);
+            }
+
+
+            // 2. Função para aplicar a lógica de exclusão mútua (habilita/desabilita e limpa)
+            function applyMutualExclusionLogic() {
+                var userValue = $userField.val();
+                var groupValue = $groupField.val();
+
+                // Determine if a selection is active for user or group (excluding the '__None' option of QuerySelectField)
+                var userIsSelected = (userValue !== null && userValue !== '__None' && userValue !== '');
+                var groupIsSelected = (groupValue !== null && groupValue !== '__None' && groupValue !== '');
+
+                console.log("applyMutualExclusionLogic called. userIsSelected:", userIsSelected, "groupIsSelected:", groupIsSelected);
+
+                // --- Lógica para o campo de Grupo ---
+                if (userIsSelected) {
+                    $groupField.prop('disabled', true);
+                    // Apenas limpa o campo do grupo se ele *tinha* uma seleção ativa para evitar loops ou limpar o que não deve
+                    if (groupIsSelected) {
+                        $groupField.val('__None').trigger('change.select2'); // Define a opção em branco e notifica Select2
+                        console.log("User selected, Group field disabled and cleared.");
+                    } else {
+                        console.log("User selected, Group field disabled (was already empty).");
+                    }
+                } else {
+                    $groupField.prop('disabled', false);
+                    console.log("User not selected, Group field enabled.");
+                }
+
+                // --- Lógica para o campo de Usuário ---
+                if (groupIsSelected) {
+                    $userField.prop('disabled', true);
+                    // Apenas limpa o campo do usuário se ele *tinha* uma seleção ativa
+                    if (userIsSelected) {
+                        $userField.val('__None').trigger('change.select2'); // Define a opção em branco e notifica Select2
+                        console.log("Group selected, User field disabled and cleared.");
+                    } else {
+                        console.log("Group selected, User field disabled (was already empty).");
+                    }
+                } else {
+                    $userField.prop('disabled', false);
+                    console.log("Group not selected, User field enabled.");
+                }
+            }
+
+            // --- Chamada inicial para definir o estado dos campos ao carregar a página ---
+            // Pequeno atraso para garantir que Select2 tenha tido tempo de renderizar seus elementos UI
+            setTimeout(function() {
+                applyMutualExclusionLogic();
+            }, 100); // 100ms de atraso
+
+            // --- Adiciona listeners para mudanças nos campos ---
+            $userField.on('change', function() {
+                console.log("User field change event fired.");
+                applyMutualExclusionLogic();
+            });
+
+            $groupField.on('change', function() {
+                console.log("Group field change event fired.");
+                applyMutualExclusionLogic();
+            });
+        });
+    </script>
+{% endblock %}

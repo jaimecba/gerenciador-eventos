@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import flash, redirect, url_for, abort
+from flask import flash, redirect, url_for, abort # 'abort' é mantido, mas não usado diretamente no erro de permissão
 from flask_login import current_user
 
 def role_required(*roles):
@@ -15,14 +15,20 @@ def role_required(*roles):
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 flash('Você precisa estar logado para acessar esta página.', 'warning')
+                # Assumindo que a rota de login está na blueprint 'main'
                 return redirect(url_for('main.login'))
             
             # Converte o papel do usuário logado para minúsculas para comparação
             # e os papéis passados para o decorador também.
             # Isso garante que 'admin' == 'Admin' == 'ADMIN' para a verificação.
-            if current_user.role.lower() not in [r.lower() for r in roles]:
+            user_role_lower = current_user.role.lower()
+            allowed_roles_lower = [r.lower() for r in roles]
+
+            if user_role_lower not in allowed_roles_lower:
                 flash('Você não tem permissão para acessar esta página.', 'danger')
-                abort(403) # Usa abort(403) para uma resposta HTTP 403 Forbidden.
+                # <--- ALTERADO AQUI: Redireciona para a home em vez de abortar com 403
+                return redirect(url_for('main.home')) 
+            
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -41,4 +47,5 @@ def project_manager_required(f):
     Equivalente a @role_required('admin', 'project manager').
     """
     # Garante que os papéis sejam passados em minúsculas para o role_required
+    # Lembre-se que o nome 'Project Manager' deve corresponder ao que está na sua tabela Role
     return role_required('admin', 'project manager')(f)

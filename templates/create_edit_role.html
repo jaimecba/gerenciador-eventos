@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card p-4">
+                    <h1 class="mb-4">{{ legend }}</h1>
+                    <form method="POST" action="">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="form-group mb-3">
+                            {{ form.name.label(class="form-control-label") }}
+                            {{ form.name(class="form-control") }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.name.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group mb-3">
+                            {{ form.description.label(class="form-control-label") }}
+                            {{ form.description(class="form-control") }}
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.description.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {# --- Permissões de Evento --- #}
+                        <fieldset class="form-group border p-3 mb-3">
+                            <legend class="border-bottom pb-2">Permissões de Evento</legend>
+                            <div class="form-check mb-2">
+                                {{ form.can_view_event(class="form-check-input") }}
+                                {{ form.can_view_event.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_edit_event(class="form-check-input") }}
+                                {{ form.can_edit_event.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_manage_permissions(class="form-check-input") }}
+                                {{ form.can_manage_permissions.label(class="form-check-label") }}
+                            </div>
+                        </fieldset>
+
+                        {# --- Permissões de Tarefa (NOVO) --- #}
+                        <fieldset class="form-group border p-3 mb-3">
+                            <legend class="border-bottom pb-2">Permissões de Tarefa</legend>
+                            <div class="form-check mb-2">
+                                {{ form.can_create_task(class="form-check-input") }}
+                                {{ form.can_create_task.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_edit_task(class="form-check-input") }}
+                                {{ form.can_edit_task.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_delete_task(class="form-check-input") }}
+                                {{ form.can_delete_task.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_complete_task(class="form-check-input") }}
+                                {{ form.can_complete_task.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_uncomplete_task(class="form-check-input") }}
+                                {{ form.can_uncomplete_task.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_upload_task_audio(class="form-check-input") }}
+                                {{ form.can_upload_task_audio.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_delete_task_audio(class="form-check-input") }}
+                                {{ form.can_delete_task_audio.label(class="form-check-label") }}
+                            </div>
+                            <div class="form-check mb-2">
+                                {{ form.can_view_task_history(class="form-check-input") }}
+                                {{ form.can_view_task_history.label(class="form-check-label") }}
+                            </div>
+                        </fieldset>
+
+                        <div class="form-group">
+                            {{ form.submit(class="btn btn-outline-info") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

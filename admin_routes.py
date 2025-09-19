@@ -26,7 +26,9 @@ from extensions import db
 #   Neste caso, ele procura em 'seu_projeto/templates/admin/' (subindo dois diretórios do 'app/routes').
 # 'url_prefix' adiciona um prefixo a todas as URLs definidas neste Blueprint.
 #   Ex: '/groups' dentro deste Blueprint se tornará '/admin/groups'.
-admin_bp = Blueprint('admin', __name__, template_folder='../../templates/admin', url_prefix='/admin')
+
+# CORRIGIDO AQUI: O nome do blueprint foi alterado de 'admin' para 'custom_admin'
+admin_bp = Blueprint('custom_admin', __name__, template_folder='../../templates/admin', url_prefix='/admin')
 
 
 # ----------------------------------------------------------------------
@@ -83,7 +85,8 @@ def create_group():
             db.session.add(new_group) # Adiciona o novo grupo à sessão do banco de dados
             db.session.commit() # Salva as alterações no banco de dados
             flash('Grupo criado com sucesso!', 'success') # Mensagem de sucesso
-            return redirect(url_for('admin.list_groups')) # Redireciona para a lista de grupos
+            # ATENÇÃO: Se você usa 'admin.list_groups' em outros lugares, terá que mudar para 'custom_admin.list_groups'
+            return redirect(url_for('custom_admin.list_groups')) # Redireciona para a lista de grupos
         except IntegrityError: # Captura erro de unicidade (se o nome do grupo já existir)
             db.session.rollback() # Desfaz a transação para evitar inconsistências
             flash('Erro: Um grupo com este nome já existe.', 'danger') # Mensagem de erro
@@ -113,7 +116,8 @@ def edit_group(group_id):
         try:
             db.session.commit() # Salva as alterações no banco de dados
             flash('Grupo atualizado com sucesso!', 'success') # Mensagem de sucesso
-            return redirect(url_for('admin.list_groups')) # Redireciona para a lista de grupos
+            # ATENÇÃO: Se você usa 'admin.list_groups' em outros lugares, terá que mudar para 'custom_admin.list_groups'
+            return redirect(url_for('custom_admin.list_groups')) # Redireciona para a lista de grupos
         except IntegrityError: # Captura erro de unicidade
             db.session.rollback()
             flash('Erro: Um grupo com este nome já existe.', 'danger')
@@ -140,7 +144,8 @@ def delete_group(group_id):
     except Exception as e: # Captura outros possíveis erros na exclusão
         db.session.rollback()
         flash(f'Erro ao excluir o grupo: {e}', 'danger') # Mensagem de erro
-    return redirect(url_for('admin.list_groups')) # Redireciona para a lista de grupos
+    # ATENÇÃO: Se você usa 'admin.list_groups' em outros lugares, terá que mudar para 'custom_admin.list_groups'
+    return redirect(url_for('custom_admin.list_groups')) # Redireciona para a lista de grupos
 
 
 @admin_bp.route('/groups/manage_members/<int:group_id>', methods=['GET', 'POST'])
@@ -165,13 +170,15 @@ def manage_group_members(group_id):
         # (se o campo não for desabilitado no template) é o mesmo que estamos editando na URL.
         if form.group.data and form.group.data.id != group.id:
             flash('Erro: Grupo selecionado no formulário não corresponde ao grupo que está sendo editado.', 'danger')
-            return redirect(url_for('admin.list_groups'))
+            # ATENÇÃO: Se você usa 'admin.list_groups' em outros lugares, terá que mudar para 'custom_admin.list_groups'
+            return redirect(url_for('custom_admin.list_groups'))
 
         # Atualiza a relação many-to-many. O SQLAlchemy gerencia as inserções/exclusões na tabela 'user_group'.
         group.users = form.users.data 
         db.session.commit() # Salva as alterações
         flash(f'Membros do grupo "{group.name}" atualizados com sucesso!', 'success')
-        return redirect(url_for('admin.list_groups')) # Redireciona para a lista de grupos
+        # ATENÇÃO: Se você usa 'admin.list_groups' em outros lugares, terá que mudar para 'custom_admin.list_groups'
+        return redirect(url_for('custom_admin.list_groups')) # Redireciona para a lista de grupos
 
     # Renderiza o template para gerenciar membros.
     return render_template('groups/manage_group_members.html', title=f'Gerenciar Membros de {group.name}', form=form, group=group)
@@ -220,14 +227,16 @@ def set_event_permissions():
         # try:
         #    db.session.commit()
         #    flash('Permissões de evento atualizadas com sucesso!', 'success')
-        #    return redirect(url_for('admin.some_permissions_list_route')) # Crie uma rota para listar permissões
+        #    # ATENÇÃO: Se você usa 'admin.some_permissions_list_route' em outros lugares, terá que mudar para 'custom_admin.some_permissions_list_route'
+        #    return redirect(url_for('custom_admin.some_permissions_list_route')) # Crie uma rota para listar permissões
         # except Exception as e:
         #    db.session.rollback()
         #    flash(f'Erro ao salvar permissões: {e}', 'danger')
         
         flash('Permissões de evento definidas (Lógica de salvamento ainda precisa ser implementada)!', 'info')
         # Idealmente, redirecione para uma página de listagem de permissões ou de volta para a lista de eventos
-        return redirect(url_for('admin.list_groups')) # Apenas para exemplo, mude isso depois
+        # ATENÇÃO: Se você usa 'admin.list_groups' em outros lugares, terá que mudar para 'custom_admin.list_groups'
+        return redirect(url_for('custom_admin.list_groups')) # Apenas para exemplo, mude isso depois
     
     # Renderiza o template para definir permissões.
     return render_template('event_permissions/set_permissions.html', title='Definir Permissões de Evento', form=form)

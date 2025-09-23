@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="content-section">
+        {# Alterado de h1 para h2 e ajustado margens para compactar o título #}
+        <h2 style="margin-top: 0; margin-bottom: 10px;">Histórico da Tarefa: {{ task.title }}</h2>
+        {# Ajustado margem inferior para o parágrafo do link #}
+        <p style="margin-bottom: 10px;"><a href="{{ url_for('main.event', event_id=task.event.id) }}">Voltar para o Evento</a></p>
+
+        {% if history_records %}
+            <ul class="list-group">
+                {% for record in history_records %}
+                    {# Reduzido o padding vertical do list-group-item para diminuir a altura das linhas #}
+                    <li class="list-group-item" style="font-size: 10px; line-height: 1.3; padding: 5px 15px;">
+                        {# Define a cor baseada no tipo de ação #}
+                        {% set action_color = '#6c757d' %} {# Cor padrão (cinza) #}
+                        {% if record.action_type == 'Creation' %}
+                            {% set action_color = '#28a745' %} {# Verde para criação #}
+                        {% elif record.action_type == 'Update' %}
+                            {% set action_color = '#ffc107' %} {# Amarelo/Laranja para atualização #}
+                        {% elif record.action_type == 'Deletion' %}
+                            {% set action_color = '#dc3545' %} {# Vermelho para exclusão (se aplicável) #}
+                        {% endif %}
+
+                        <span style="color: {{ action_color }};">
+                            <strong>{{ record.action_type|capitalize }}</strong> -
+                            {% if record.description %}{{ record.description }}{% endif %}
+                            em {{ record.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}
+                            {% if record.author %}(por {{ record.author.username }}){% endif %}:
+                        </span>
+
+                        {# Lógica para exibir os detalhes do log de forma organizada #}
+                        {% if record.old_value is not none and record.new_value is not none %}
+                            <p class="mt-1 mb-0" style="font-size: 10px;"><strong>Alterações:</strong></p>
+                            <ul style="list-style-type: none; padding-left: 15px; margin-top: 0; margin-bottom: 0;">
+                                {% for diff_item in record.old_value | format_diff_values(record.new_value) %}
+                                    <li style="font-size: 10px; line-height: 1.3;">&bullet; {{ diff_item }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% elif record.new_value is not none %}
+                            <p class="mt-1 mb-0" style="font-size: 10px;"><strong>Detalhes:</strong></p>
+                            <ul style="list-style-type: none; padding-left: 15px; margin-top: 0; margin-bottom: 0;">
+                                {% for detail_item in record.new_value | from_json_and_extract_value %}
+                                    <li style="font-size: 10px; line-height: 1.3;">&bullet; {{ detail_item }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+
+                        {% if record.comment %}
+                            <p class="mb-0 mt-1" style="font-size: 10px;">Comentário: <em>"{{ record.comment }}"</em></p>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Nenhum registro de histórico encontrado para esta tarefa.</p>
+        {% endif %}
+    </div>
+{% endblock content %}

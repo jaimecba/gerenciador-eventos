@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>{{ title }}</h2>
+                <a href="{{ url_for('main.new_status', status_type=status_type) }}" class="btn btn-primary"> {# CORRIGIDO: de 'create_status' para 'new_status' #}
+                    <i class="bi bi-plus-circle"></i> Novo Status
+                </a>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if statuses %}
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            {% for status in statuses %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-1">{{ status.name }}</h5>
+                                        <small class="text-muted">{{ status.description }}</small>
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('main.update_status', status_type=status_type, status_id=status.id) }}" class="btn btn-secondary btn-sm me-2"> {# CORRIGIDO: de 'edit_status' para 'update_status' #}
+                                            <i class="bi bi-pencil-square"></i> Editar
+                                        </a>
+                                        <form action="{{ url_for('main.delete_status', status_type=status_type, status_id=status.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este status?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="bi bi-trash"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center" role="alert">
+                    Nenhum status cadastrado ainda.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

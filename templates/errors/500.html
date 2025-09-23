@@ -1,0 +1,12 @@
+<!-- C:\gerenciador-eventos\templates\errors\500.html -->
+
+{% extends "base.html" %}
+{% block content %}
+    <div class="content-section">
+        <h1>Erro Interno do Servidor (500)</h1>
+        <p>Lamentamos, mas algo deu muito errado no nosso servidor.</p>
+        <p>Nossa equipe foi notificada e está trabalhando para resolver o problema.</p>
+        <p>Por favor, tente novamente mais tarde ou entre em contato com o suporte se o problema persistir.</p>
+        <p><a href="{{ url_for('main.home') }}">Voltar para a página inicial</a></p>
+    </div>
+{% endblock %}

@@ -2,7 +2,23 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Calendário de Eventos e Tarefas</h2>
+    {# Este h2 terá o tamanho da fonte ajustado via CSS no style.css #}
+    <h2 class="calendar-page-title">Calendário de Eventos e Tarefas</h2>
+
+    {# NOVO: Dropdown para seleção de visualização customizado para mobile #}
+    {# Este dropdown será visível apenas em telas menores que 'lg' (mobile/tablet) #}
+    <div class="d-lg-none mb-3"> 
+        <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="viewModeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            Visualização: Mês {# Texto inicial do botão #}
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="viewModeDropdown">
+            <li><a class="dropdown-item" href="#" data-view="dayGridMonth">Mês</a></li>
+            <li><a class="dropdown-item" href="#" data-view="timeGridWeek">Semana (Agenda)</a></li>
+            <li><a class="dropdown-item" href="#" data-view="timeGridDay">Dia (Agenda)</a></li>
+            <li><a class="dropdown-item" href="#" data-view="listWeek">Lista (Semana)</a></li>
+        </ul>
+    </div>
+
     <div id='calendar'></div>
 </div>
 {% endblock %}
@@ -17,13 +33,15 @@
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                // Em telas grandes, mostra os botões de visualização padrão do FullCalendar.
+                // Em mobile, estes serão escondidos via CSS e o dropdown customizado será usado.
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' 
             },
+            // Não precisamos mais do `views` aqui, pois o CSS irá controlar a visibilidade dos botões.
             slotMinTime: '08:00:00', 
             slotMaxTime: '20:00:00', 
             height: 'auto',
             
-            // NOVO: Fonte dos eventos apontando para a sua API!
             events: {
                 url: '/api/calendar_events',
                 method: 'GET',
@@ -31,24 +49,58 @@
                     alert('Houve um erro ao carregar os eventos!');
                 }
             },
-            // NOVO: Ao clicar em um evento, redireciona para a URL do evento/tarefa
             eventClick: function(info) {
                 if (info.event.url) {
-                    window.open(info.event.url); // Abre a URL em uma nova aba
-                    info.jsEvent.preventDefault(); // Evita o comportamento padrão do navegador
+                    window.open(info.event.url, '_blank'); // Abre em nova aba
+                    info.jsEvent.preventDefault(); // Impede o comportamento padrão
                 }
             },
-            // NOVO: Adiciona um tooltip ao passar o mouse sobre o evento
             eventDidMount: function(info) {
+                // Tooltip para todos os tipos de evento/tarefa
                 $(info.el).tooltip({
-                    title: info.event.extendedProps.description || info.event.title,
+                    title: info.event.extendedProps.description || info.event.title, // Prioriza description, senão o título
                     placement: 'top',
                     trigger: 'hover',
                     container: 'body'
                 });
+            },
+            eventContent: function(arg) {
+                // Personaliza o conteúdo do evento/tarefa para mostrar apenas ícones em dayGridMonth
+                if (arg.view.type === 'dayGridMonth' || arg.view.type === 'dayGridWeek') { // Aplica em month e week view
+                    if (arg.event.extendedProps.type === 'Tarefa') {
+                        let iconHtml = '<i class="fas fa-tasks fc-event-task-icon"></i>'; 
+                        return { html: iconHtml };
+                    } else if (arg.event.extendedProps.type === 'Evento') { // NOVO: Para eventos, também mostra um ícone
+                        let iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; // Ícone de calendário
+                        return { html: iconHtml };
+                    }
+                }
+                // Para outras visualizações (timeGrid, list) ou tipos de evento, mostra o título normal
+                return { html: arg.event.title };
             }
         });
         calendar.render();
+
+        // Lógica para o dropdown de visualização customizado (mobile)
+        $('.dropdown-menu .dropdown-item').on('click', function(e) {
+            e.preventDefault();
+            var view = $(this).data('view');
+            calendar.changeView(view);
+            // Atualiza o texto do botão do dropdown para refletir a visualização atual
+            $('#viewModeDropdown').text('Visualização: ' + $(this).text());
+        });
+
+        // Atualiza o texto do dropdown customizado quando a visualização do calendário muda 
+        // (ex: ao clicar nos botões prev/next ou se a visualização inicial não for month)
+        calendar.on('viewDidMount', function(viewInfo) {
+            var currentViewText = '';
+            if (viewInfo.view.type === 'dayGridMonth') currentViewText = 'Mês';
+            else if (viewInfo.view.type === 'timeGridWeek') currentViewText = 'Semana (Agenda)';
+            else if (viewInfo.view.type === 'timeGridDay') currentViewText = 'Dia (Agenda)';
+            else if (viewInfo.view.type === 'listWeek') currentViewText = 'Lista (Semana)';
+            $('#viewModeDropdown').text('Visualização: ' + currentViewText);
+        });
+
     });
 </script>
 {% endblock %}

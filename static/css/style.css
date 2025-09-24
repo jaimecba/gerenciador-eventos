@@ -23,7 +23,7 @@ body {
     margin-left: auto; /* Centraliza o wrapper horizontalmente */
     margin-right: auto; /* Centraliza o wrapper horizontalmente */
     padding-left: 1.5rem; /* Espaçamento interno nas laterais para evitar que o conteúdo "cole" nas bordas */
-padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
+    padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
 }
 
 /* Ajustes de responsividade para o wrapper em telas menores */
@@ -97,8 +97,6 @@ button:hover {
 /* Container principal do formulário - content-section */
 .content-section {
     background: #ffffff; /* Fundo branco para o "cartão" do formulário */
-.content-section {
-    background: #ffffff; /* Fundo branco para o "cartão" do formulário */
     padding: 2.5rem; /* Espaçamento interno generoso para respiro */
     border: 1px solid #dee2e6; /* Borda sutil */
     border-radius: 0.75rem; /* Bordas arredondadas para um visual mais suave */
@@ -115,8 +113,6 @@ legend.border-bottom {
     padding-bottom: 1rem; /* Espaço entre o título e a linha */
     margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
     text-align: center; /* Centraliza o título */
-}
-text-align: center; /* Centraliza o título */
 }
 
 /* Rótulos dos campos específicos de formulário */
@@ -136,7 +132,6 @@ text-align: center; /* Centraliza o título */
     display: block; /* Garante que o erro esteja em sua própria linha */
     background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
     padding: 0.4rem 0.75rem; /* Preenchimento interno */
-padding: 0.4rem 0.75rem; /* Preenchimento interno */
     border-radius: 0.25rem; /* Bordas levemente arredondadas */
     border: 1px solid rgba(220, 53, 69, 0.2); /* Borda sutil de erro */
 }
@@ -155,7 +150,6 @@ padding: 0.4rem 0.75rem; /* Preenchimento interno */
 .form-control:focus {
     border-color: #17a2b8; /* Borda na cor de acento */
     box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); /* Sombra de foco na cor de acento */
-box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); /* Sombra de foco na cor de acento */
     outline: none; /* Remove o outline padrão do navegador */
 }
 
@@ -175,7 +169,6 @@ box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); /* Sombra de foco na cor de 
 .btn-outline-info:hover,
 .btn-outline-info:focus {
     background-color: #17a2b8; /* Fundo preenchido com a cor de acento */
-background-color: #17a2b8; /* Fundo preenchido com a cor de acento */
     color: #ffffff; /* Texto branco */
     border-color: #17a2b8; /* Borda também na cor de acento */
     box-shadow: 0 0.2rem 0.5rem rgba(23, 162, 184, 0.2); /* Sombra sutil ao passar o mouse */
@@ -200,9 +193,6 @@ background-color: #17a2b8; /* Fundo preenchido com a cor de acento */
 
 /* -- Fim dos Estilos de Formulário Elegantes e Modernos -- */
 
-ul {
-    list-style-type: none;
-}
 ul {
     list-style-type: none;
 }
@@ -242,8 +232,6 @@ a:hover {
 
 /* Efeito de hover para cards */
 .custom-card-hover {
-/* Efeito de hover para cards */
-.custom-card-hover {
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
@@ -267,7 +255,6 @@ a:hover {
 .btn-outline-secondary:focus,
 .btn-outline-danger:focus,
 .btn-outline-info:focus { /* Adicionado btn-outline-info aqui também */
-.btn-outline-info:focus { /* Adicionado btn-outline-info aqui também */
     box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
 }
 
@@ -286,7 +273,6 @@ a:hover {
 .text-overdue-red { color: #FF0000 !important; }
 .text-long-term-green { color: #008000 !important; }
 .text-urgent-orange { color: #FF4500 !important; }
-.text-alert-yellow { color: #FFD700 !important; }
 .text-alert-yellow { color: #FFD700 !important; }
 
 /* NOVA CLASSE PARA PADRONIZAR FONTES EM 12px (para textos de detalhes do evento em /home E tarefas em /event) */
@@ -319,12 +305,6 @@ a:hover {
 
 .task-card .card-title {
     margin-bottom: 0.25rem;
-height: 100%; 
-}
-
-.task-card .card-title {
-    margin-bottom: 0.25rem;
-    /* Remover font-size: 1.1em; daqui para deixar o fs-6 do HTML controlar (16px) */
 }
 
 .task-card .card-text {
@@ -353,10 +333,6 @@ height: 100%;
 }
 .task-card.status-border-urgent {
     border-left: 5px solid #FF4500;
-}
-.task-card.status-border-alert {
-    border-left: 5px solid #FFD700;
-}
 }
 .task-card.status-border-alert {
     border-left: 5px solid #FFD700;
@@ -393,8 +369,6 @@ height: 100%;
 }
 
 .table-responsive .changelog-table th:nth-child(2),
-.table-responsive .changelog-table td:nth-child(2) {
-    width: 100px;
 .table-responsive .changelog-table td:nth-child(2) {
     width: 100px;
     min-width: 100px;
@@ -435,11 +409,6 @@ height: 100%;
 }
 
 @media (max-width: 768px) {
-min-width: 100px;
-    text-align: center;
-}
-
-@media (max-width: 768px) {
     .table-responsive .changelog-table td,
     .table-responsive .changelog-table th {
         font-size: 0.7em;
@@ -452,10 +421,6 @@ min-width: 100px;
     .table-responsive .changelog-table th:nth-child(5), .table-responsive .changelog-table td:nth-child(5),
     .table-responsive .changelog-table th:nth-child(7), .table-responsive .changelog-table td:nth-child(7) {
         white-space: normal;
-        width: auto;
-        min-width: auto;
-    }
-white-space: normal;
         width: auto;
         min-width: auto;
     }
@@ -499,10 +464,6 @@ white-space: normal;
 /* Otimização de Tabela para Gerenciar Usuários - AJUSTADO */
 /* ------------------------------------------- */
 
-.user-data-table {
-    table-layout: fixed;
-    width: 100%;
-}
 .user-data-table {
     table-layout: fixed;
     width: 100%;
@@ -554,11 +515,6 @@ white-space: normal;
 }
 
 .user-data-table th:nth-child(6),
-width: 140px;
-    min-width: 140px;
-}
-
-.user-data-table th:nth-child(6),
 .user-data-table td:nth-child(6) {
     width: 140px;
     min-width: 140px;
@@ -596,10 +552,6 @@ width: 140px;
     justify-content: center;
     white-space: nowrap;
 }
-align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-}
 
 /* ========================================================== */
 /* NOVOS ESTILOS PARA A BARRA DE NAVEGAÇÃO (NAVBAR) - AJUSTADO */
@@ -616,10 +568,6 @@ align-items: center;
     display: flex;
     align-items: center; /* Alinha verticalmente ícone e texto */
     white-space: nowrap; /* Impede a quebra de linha DENTRO do link, permitindo que a navbar colapse */
-}
-
-/* Alinha ícone e texto na mesma linha para brand e dropdown items */
-.navbar-brand,
 }
 
 /* Alinha ícone e texto na mesma linha para brand e dropdown items */
@@ -669,9 +617,6 @@ align-items: center;
 /* .task-card .card-body já tem height: 100% definido acima */
 
 .task-card .card-title {
-/* .task-card .card-body já tem height: 100% definido acima */
-
-.task-card .card-title {
     margin-bottom: 0.5rem !important; /* Reduz o espaço após o título */
     /* Removido font-size: 1.1em; para deixar o fs-6 do HTML controlar (16px) */
 }
@@ -691,10 +636,6 @@ align-items: center;
 }
 .task-due-date .fw-bold {
     /* Removido o estilo 'color' daqui para que as novas classes possam controlá-lo */
-}
-
-/* -- Estilo para Truncamento de Descrição e Notas -- */
-.task-text-truncate {
 }
 
 /* -- Estilo para Truncamento de Descrição e Notas -- */
@@ -734,7 +675,6 @@ align-items: center;
     flex-shrink: 0; /* Impede que os botões encolham em telas pequenas */
     vertical-align: middle; /* Alinha o elemento ao meio da linha */
     line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
-line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
     box-sizing: border-box; /* Assegura que padding e border sejam incluídos na largura/altura */
     text-decoration: none; /* Remove sublinhado padrão de links, se aplicável */
 }
@@ -755,8 +695,6 @@ line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
 }
 
 /* -- Ajustes no Player de Áudio -- */
-.audio-player-display {
-    margin-top: 0.5rem !important;
 .audio-player-display {
     margin-top: 0.5rem !important;
     margin-bottom: 0.5rem !important;
@@ -783,9 +721,6 @@ line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
 }
 
 /* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
-}
-
-/* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
 .btn-compact-icon {
     padding: 0.25rem 0.45rem !important; /* Reduz o padding horizontal e vertical */
     line-height: 1 !important;          /* Garante que a altura seja mínima */
@@ -795,98 +730,103 @@ line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
 /* --- Responsividade do FullCalendar --- */
 @media (max-width: 991.98px) { /* Aplica-se a telas com largura de até 991.98px (breakpoints 'md' e 'sm' do Bootstrap) */
     
-    /* APLICADO: Título da página do calendário */
-    .calendar-page-title {
+    /* Ponto 1: "Calendário de Eventos e Tarefas" */
+    .calendar-page-title { /* Para o <h2> "Calendário de Eventos e Tarefas" */
         font-size: 20px !important; /* Tamanho fixo para o título principal em mobile */
         text-align: center;
         margin-bottom: 1rem;
     }
 
+    /* Ponto 1: Título do FullCalendar (ex: "Setembro 2025") */
+    .fc-toolbar-title { 
+        font-size: 0.8em !important; /* Menor, combina com os nomes dos dias da semana */
+        text-align: center;
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    /* Ponto 1: Nomes dos dias da semana (Dom, Seg, Ter...) */
+    .fc-col-header-cell-cushion { 
+        font-size: 0.8em !important;
+        padding: 0.2em !important;
+    }
+
     /* Ajustes gerais para a barra de cabeçalho do calendário */
     .fc-header-toolbar {
-        flex-direction: column; /* Faz com que os elementos se empilhem verticalmente */
-        align-items: flex-start; /* Alinha à esquerda */
-        padding: 0.5rem; /* Adiciona um pouco de padding */
+        flex-direction: column !important; /* Força empilhamento vertical */
+        align-items: flex-start !important; /* Alinha à esquerda */
+        padding: 0.5rem !important;
     }
 
     .fc-toolbar-chunk {
-        width: 100%; /* Faz com que cada seção (esquerda, centro, direita) ocupe a largura total */
-        margin-bottom: 0.5rem; /* Espaçamento entre as seções da toolbar */
-        display: flex; /* Habilita flexbox para alinhar itens dentro do chunk */
-        align-items: center;
+        width: 100% !important; /* Ocupa a largura total */
+        margin-bottom: 0.5rem !important; /* Espaçamento entre as seções */
+        display: flex !important; /* Habilita flexbox */
+        align-items: center !important;
     }
 
-    /* APLICADO: Ajusta os botões 'prev, next, today' (primeiro chunk da toolbar) */
-    .fc-toolbar-chunk:first-child { 
-        justify-content: space-around; /* Distribui o espaço entre os botões */
-        order: 2; /* Move esta seção para baixo (o título virá primeiro) */
-        /* APLICADO: Reduz o tamanho da fonte dos botões para caber melhor */
-        font-size: 0.9em !important; 
-        padding: 0.5rem 0; /* Adiciona um pouco de padding vertical */
+    /* Ponto 3: Botões 'Anterior, Próximo, Hoje' */
+    .fc-header-toolbar .fc-toolbar-chunk:first-child { 
+        justify-content: space-around !important; /* Distribui o espaço entre os botões */
+        order: 2 !important; /* Move esta seção para baixo (o título virá primeiro) */
+        font-size: 0.7em !important; /* Fonte menor para os botões */
+        padding: 0.5rem 0 !important;
+    }
+    .fc-header-toolbar .fc-button { /* Alvo os botões individuais */
+        padding: 0.2em 0.5em !important; /* Padding menor */
+        font-size: 0.8em !important; /* Fonte menor dentro dos botões */
     }
 
     /* Ajusta o título do calendário (chunk central da toolbar) */
     .fc-toolbar-chunk:nth-child(2) { 
-        order: 1; /* Faz com que o título venha primeiro */
-        margin-bottom: 1rem; /* Espaçamento maior abaixo do título */
-        justify-content: center; /* Centraliza o título */
+        order: 1 !important; /* Faz com que o título venha primeiro */
+        margin-bottom: 1rem !important; /* Espaçamento maior abaixo do título */
+        justify-content: center !important; /* Centraliza o título */
     }
 
-    /* APLICADO: Oculta os botões de visualização padrão do FullCalendar (chunk direito da toolbar) em mobile */
-    .fc-toolbar-chunk:last-child { 
+    /* Ponto 2: Oculta os botões de visualização padrão do FullCalendar (month, week, day, list) */
+    .fc-header-toolbar .fc-toolbar-chunk:last-child { /* Alvo o chunk que contém esses botões */
         display: none !important; /* Força a ocultação em mobile */
     }
-
-    /* APLICADO: Reduz o tamanho da fonte do título do calendário (mês/ano) */
-    .fc-toolbar-title {
-        font-size: 1.2em !important; /* Tamanho da fonte menor para o título do mês/ano */
-        text-align: center;
-        width: 100%;
-        margin: 0 !important; /* Remove margens extras se houverem */
+    /* Regra de segurança extra para ocultar o grupo de botões caso a anterior não funcione */
+    .fc-header-toolbar .fc-button-group {
+        display: none !important;
     }
 
-    /* APLICADO: Reduz o tamanho da fonte dos dias da semana (Dom, Seg, etc.) */
-    .fc-col-header-cell-cushion {
-        font-size: 0.8em !important; /* Tamanho da fonte menor */
-        padding: 0.2em !important; /* Ajusta o padding para melhor visualização */
+    /* Ponto 4: Ícone para Tarefas e Eventos (visíveis apenas em dayGridMonth/dayGridWeek) */
+    .fc-event-task-icon { 
+        font-size: 0.9em !important; /* Tamanho do ícone de tarefa */
+        color: #ffc107 !important; /* Cor amarela para tarefa (exemplo) */
+    }
+    .fc-event-event-icon { /* NOVO: Estilo para ícone de evento */
+        font-size: 0.9em !important; /* Tamanho do ícone de evento */
+        color: #007bff !important; /* Cor azul para evento (exemplo) */
+    }
+    
+    /* Centraliza o ícone dentro do espaço do evento e remove estilos de fundo/borda para ambos */
+    .fc-event:has(.fc-event-task-icon),
+    .fc-event:has(.fc-event-event-icon) {
+        padding: 0 !important; /* Remove todo o padding */
+        min-height: 20px !important; /* Garante altura mínima */
+        background: transparent !important; /* Fundo transparente */
+        border: none !important; /* Remove borda */
+        display: flex !important; /* Para centralização */
+        justify-content: center !important; /* Centraliza horizontalmente */
+        align-items: center !important; /* Centraliza verticalmente */
+        width: 100% !important; /* Ocupa largura total para centralização */
     }
 
     /* Ajuste para células do dia, se necessário, para evitar sobreposição */
     .fc-daygrid-day-number {
-        font-size: 0.8em;
+        font-size: 0.8em !important;
     }
-
-    /* APLICADO: Estiliza o ícone de tarefa */
-    .fc-event-task-icon {
-        font-size: 0.9em !important; /* Tamanho do ícone */
-        /* O ícone será o único conteúdo do evento em dayGridMonth para tarefas */
+    .fc-daygrid-event-harness { /* Garante que o evento (ícone) não seja muito alto */
+        height: auto !important;
+        min-height: 20px !important;
     }
-    
-    /* Para visualizações dayGridMonth, centraliza o ícone da tarefa */
-    .fc-daygrid-event-harness .fc-event {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%; /* Garante que o ícone ocupe a largura disponível do evento */
-    }
-    
-    /* Remove o padding padrão do evento se ele for apenas um ícone */
-    .fc-event:has(.fc-event-task-icon) {
-        padding: 0 !important; /* Remove todo o padding do evento com ícone */
-        min-height: 20px; /* Garante que o evento tenha uma altura mínima para o ícone */
-        background: transparent !important; /* Fundo transparente para o ícone da tarefa */
-        border: none !important; /* Remove borda do evento com ícone */
-        color: #007bff !important; /* Cor do ícone */
-    }
-
-    /* Ajuste para o texto dos eventos regulares (não tarefas) */
-    .fc-event-title {
-        font-size: 0.75em !important;
-        line-height: 1.2 !important;
-        white-space: normal !important; /* Permite que o texto quebre linha */
-    }
-    .fc-event {
-        padding: 1px 2px !important; /* Reduz o padding dos eventos */
+    .fc-daygrid-day-events { /* Ajusta o espaçamento dos eventos dentro do dia */
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
     }
 }
 
@@ -895,31 +835,66 @@ line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
     .d-lg-none { /* O dropdown customizado */
         display: none !important; /* Esconde em desktop */
     }
-    /* Certifica que os botões de visualização padrão do FullCalendar aparecem em desktop */
-    .fc-toolbar-chunk:last-child { 
-        display: flex !important; /* Flex para botões agrupados */
-        justify-content: flex-end; /* Alinha os botões à direita */
-        width: auto !important; /* Retorna à largura padrão */
-        margin-bottom: 0 !important;
-    }
-    /* Restaura o layout padrão da toolbar para desktop */
-    .fc-header-toolbar {
-        flex-direction: row;
-        align-items: center;
-        padding: 0;
-    }
-    .fc-toolbar-chunk:first-child {
-        order: 0; /* Volta à ordem normal */
-        justify-content: flex-start;
-        font-size: inherit; /* Volta ao tamanho de fonte padrão */
-    }
-    .fc-toolbar-chunk:nth-child(2) {
-        order: 0; /* Volta à ordem normal */
-        margin-bottom: 0;
-    }
+    
     /* Restaura o tamanho da fonte do título principal para desktop */
     .calendar-page-title {
-        font-size: 2.5rem; /* Ou o tamanho padrão que você usa para h2 em desktop */
+        font-size: 2.5rem !important; /* Ou o tamanho padrão que você usa para h2 em desktop */
         text-align: left;
+    }
+
+    /* Certifica que os botões de visualização padrão do FullCalendar aparecem em desktop */
+    .fc-header-toolbar .fc-toolbar-chunk:last-child { 
+        display: flex !important; /* Mostra o chunk */
+        width: auto !important; /* Retorna à largura padrão */
+        margin-bottom: 0 !important;
+        justify-content: flex-end !important; /* Alinha os botões à direita */
+    }
+    /* Mostra o grupo de botões */
+    .fc-header-toolbar .fc-button-group {
+        display: inline-flex !important; /* Mostra o grupo de botões */
+    }
+
+    /* Restaura o layout padrão da toolbar para desktop */
+    .fc-header-toolbar {
+        flex-direction: row !important;
+        align-items: center !important;
+        padding: 0 !important;
+    }
+    .fc-toolbar-chunk:first-child {
+        order: 0 !important; /* Volta à ordem normal */
+        justify-content: flex-start !important;
+        font-size: inherit !important; /* Volta ao tamanho de fonte padrão */
+    }
+    .fc-toolbar-chunk:nth-child(2) {
+        order: 0 !important; /* Volta à ordem normal */
+        margin-bottom: 0 !important;
+    }
+
+    /* Restaura o tamanho da fonte do título do FullCalendar para desktop */
+    .fc-toolbar-title { 
+        font-size: 1.75em !important; /* Ou o padrão do FullCalendar */
+    }
+    /* Restaura o tamanho da fonte dos nomes dos dias para desktop */
+    .fc-col-header-cell-cushion { 
+        font-size: 1em !important; /* Padrão */
+    }
+    /* Restaura os botões de navegação para desktop */
+    .fc-header-toolbar .fc-button {
+        padding: var(--fc-button-padding, 0.4em 0.65em) !important; /* Restaura padding padrão do FC */
+        font-size: 1em !important; /* Restaura font size padrão */
+    }
+
+    /* Garante que eventos/tarefas mostrem o título completo em desktop */
+    .fc-event:has(.fc-event-task-icon),
+    .fc-event:has(.fc-event-event-icon) {
+        /* Desfaz os estilos de ícone se eles forem apenas para mobile, ou defina um novo estilo para desktop */
+        background: var(--fc-event-bg-color, #3788d8) !important; /* Restaura cor de fundo padrão */
+        border: var(--fc-event-border-color, #3788d8) !important; /* Restaura borda padrão */
+        padding: var(--fc-event-padding, 1px 3px) !important; /* Restaura padding padrão */
+        display: block !important; /* Retorna ao display padrão */
+        color: var(--fc-event-text-color, #fff) !important; /* Restaura cor de texto padrão */
+    }
+    .fc-event-task-icon, .fc-event-event-icon {
+        display: none !important; /* Esconde ícones em desktop, mostrando o título normal */
     }
 }

@@ -2,11 +2,9 @@
 
 {% block content %}
 <div class="container mt-4">
-    {# Este h2 terá o tamanho da fonte ajustado via CSS no style.css #}
     <h2 class="calendar-page-title">Calendário de Eventos e Tarefas</h2>
 
-    {# NOVO: Dropdown para seleção de visualização customizado para mobile #}
-    {# Este dropdown será visível apenas em telas menores que 'lg' (mobile/tablet) #}
+    {# Dropdown para seleção de visualização customizado para mobile #}
     <div class="d-lg-none mb-3"> 
         <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="viewModeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
             Visualização: Mês {# Texto inicial do botão #}
@@ -16,10 +14,30 @@
             <li><a class="dropdown-item" href="#" data-view="timeGridWeek">Semana (Agenda)</a></li>
             <li><a class="dropdown-item" href="#" data-view="timeGridDay">Dia (Agenda)</a></li>
             <li><a class="dropdown-item" href="#" data-view="listWeek">Lista (Semana)</a></li>
+            {# NOVO: Opções de lista adicionais #}
+            <li><hr class="dropdown-divider"></li> {# Separador #}
+            <li><a class="dropdown-item" href="#" data-view="listMonth">Lista (Mês)</a></li>
+            <li><a class="dropdown-item" href="#" data-view="listDay">Lista (Dia)</a></li>
         </ul>
     </div>
 
     <div id='calendar'></div>
+
+    {# NOVO: Modal para Detalhes de Evento/Tarefa #}
+    <div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="eventDetailModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="mb-3">Clique em "Ver Detalhes" para abrir a página completa.</p>
+                    <a href="#" id="eventDetailLink" class="btn btn-primary">Ver Detalhes</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -33,11 +51,8 @@
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                // Em telas grandes, mostra os botões de visualização padrão do FullCalendar.
-                // Em mobile, estes serão escondidos via CSS e o dropdown customizado será usado.
                 right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' 
             },
-            // Não precisamos mais do `views` aqui, pois o CSS irá controlar a visibilidade dos botões.
             slotMinTime: '08:00:00', 
             slotMaxTime: '20:00:00', 
             height: 'auto',
@@ -49,29 +64,38 @@
                     alert('Houve um erro ao carregar os eventos!');
                 }
             },
+            {# MODIFICADO: eventClick para abrir modal #}
             eventClick: function(info) {
-                if (info.event.url) {
-                    window.open(info.event.url, '_blank'); // Abre em nova aba
-                    info.jsEvent.preventDefault(); // Impede o comportamento padrão
-                }
+                info.jsEvent.preventDefault(); // Impede o comportamento padrão (abrir URL diretamente)
+                
+                var eventTitle = info.event.extendedProps.description || info.event.title;
+                var eventUrl = info.event.url;
+
+                // Popula o modal
+                $('#eventDetailModalLabel').text(eventTitle);
+                $('#eventDetailLink').attr('href', eventUrl);
+
+                // Mostra o modal
+                var myModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
+                myModal.show();
             },
             eventDidMount: function(info) {
                 // Tooltip para todos os tipos de evento/tarefa
                 $(info.el).tooltip({
-                    title: info.event.extendedProps.description || info.event.title, // Prioriza description, senão o título
+                    title: info.event.extendedProps.description || info.event.title,
                     placement: 'top',
                     trigger: 'hover',
                     container: 'body'
                 });
             },
             eventContent: function(arg) {
-                // Personaliza o conteúdo do evento/tarefa para mostrar apenas ícones em dayGridMonth
-                if (arg.view.type === 'dayGridMonth' || arg.view.type === 'dayGridWeek') { // Aplica em month e week view
+                // Personaliza o conteúdo do evento/tarefa para mostrar apenas ícones em dayGridMonth/dayGridWeek
+                if (arg.view.type === 'dayGridMonth' || arg.view.type === 'dayGridWeek') {
                     if (arg.event.extendedProps.type === 'Tarefa') {
                         let iconHtml = '<i class="fas fa-tasks fc-event-task-icon"></i>'; 
                         return { html: iconHtml };
-                    } else if (arg.event.extendedProps.type === 'Evento') { // NOVO: Para eventos, também mostra um ícone
-                        let iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; // Ícone de calendário
+                    } else if (arg.event.extendedProps.type === 'Evento') {
+                        let iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; 
                         return { html: iconHtml };
                     }
                 }
@@ -87,17 +111,19 @@
             var view = $(this).data('view');
             calendar.changeView(view);
             // Atualiza o texto do botão do dropdown para refletir a visualização atual
-            $('#viewModeDropdown').text('Visualização: ' + $(this).text());
+            var viewText = $(this).text();
+            $('#viewModeDropdown').text('Visualização: ' + viewText);
         });
 
         // Atualiza o texto do dropdown customizado quando a visualização do calendário muda 
-        // (ex: ao clicar nos botões prev/next ou se a visualização inicial não for month)
         calendar.on('viewDidMount', function(viewInfo) {
             var currentViewText = '';
             if (viewInfo.view.type === 'dayGridMonth') currentViewText = 'Mês';
             else if (viewInfo.view.type === 'timeGridWeek') currentViewText = 'Semana (Agenda)';
             else if (viewInfo.view.type === 'timeGridDay') currentViewText = 'Dia (Agenda)';
             else if (viewInfo.view.type === 'listWeek') currentViewText = 'Lista (Semana)';
+            else if (viewInfo.view.type === 'listMonth') currentViewText = 'Lista (Mês)'; // NOVO
+            else if (viewInfo.view.type === 'listDay') currentViewText = 'Lista (Dia)';   // NOVO
             $('#viewModeDropdown').text('Visualização: ' + currentViewText);
         });
 

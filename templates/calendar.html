@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Calendário de Eventos e Tarefas</h2>
+    <div id='calendar'></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            // Voltando para a visualização mensal
+            initialView: 'dayGridMonth', 
+            locale: 'pt-br',             
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' // Mantendo todas as opções de visualização
+            },
+            // Estas propriedades são mais relevantes para timeGrid, mas não causam problemas aqui
+            slotMinTime: '08:00:00', 
+            slotMaxTime: '20:00:00', 
+            height: 'auto', 
+
+            // Em breve, buscaremos os eventos do backend aqui!
+            // events: '/api/calendar_data', 
+            // eventClick: function(info) {
+            //     window.open(info.event.url); // Redireciona para a URL do evento ao clicar
+            // }
+        });
+        calendar.render();
+    });
+</script>
+{% endblock %}

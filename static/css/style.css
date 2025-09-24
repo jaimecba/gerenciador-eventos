@@ -845,7 +845,7 @@ a:hover {
     .fc-daygrid-event-harness { height: auto !important; min-height: 20px !important; }
     .fc-daygrid-day-events { padding-top: 0 !important; padding-bottom: 0 !important; }
 
-    /* NOVO: Estilos para truncamento de títulos na visualização de lista em mobile */
+    /* Estilos para truncamento de títulos na visualização de lista em mobile */
     .fc-list-event-title-link { /* Nosso <a> dentro da <td>.fc-list-event-title */
         display: block; /* Essencial para que text-overflow: ellipsis funcione */
         white-space: nowrap;
@@ -873,6 +873,10 @@ a:hover {
     }
     .fc-list-event-time, .fc-list-event-marker {
         flex-shrink: 0; /* Impede que o tempo e o marcador encolham */
+    }
+    /* Esconde o painel lateral no mobile */
+    .event-detail-sidebar {
+        display: none !important;
     }
 }
 
@@ -941,12 +945,73 @@ a:hover {
         display: none !important; /* Esconde o ícone */
     }
 
-    /* NOVO: Estilos para títulos na visualização de lista em desktop (opcional, mas bom para consistência) */
+    /* Estilos para títulos na visualização de lista em desktop (opcional, mas bom para consistência) */
     .fc-list-event-title-link {
         color: inherit; /* Herda a cor */
         text-decoration: none; /* Sem sublinhado */
     }
     .fc-list-event-title-link:hover {
         text-decoration: underline; /* Sublinhado ao passar o mouse */
+    }
+
+    /* Estilos do Painel Lateral para Detalhes (apenas desktop) */
+    .event-detail-sidebar {
+        position: relative; /* Ajuste para o flex container */
+        width: 0; /* Começa fechado */
+        min-width: 0;
+        background-color: #fff;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        overflow-x: hidden;
+        overflow-y: auto;
+        transition: all 0.3s ease-in-out;
+        flex-shrink: 0; /* Não permite que o sidebar encolha */
+        margin-left: 0; /* Sem margem inicial */
+        border-left: 1px solid #dee2e6; /* Borda sutil */
+    }
+
+    .event-detail-sidebar.open {
+        width: 300px; /* Largura aberta do painel lateral */
+        min-width: 300px; /* Impede que ele encolha abaixo disso */
+        margin-left: 1rem; /* Pequena margem entre calendário e painel */
+    }
+
+    /* Contêiner principal do calendário e sidebar */
+    #calendar-container-wrapper {
+        width: 100%;
+        margin-top: 1rem; /* Espaço após o dropdown */
+        align-items: flex-start; /* Alinha o calendário e a sidebar no topo */
+    }
+
+    #calendar-container-wrapper.sidebar-open #calendar {
+        flex-grow: 1; /* Permite que o calendário ocupe o espaço restante */
+        max-width: calc(100% - 300px - 1rem); /* 100% - largura da sidebar - margem */
+    }
+    #calendar {
+        flex-grow: 1;
+        max-width: 100%; /* Largura total quando sidebar está fechada */
+        transition: max-width 0.3s ease-in-out;
+    }
+
+    /* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
+    .comments-list {
+        max-height: 200px; /* Altura máxima para a lista de comentários */
+        overflow-y: auto; /* Adiciona scroll se houver muitos comentários */
+        border: 1px solid #e9ecef;
+        border-radius: 5px;
+        padding: 0.5rem;
+        background-color: #f8f9fa;
+    }
+    .comments-list .comment-item {
+        background-color: #fff;
+        border-color: #ced4da !important;
+    }
+    .comments-list .comment-item:not(:last-child) {
+        margin-bottom: 0.5rem; /* Espaço entre os comentários */
+    }
+    .comments-list .comment-item p {
+        font-size: 0.9em;
+    }
+    .comments-list .comment-item small {
+        font-size: 0.75em;
     }
 }

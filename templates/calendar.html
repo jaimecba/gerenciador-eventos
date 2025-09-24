@@ -20,9 +20,41 @@
         </ul>
     </div>
 
-    <div id='calendar'></div>
+    <div id='calendar-container-wrapper' class="d-flex">
+        <div id='calendar'></div>
 
-    {# Modal para Detalhes de Evento/Tarefa - Mantido para visualizações de grade #}
+        {# Painel Lateral para Detalhes de Evento/Tarefa (Desktop) #}
+        <div id="eventDetailSidebar" class="event-detail-sidebar">
+            <div class="sidebar-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                <h5 id="eventDetailSidebarTitle" class="mb-0"></h5>
+                <button type="button" class="btn-close" aria-label="Close" id="closeSidebar"></button>
+            </div>
+            <div class="sidebar-body p-3">
+                <p><strong>Tipo:</strong> <span id="eventDetailSidebarType"></span></p>
+                <p><strong>Início:</strong> <span id="eventDetailSidebarStart"></span></p>
+                <p><strong>Fim:</strong> <span id="eventDetailSidebarEnd"></span></p>
+                <p><strong>Descrição:</strong> <span id="eventDetailSidebarDescription"></span></p>
+                <a href="#" id="eventDetailSidebarLink" class="btn btn-primary btn-sm mt-3 w-100">Ver Detalhes Completos</a>
+
+                <hr class="my-3">
+
+                {# NOVO: Seção de Comentários #}
+                <div class="comments-section">
+                    <h5 class="mb-2">Comentários</h5>
+                    <div id="eventDetailSidebarCommentsList" class="comments-list mb-3">
+                        {# Comentários serão carregados aqui via JS #}
+                        <p class="text-muted">Carregando comentários...</p>
+                    </div>
+                    <div class="comment-form">
+                        <textarea id="commentTextarea" class="form-control mb-2" rows="3" placeholder="Adicionar um comentário..."></textarea>
+                        <button id="addCommentBtn" class="btn btn-success btn-sm w-100">Adicionar Comentário</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Modal para Detalhes de Evento/Tarefa - Mantido para mobile #}
     <div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventDetailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -44,6 +76,8 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
+        var currentEventId = null; // Para armazenar o ID do evento atualmente exibido na sidebar
+
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth', 
             locale: 'pt-br',             
@@ -74,23 +108,55 @@
             eventClick: function(info) {
                 // Se for uma visualização de lista E o elemento clicado for o link do título,
                 // não faz nada e permite que o navegador siga o href do link.
-                // A classe 'fc-list-event-title-link' será aplicada ao <a> em eventContent para views de lista.
                 if (info.view.type.startsWith('list') && $(info.jsEvent.target).is('a.fc-list-event-title-link')) {
                     return; 
                 }
                 
-                info.jsEvent.preventDefault(); // Impede o comportamento padrão (abrir URL diretamente)
+                info.jsEvent.preventDefault(); // Impede o comportamento padrão
                 
                 var eventTitle = info.event.extendedProps.description || info.event.title;
                 var eventUrl = info.event.url;
+                var eventType = info.event.extendedProps.type;
+                var eventStart = info.event.start ? new Date(info.event.start).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+                var eventEnd = info.event.end ? new Date(info.event.end).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+                var eventDescription = info.event.extendedProps.fullDescription || info.event.extendedProps.description || info.event.title || 'Nenhuma descrição.';
 
-                // Popula o modal
-                $('#eventDetailModalLabel').text(eventTitle);
-                $('#eventDetailLink').attr('href', eventUrl);
+                // Extrai o ID do evento da URL
+                const urlParts = eventUrl.split('/');
+                const idIndex = urlParts.indexOf('detail') + 1; // Supondo URL tipo /events/detail/ID ou /tasks/detail/ID
+                currentEventId = idIndex > 0 && idIndex < urlParts.length ? urlParts[idIndex] : null;
 
-                // Mostra o modal
-                var myModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
-                myModal.show();
+                const isDesktop = window.matchMedia('(min-width: 992px)').matches;
+
+                if (isDesktop) {
+                    // Preenche o painel lateral
+                    $('#eventDetailSidebarTitle').text(eventTitle);
+                    $('#eventDetailSidebarType').text(eventType);
+                    $('#eventDetailSidebarStart').text(eventStart);
+                    $('#eventDetailSidebarEnd').text(eventEnd);
+                    $('#eventDetailSidebarDescription').text(eventDescription);
+                    $('#eventDetailSidebarLink').attr('href', eventUrl);
+                    
+                    // Abre o painel lateral e ajusta o layout
+                    $('#eventDetailSidebar').addClass('open');
+                    $('#calendar-container-wrapper').addClass('sidebar-open');
+
+                    // Carrega os comentários para o evento atual
+                    if (currentEventId) {
+                        loadCommentsForEvent(currentEventId, eventType); // Passa o tipo para talvez diferenciar a rota da API
+                    } else {
+                        $('#eventDetailSidebarCommentsList').html('<p class="text-danger">Não foi possível carregar os comentários. ID do evento não encontrado.</p>');
+                    }
+
+                } else {
+                    // Popula o modal (para mobile)
+                    $('#eventDetailModalLabel').text(eventTitle);
+                    $('#eventDetailLink').attr('href', eventUrl);
+
+                    // Mostra o modal
+                    var myModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
+                    myModal.show();
+                }
             },
             eventDidMount: function(info) {
                 // Tooltip para todos os tipos de evento/tarefa, exceto para links de lista diretos
@@ -106,8 +172,6 @@
             eventContent: function(arg) {
                 if (arg.view.type.startsWith('list')) {
                     // Para visualizações de lista, torna o título um link direto.
-                    // A classe 'fc-list-event-title-link' será usada para estilização (truncamento).
-                    // O FullCalendar irá renderizar isso dentro da <td>.fc-list-event-title
                     return { html: `<a class="fc-list-event-title-link" href="${arg.event.url}">${arg.event.title}</a>` };
                 } else {
                     // Para outras visualizações (dayGrid, timeGrid), mantém o wrapper de ícone/título
@@ -146,6 +210,83 @@
             $('#viewModeDropdown').text('Visualização: ' + currentViewText);
         });
 
+        // Lógica para fechar o painel lateral
+        $('#closeSidebar').on('click', function() {
+            $('#eventDetailSidebar').removeClass('open');
+            $('#calendar-container-wrapper').removeClass('sidebar-open');
+            currentEventId = null; // Limpa o ID do evento ao fechar
+        });
+
+        // NOVO: Função para carregar e exibir comentários
+        function loadCommentsForEvent(eventId, eventType) {
+            $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Carregando comentários...</p>');
+            
+            // Simulação de chamada AJAX - SUBSTITUA ESTA LÓGICA PELO SEU BACKEND REAL
+            // Supondo que você terá uma rota como /api/comments/event/<event_id> ou /api/comments/task/<task_id>
+            // E que a resposta seja um JSON como: [{user: 'User 1', date: 'DD/MM/YYYY HH:MM', text: 'Comentário 1'}, ...]
+            setTimeout(function() { // Simula um delay de rede
+                const mockComments = [
+                    { user: 'João Silva', date: '25/09/2025 10:30', text: 'Excelente evento! Mal posso esperar.' },
+                    { user: 'Maria Souza', date: '25/09/2025 14:15', text: 'Preciso confirmar minha presença até o final da semana.' },
+                    { user: 'Carlos Mendes', date: '26/09/2025 09:00', text: 'Lembrete: verificar a disponibilidade da sala principal.' }
+                ];
+
+                let commentsHtml = '';
+                if (mockComments.length > 0) {
+                    mockComments.forEach(comment => {
+                        commentsHtml += `
+                            <div class="comment-item mb-2 p-2 border rounded">
+                                <small class="text-muted"><strong>${comment.user}</strong> em ${comment.date}</small>
+                                <p class="mb-0">${comment.text}</p>
+                            </div>
+                        `;
+                    });
+                } else {
+                    commentsHtml = '<p class="text-muted">Nenhum comentário ainda.</p>';
+                }
+                $('#eventDetailSidebarCommentsList').html(commentsHtml);
+            }, 1000); // 1 segundo de delay
+        }
+
+        // NOVO: Função para adicionar um novo comentário
+        $('#addCommentBtn').on('click', function() {
+            const commentText = $('#commentTextarea').val().trim();
+            if (commentText && currentEventId) {
+                // Simulação de chamada AJAX para adicionar comentário
+                // SUBSTITUA ESTA LÓGICA PELO SEU BACKEND REAL
+                console.log(`Adicionando comentário para Evento ID ${currentEventId}: ${commentText}`);
+                
+                // Exemplo de como você faria uma requisição POST com jQuery:
+                /*
+                $.ajax({
+                    url: `/api/comments/${currentEventId}`, // Ajuste sua rota de API
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ text: commentText }),
+                    success: function(response) {
+                        $('#commentTextarea').val(''); // Limpa o campo
+                        loadCommentsForEvent(currentEventId); // Recarrega os comentários
+                    },
+                    error: function(error) {
+                        alert('Erro ao adicionar comentário.');
+                        console.error('Erro ao adicionar comentário:', error);
+                    }
+                });
+                */
+
+                // Para simulação:
+                setTimeout(() => {
+                    $('#commentTextarea').val(''); // Limpa o campo
+                    // Para ver a mudança, você precisaria adicionar o comentário mockado e recarregar.
+                    // Para esta fase, apenas recarregar para ver a simulação é suficiente.
+                    loadCommentsForEvent(currentEventId); 
+                    alert('Comentário adicionado (simulado)!');
+                }, 500);
+
+            } else if (!commentText) {
+                alert('Por favor, digite um comentário.');
+            }
+        });
     });
 </script>
 {% endblock %}

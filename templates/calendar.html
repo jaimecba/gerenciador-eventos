@@ -22,7 +22,7 @@
 
     <div id='calendar'></div>
 
-    {# Modal para Detalhes de Evento/Tarefa #}
+    {# Modal para Detalhes de Evento/Tarefa - Mantido para visualizações de grade #}
     <div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventDetailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -47,16 +47,16 @@
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth', 
             locale: 'pt-br',             
-            customButtons: { // NOVO: Definição do botão customizado
+            customButtons: { 
                 voltarHome: {
                     text: 'Voltar',
                     click: function() {
-                        window.location.href = '{{ url_for('main.home') }}'; // Redireciona para /home
+                        window.location.href = '{{ url_for('main.home') }}'; 
                     }
                 }
             },
             headerToolbar: {
-                left: 'prev,next voltarHome', // MODIFICADO: 'today' substituído por 'voltarHome'
+                left: 'prev,next voltarHome', 
                 center: 'title',
                 right: '' // VAZIO: Nosso dropdown customizado é o único controle de visualização
             },
@@ -72,6 +72,13 @@
                 }
             },
             eventClick: function(info) {
+                // Se for uma visualização de lista E o elemento clicado for o link do título,
+                // não faz nada e permite que o navegador siga o href do link.
+                // A classe 'fc-list-event-title-link' será aplicada ao <a> em eventContent para views de lista.
+                if (info.view.type.startsWith('list') && $(info.jsEvent.target).is('a.fc-list-event-title-link')) {
+                    return; 
+                }
+                
                 info.jsEvent.preventDefault(); // Impede o comportamento padrão (abrir URL diretamente)
                 
                 var eventTitle = info.event.extendedProps.description || info.event.title;
@@ -86,26 +93,34 @@
                 myModal.show();
             },
             eventDidMount: function(info) {
-                // Tooltip para todos os tipos de evento/tarefa
-                $(info.el).tooltip({
-                    title: info.event.extendedProps.description || info.event.title,
-                    placement: 'top',
-                    trigger: 'hover',
-                    container: 'body'
-                });
+                // Tooltip para todos os tipos de evento/tarefa, exceto para links de lista diretos
+                if (!(info.view.type.startsWith('list') && $(info.el).find('a.fc-list-event-title-link').length)) {
+                    $(info.el).tooltip({
+                        title: info.event.extendedProps.description || info.event.title,
+                        placement: 'top',
+                        trigger: 'hover',
+                        container: 'body'
+                    });
+                }
             },
             eventContent: function(arg) {
-                let iconHtml = '';
-                let titleHtml = `<span class="fc-event-title-text">${arg.event.title}</span>`;
+                if (arg.view.type.startsWith('list')) {
+                    // Para visualizações de lista, torna o título um link direto.
+                    // A classe 'fc-list-event-title-link' será usada para estilização (truncamento).
+                    // O FullCalendar irá renderizar isso dentro da <td>.fc-list-event-title
+                    return { html: `<a class="fc-list-event-title-link" href="${arg.event.url}">${arg.event.title}</a>` };
+                } else {
+                    // Para outras visualizações (dayGrid, timeGrid), mantém o wrapper de ícone/título
+                    let iconHtml = '';
+                    let titleHtml = `<span class="fc-event-title-text">${arg.event.title}</span>`;
 
-                if (arg.event.extendedProps.type === 'Tarefa') {
-                    iconHtml = '<i class="fas fa-tasks fc-event-task-icon"></i>'; 
-                } else if (arg.event.extendedProps.type === 'Evento') {
-                    iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; 
+                    if (arg.event.extendedProps.type === 'Tarefa') {
+                        iconHtml = '<i class="fas fa-tasks fc-event-task-icon"></i>'; 
+                    } else if (arg.event.extendedProps.type === 'Evento') {
+                        iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; 
+                    }
+                    return { html: `<div class="fc-event-display-wrapper">${iconHtml}${titleHtml}</div>` };
                 }
-
-                // Retorna ambos (ícone e título). O CSS decidirá qual mostrar baseado no dispositivo e visualização.
-                return { html: `<div class="fc-event-display-wrapper">${iconHtml}${titleHtml}</div>` };
             }
         });
         calendar.render();

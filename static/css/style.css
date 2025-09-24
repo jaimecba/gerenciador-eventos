@@ -601,7 +601,7 @@ a:hover {
 /* Ajuste de fonte para labels em cards (e.g., detalhes do evento) */
 .card-body p.small span.text-muted.fw-bold {
     font-size: 0.85em; /* Torna as labels ligeiramente menores que o 'small' padrão */
-    /* Remove a margem inferior padrão dos parágrafos com mb-1 no HTML, para compactar */
+    /* Remover margem inferior padrão dos parágrafos com mb-1 no HTML, para compactar */
 }
 
 /* Título da Seção de Tarefas */
@@ -799,7 +799,7 @@ a:hover {
         align-items: center !important;
     }
 
-    /* Botões 'Anterior, Próximo, Hoje' */
+    /* Botões 'Anterior, Próximo, Voltar' */
     .fc-header-toolbar .fc-toolbar-chunk:first-child { 
         justify-content: space-around !important; 
         order: 2 !important; /* Move para baixo no mobile */
@@ -844,6 +844,36 @@ a:hover {
     .fc-daygrid-day-number { font-size: 0.8em !important; }
     .fc-daygrid-event-harness { height: auto !important; min-height: 20px !important; }
     .fc-daygrid-day-events { padding-top: 0 !important; padding-bottom: 0 !important; }
+
+    /* NOVO: Estilos para truncamento de títulos na visualização de lista em mobile */
+    .fc-list-event-title-link { /* Nosso <a> dentro da <td>.fc-list-event-title */
+        display: block; /* Essencial para que text-overflow: ellipsis funcione */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%; /* Garante que respeite a largura do pai */
+        color: inherit; /* Herda a cor do texto do evento */
+        text-decoration: none; /* Remove sublinhado padrão do link */
+    }
+    .fc-list-event-title-link:hover {
+        text-decoration: underline; /* Adiciona sublinhado ao passar o mouse */
+    }
+    /* Estilos para o container do título na lista, para garantir flexibilidade em mobile */
+    .fc-list-event-title {
+        min-width: 0; /* Permite que a célula encolha se necessário */
+        flex-grow: 1; /* Permite que ela ocupe o espaço restante */
+    }
+    /* Certifica que o item da lista usa display flex para melhor responsividade */
+    .fc-list-item > td {
+        white-space: nowrap; /* Para os outros TDs (tempo, dot) */
+    }
+    .fc-list-item {
+        display: flex; /* Transforma a linha da lista em um flex container */
+        align-items: center; /* Alinha os itens verticalmente */
+    }
+    .fc-list-event-time, .fc-list-event-marker {
+        flex-shrink: 0; /* Impede que o tempo e o marcador encolham */
+    }
 }
 
 /* ========================================================== */
@@ -909,5 +939,14 @@ a:hover {
     .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
     .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
         display: none !important; /* Esconde o ícone */
+    }
+
+    /* NOVO: Estilos para títulos na visualização de lista em desktop (opcional, mas bom para consistência) */
+    .fc-list-event-title-link {
+        color: inherit; /* Herda a cor */
+        text-decoration: none; /* Sem sublinhado */
+    }
+    .fc-list-event-title-link:hover {
+        text-decoration: underline; /* Sublinhado ao passar o mouse */
     }
 }

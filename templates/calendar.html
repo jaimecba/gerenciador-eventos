@@ -12,24 +12,41 @@
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
         var calendar = new FullCalendar.Calendar(calendarEl, {
-            // Voltando para a visualização mensal
             initialView: 'dayGridMonth', 
             locale: 'pt-br',             
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' // Mantendo todas as opções de visualização
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
             },
-            // Estas propriedades são mais relevantes para timeGrid, mas não causam problemas aqui
             slotMinTime: '08:00:00', 
             slotMaxTime: '20:00:00', 
-            height: 'auto', 
-
-            // Em breve, buscaremos os eventos do backend aqui!
-            // events: '/api/calendar_data', 
-            // eventClick: function(info) {
-            //     window.open(info.event.url); // Redireciona para a URL do evento ao clicar
-            // }
+            height: 'auto',
+            
+            // NOVO: Fonte dos eventos apontando para a sua API!
+            events: {
+                url: '/api/calendar_events',
+                method: 'GET',
+                failure: function() {
+                    alert('Houve um erro ao carregar os eventos!');
+                }
+            },
+            // NOVO: Ao clicar em um evento, redireciona para a URL do evento/tarefa
+            eventClick: function(info) {
+                if (info.event.url) {
+                    window.open(info.event.url); // Abre a URL em uma nova aba
+                    info.jsEvent.preventDefault(); // Evita o comportamento padrão do navegador
+                }
+            },
+            // NOVO: Adiciona um tooltip ao passar o mouse sobre o evento
+            eventDidMount: function(info) {
+                $(info.el).tooltip({
+                    title: info.event.extendedProps.description || info.event.title,
+                    placement: 'top',
+                    trigger: 'hover',
+                    container: 'body'
+                });
+            }
         });
         calendar.render();
     });

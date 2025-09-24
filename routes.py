@@ -14,7 +14,6 @@ from forms import (RegistrationForm, LoginForm, EventForm, CategoryForm, StatusF
                    EventPermissionForm, CommentForm, AttachmentForm) # <-- ATUALIZADO: Importar AttachmentForm
 
 # NOVO: Importar as funções auxiliares diretamente do forms, se necessário.
-# NOVO: Importar as funções auxiliares diretamente do forms, se necessário.
 # (Alternativamente, podem ser importadas de forma mais puntual dentro das rotas que as usam)
 from forms import get_users, get_task_categories, get_task_statuses, get_roles, AdminRoleForm
 
@@ -29,9 +28,6 @@ import json
 from sqlalchemy.orm import joinedload, selectinload # Adicionado selectinload
 import uuid
 from werkzeug.utils import secure_filename
-import os
-from flask import send_from_directory
-from utils.changelog_utils import diff_dicts
 import os
 from flask import send_from_directory
 from utils.changelog_utils import diff_dicts
@@ -161,6 +157,7 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
 
     else: # Se não está autenticado, não deve ver eventos
         return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
+    
     search_query_text = request.args.get('search', '')
     if search_query_text:
         base_query = base_query.filter(
@@ -199,6 +196,13 @@ def active_events():
     # Esta rota continua solicitando explicitamente eventos ativos
     events = get_filtered_events(current_user, search_query, page, per_page, event_status_name='Ativo')
     return render_template('home.html', events=events, title='Eventos Ativos', search_query=search_query, current_filter='active')
+    
+
+@main.route("/calendar_view")
+@login_required
+def calendar_view():
+    return render_template('calendar.html', title='Calendário')
+
 
 @main.route("/events/completed")
 @login_required
@@ -220,8 +224,6 @@ def archived_events():
 
     events = get_filtered_events(current_user, search_query, page, per_page, event_status_name='Arquivado')
     return render_template('home.html', events=events, title='Eventos Arquivados', search_query=search_query, current_filter='archived')
-
-
 # --- FIM DAS ROTAS DE LISTAGEM DE EVENTOS MODIFICADAS ---
 
 # ----------------------------------------------------
@@ -421,6 +423,7 @@ def reset_token(token):
     return render_template('reset_token.html', title='Redefinir Senha', form=form)
 
 
+# =========================================================================
 # =========================================================================
 # =========================================================================
 # =========================================================================
@@ -873,7 +876,6 @@ def new_status():
 def list_statuses():
     statuses = Status.query.order_by(Status.type, Status.name).all()
     return render_template('list_statuses.html', statuses=statuses, title='Status (Eventos e Tarefas)')
-
 @main.route("/status/<int:status_id>/update", methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -1098,6 +1100,7 @@ def new_task(event_id):
         print(f"--- DEBUG: new_task - Validação do formulário FALHOU. Erros: {form.errors} ---")
     return render_template('create_edit_task.html', title='Nova Tarefa', form=form, legend='Criar Tarefa', event=event_obj)
 
+# =========================================================================
 # =========================================================================
 # NOVA ROTA: task_detail (Página de detalhes completa da Tarefa)
 # =========================================================================
@@ -1652,6 +1655,7 @@ def delete_task(task_id):
         current_app.logger.error(f"Erro ao excluir tarefa: {e}", exc_info=True)
         return redirect(url_for('main.event', event_id=task_obj.event.id))
 
+# =========================================================================
 # =========================================================================
 # =========================================================================
 # NOVA ROTA: CONCLUIR TAREFA
@@ -2428,6 +2432,7 @@ def delete_task_audio(task_id):
 # =========================================================================
 # =========================================================================
 # =========================================================================
+# =========================================================================
 # NOVAS ROTAS PARA ANEXOS DE TAREFAS (ADICIONADO AQUI)
 # =========================================================================
 
@@ -2539,7 +2544,7 @@ def download_attachment(attachment_id):
         can_download = True
     elif current_user.id in [u.id for u in task_obj.assignees]: # Atribuído à tarefa pode baixar
         can_download = True
-    elif current_user.can_view_event: # Tem permissão global de role para ver eventos
+    elif current_user.role_obj and current_user.role_obj.can_view_event: # Tem permissão global de role para ver eventos
         can_download = True
     else:
         # Verifica permissões de visualização específicas para o evento
@@ -2588,7 +2593,7 @@ def delete_attachment(attachment_id):
         can_delete = True
     elif attachment.uploaded_by_user_id == current_user.id: # Uploader pode deletar seu próprio anexo
         can_delete = True
-    elif current_user.can_manage_attachments: # Tem permissão global de role para gerenciar anexos
+    elif current_user.role_obj and current_user.role_obj.can_manage_attachments: # Tem permissão global de role para gerenciar anexos
         can_delete = True
     elif task_obj.event.author_id == current_user.id: # Autor do evento pode deletar anexos em suas tarefas
         can_delete = True
@@ -2629,3 +2634,147 @@ def delete_attachment(attachment_id):
         db.session.rollback()
         current_app.logger.error(f"Erro ao excluir anexo do banco de dados {attachment.id}: {e}", exc_info=True)
         return jsonify({'message': f'Erro ao excluir anexo do banco de dados: {str(e)}'}), 500
+
+
+# =========================================================================
+# =========================================================================
+# =========================================================================
+# =========================================================================
+# ROTA API PARA RETORNAR EVENTOS E TAREFAS PARA O CALENDÁRIO
+# =========================================================================
+@main.route("/api/calendar_events", methods=['GET'])
+@login_required
+def calendar_events_feed():
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+
+    # Convert start and end to datetime objects
+    start = datetime.fromisoformat(start_str) if start_str else None
+    end = datetime.fromisoformat(end_str) if end_str else None
+
+    events_for_calendar = []
+
+    # --- Fetch Events ---
+    # Eager loading para evitar N+1 queries e para as verificações de permissão
+    events_query = Event.query.options(
+        joinedload(Event.author),
+        joinedload(Event.status),
+        joinedload(Event.category),
+        joinedload(Event.event_permissions).joinedload(EventPermission.role),
+        joinedload(Event.event_permissions).joinedload(EventPermission.user),
+        joinedload(Event.event_permissions).joinedload(EventPermission.group),
+        joinedload(Event.tasks).joinedload(Task.assignees_associations).joinedload(TaskAssignment.user)
+    )
+
+    if not current_user.is_admin:
+        # Condições para visibilidade do evento para usuários não-admin
+        event_conditions = [
+            Event.author_id == current_user.id,
+            # Usuário é atribuído a alguma tarefa dentro do evento
+            Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == current_user.id)),
+            # Permissão explícita para o usuário visualizar o evento
+            Event.event_permissions.any(and_(
+                EventPermission.user_id == current_user.id,
+                EventPermission.role.has(Role.can_view_event == True)
+            ))
+        ]
+
+        # Permissão explícita para os grupos do usuário visualizarem o evento
+        if current_user.user_groups:
+            user_group_ids = [ug.group_id for ug in current_user.user_groups]
+            event_conditions.append(
+                Event.event_permissions.any(and_(
+                    EventPermission.group_id.in_(user_group_ids),
+                    EventPermission.role.has(Role.can_view_event == True)
+                ))
+            )
+
+        events_query = events_query.filter(or_(*event_conditions))
+
+    # Filtrar por data (due_date ou end_date devem estar dentro do range do calendário)
+    if start and end:
+        events_query = events_query.filter(
+            or_(
+                # Evento começa dentro do range
+                and_(Event.due_date >= start, Event.due_date <= end),
+                # Evento termina dentro do range
+                and_(Event.end_date >= start, Event.end_date <= end),
+                # Evento abrange todo o range de datas
+                and_(Event.due_date < start, Event.end_date > end),
+                # Evento de um dia que cai dentro do range
+                and_(Event.due_date >= start, Event.due_date <= end, Event.end_date == None)
+            )
+        )
+
+    all_visible_events = events_query.all()
+
+    for event_obj in all_visible_events:
+        # Cores para Eventos
+        event_color = "#3788d8" # Azul padrão
+        if event_obj.status and event_obj.status.name == 'Realizado':
+            event_color = "#28a745" # Verde para realizado
+        elif event_obj.status and event_obj.status.name == 'Arquivado':
+            event_color = "#6c757d" # Cinza para arquivado
+        elif event_obj.due_date and event_obj.due_date < datetime.utcnow() and not event_obj.is_completed:
+            event_color = "#dc3545" # Vermelho para atrasado (se due_date passou e não está completo)
+
+        events_for_calendar.append({
+            'id': f"event-{event_obj.id}",
+            'title': event_obj.title,
+            'start': event_obj.due_date.isoformat(),
+            'end': (event_obj.end_date + timedelta(days=1)).isoformat() if event_obj.end_date else (event_obj.due_date + timedelta(days=1)).isoformat(), # FullCalendar end é exclusivo
+            'url': url_for('main.event', event_id=event_obj.id),
+            'color': event_color,
+            'extendedProps': {
+                'description': event_obj.description,
+                'type': 'Evento',
+                'location': event_obj.location,
+                'status': event_obj.status.name if event_obj.status else 'N/A'
+            },
+            'allDay': not (event_obj.due_date.time() != datetime.min.time() or (event_obj.end_date and event_obj.end_date.time() != datetime.min.time()))
+        })
+
+    # --- Fetch Tasks ---
+    # Tarefas visíveis são aquelas diretamente atribuídas ao usuário logado (ou todas se for admin)
+    tasks_query = Task.query.options(
+        joinedload(Task.assignees_associations).joinedload(TaskAssignment.user),
+        joinedload(Task.event),
+        joinedload(Task.task_status)
+    )
+
+    if not current_user.is_admin:
+        tasks_query = tasks_query.filter(Task.assignees_associations.any(TaskAssignment.user_id == current_user.id))
+
+    # Filtrar por data (apenas due_date para tarefas)
+    if start and end:
+        tasks_query = tasks_query.filter(
+            and_(Task.due_date >= start, Task.due_date <= end)
+        )
+
+    all_visible_tasks = tasks_query.all()
+
+    for task_obj in all_visible_tasks:
+        # Cores para Tarefas
+        task_color = "#ffc107" # Amarelo padrão (Pendente)
+        if task_obj.is_completed:
+            task_color = "#28a745" # Verde para concluído
+        elif task_obj.due_date and task_obj.due_date < datetime.utcnow() and not task_obj.is_completed:
+            task_color = "#dc3545" # Vermelho para atrasado
+        
+        events_for_calendar.append({
+            'id': f"task-{task_obj.id}",
+            'title': f"Tarefa: {task_obj.title}",
+            'start': task_obj.due_date.isoformat(),
+            'end': (task_obj.due_date + timedelta(minutes=60)).isoformat(), # Padrão de 1h de duração para tarefas
+            'url': url_for('main.task_detail', task_id=task_obj.id),
+            'color': task_color,
+            'extendedProps': {
+                'description': task_obj.description,
+                'type': 'Tarefa',
+                'event_title': task_obj.event.title if task_obj.event else 'N/A',
+                'status': task_obj.task_status.name if task_obj.task_status else 'N/A'
+            },
+            'allDay': not (task_obj.due_date.time() != datetime.min.time()) # Se due_date não tem parte de tempo, é allDay
+        })
+    
+    return jsonify(events_for_calendar)

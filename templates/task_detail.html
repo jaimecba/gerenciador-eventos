@@ -80,7 +80,7 @@
                     {% if task.cloud_storage_link %}
                         <div class="mb-3">
                             <h6>Link de Armazenamento:</h6>
-                            <a href="{{ task.cloud_storage_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                            <a href="{{ task.cloud_storage_link }}"  rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
                                 <i class="fas fa-external-link-alt"></i> Acessar Link
                             </a>
                             {% if task.link_notes %}
@@ -159,7 +159,7 @@
                         {% endif %}
 
                         {# 4 = Voltar #}
-                        <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-outline-secondary btn-sm"> {# CORRIGIDO: btn-outline-secondary #}
+                        <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-arrow-left"></i> Voltar
                         </a>
                         
@@ -197,7 +197,7 @@
                                             </div>
                                             <div class="ms-2">
                                                 <a href="{{ url_for('main.download_attachment', attachment_id=attachment.id) }}" 
-                                                   target="_blank" class="btn btn-outline-primary btn-sm" title="Download">
+                                                    class="btn btn-outline-primary btn-sm" title="Download">
                                                     <i class="fas fa-download"></i>
                                                 </a>
                                                 {% if can_manage_attachments or attachment.uploaded_by_user_id == current_user.id %}
@@ -324,7 +324,7 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-success">Concluir Tarefa</button>
-                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -379,11 +379,12 @@
     </div>
 {% endif %}
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 <script>
 $(document).ready(function() {
     // Função auxiliar para exibir mensagens flash
     function flashMessage(message, category) {
+        console.log(`Flash Message: ${message} (Category: ${category})`); // Log da mensagem flash
         var alertHtml = `<div class="alert alert-${category} alert-dismissible fade show" role="alert">
                             ${message}
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -394,53 +395,35 @@ $(document).ready(function() {
         }, 5000);
     }
 
-    // Upload de anexo
+    // REMOVIDO: AJAX do formulário de upload de anexo.
+    // AGORA: O formulário é submetido tradicionalmente e o backend (routes.py)
+    // lida com o redirecionamento e as mensagens flash.
     $('#attachment-upload-form').on('submit', function(e) {
-        e.preventDefault();
-        var form = $(this);
-        var formData = new FormData(form[0]);
-        var submitBtn = form.find('input[type="submit"]'); // Alterado para input[type="submit"]
-
-        submitBtn.prop('disabled', true).val('Enviando...'); // Alterado para val() para input
-
-        $.ajax({
-            url: form.attr('action'),
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                flashMessage(response.message, 'success');
-                // Recarrega a página para mostrar o novo anexo
-                location.reload();
-            },
-            error: function(xhr) {
-                var errorMessage = 'Erro ao fazer upload do anexo.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                flashMessage(errorMessage, 'danger');
-            },
-            complete: function() {
-                submitBtn.prop('disabled', false).val('Anexar Arquivo'); // Alterado para val()
-            }
-        });
+        // e.preventDefault(); // Removido para permitir submissão tradicional
+        console.log('Formulário de upload de anexo submetido. O backend cuidará do redirecionamento.');
+        // A lógica AJAX aqui foi removida. O browser fará a submissão padrão.
+        // O Flask (routes.py) fará o flash e o redirect.
     });
+
 
     // Exclusão de anexo
     $('.delete-attachment-btn').on('click', function() {
+        console.log('Botão de deletar anexo clicado.'); // Log de depuração
         var attachmentId = $(this).data('attachment-id');
         var filename = $(this).data('filename');
         
         if (confirm(`Tem certeza que deseja excluir o anexo "${filename}"? Esta ação é irreversível!`)) {
+            console.log(`Confirmação de exclusão para ID: ${attachmentId}, arquivo: ${filename}`); // Log de depuração
             $.ajax({
                 url: `/attachment/${attachmentId}/delete`,
-                type: 'POST',
+                type: 'POST', // 'POST' conforme definido no routes.py
                 success: function(response) {
+                    console.log('AJAX delete sucesso:', response); // Log da resposta de sucesso
                     flashMessage('Anexo excluído com sucesso!', 'success');
-                    location.reload();
+                    location.reload(); // Recarrega a página para atualizar a lista de anexos
                 },
                 error: function(xhr) {
+                    console.error('AJAX delete erro:', xhr); // Log da resposta de erro
                     var errorMessage = 'Erro ao excluir anexo.';
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
@@ -448,12 +431,15 @@ $(document).ready(function() {
                     flashMessage(errorMessage, 'danger');
                 }
             });
+        } else {
+            console.log('Exclusão de anexo cancelada pelo usuário.'); // Log de depuração
         }
     });
 
     // Adicionar comentário
     $('#add-comment-form').on('submit', function(e) {
         e.preventDefault();
+        console.log('Formulário de comentário submetido.'); // Log de depuração
         var form = $(this);
         var formData = new FormData(form[0]);
 
@@ -464,6 +450,7 @@ $(document).ready(function() {
             processData: false,
             contentType: false,
             success: function(response) {
+                console.log('AJAX comentário sucesso:', response); // Log da resposta de sucesso
                 if (response.success) {
                     flashMessage('Comentário adicionado com sucesso!', 'success');
                     location.reload();
@@ -471,14 +458,15 @@ $(document).ready(function() {
                     flashMessage('Erro ao adicionar comentário.', 'danger');
                 }
             },
-            error: function() {
+            error: function(xhr) {
+                console.error('AJAX comentário erro:', xhr); // Log da resposta de erro
                 flashMessage('Erro ao adicionar comentário.', 'danger');
             }
         });
     });
 
     // =========================================================================================
-    // Lógica de Gravação de Áudio (Agora em task_detail.html)
+    // Lógica de Gravação de Áudio
     // =========================================================================================
     const startRecordBtn = $('#start-record-btn');
     const stopRecordBtn = $('#stop-record-btn');
@@ -499,10 +487,12 @@ $(document).ready(function() {
 
     // Lógica para o botão de Gravar/Gerenciar Áudio (toggle collapse)
     $('#audioControlsCollapse').on('show.bs.collapse', function () {
+        console.log('Controles de áudio expandidos.'); // Log de depuração
         // Quando o colapso abre, se já houver um áudio existente, esconde o player principal
         if (audioPlayerContainer.length) audioPlayerContainer.hide();
         if (noAudioMessage.length) noAudioMessage.hide(); // Esconde a mensagem "Nenhum áudio gravado"
     }).on('hide.bs.collapse', function () {
+        console.log('Controles de áudio recolhidos.'); // Log de depuração
         // Quando o colapso fecha, mostra o player principal de volta se houver áudio
         if (audioPlayerContainer.length && audioPlayerContainer.find('audio source').attr('src')) {
             audioPlayerContainer.show();
@@ -521,49 +511,58 @@ $(document).ready(function() {
 
 
     startRecordBtn.on('click', async () => {
+        console.log('Botão Gravar clicado.'); // Log de depuração
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log('Acesso ao microfone concedido.'); // Log de depuração
             mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
             audioChunks = [];
             audioDurationSeconds = 0;
             recordingStartTime = Date.now();
 
             mediaRecorder.ondataavailable = event => {
+                console.log('Dados de áudio disponíveis:', event.data.size); // Log de depuração
                 audioChunks.push(event.data);
             };
 
             mediaRecorder.onstop = () => {
+                console.log('Gravação de áudio parada. Processando Blob.'); // Log de depuração
                 audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 recordedAudio.src = audioUrl;
                 recordedAudioContainer.show();
                 recordingStatus.text('Gravação finalizada.');
                 stream.getTracks().forEach(track => track.stop()); // Para o microfone
+                console.log('Prévia do áudio gravado exibida.'); // Log de depuração
             };
 
             mediaRecorder.start();
+            console.log('Gravação iniciada.'); // Log de depuração
             recordingStatus.text('Gravando...');
             startRecordBtn.prop('disabled', true);
             stopRecordBtn.prop('disabled', false);
             recordedAudioContainer.hide(); // Esconde player anterior se houver
         } catch (err) {
-            console.error('Erro ao acessar o microfone:', err);
+            console.error('Erro ao acessar o microfone:', err); // Log de depuração
             recordingStatus.text('Erro ao acessar o microfone.');
-            flashMessage('Erro ao acessar o microfone. Verifique as permissões do navegador.', 'danger');
+            flashMessage('Erro ao acessar o microfone. Verifique as permissões do navegador (HTTPS é obrigatório para microfone em muitos navegadores).', 'danger');
         }
     });
 
     stopRecordBtn.on('click', () => {
+        console.log('Botão Parar clicado.'); // Log de depuração
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
             audioDurationSeconds = Math.round((Date.now() - recordingStartTime) / 1000); // Duração em segundos
             startRecordBtn.prop('disabled', false);
             stopRecordBtn.prop('disabled', true);
             flashMessage('Gravação concluída. Clique em Salvar Áudio para anexar.', 'info');
+            console.log('Gravação parada, duração:', audioDurationSeconds, 'segundos.'); // Log de depuração
         }
     });
 
     uploadAudioBtn.on('click', () => {
+        console.log('Botão Salvar Áudio clicado.'); // Log de depuração
         if (audioBlob) {
             const formData = new FormData();
             formData.append('audio_file', audioBlob, 'gravacao.webm');
@@ -572,6 +571,7 @@ $(document).ready(function() {
             const taskId = {{ task.id if task else 'null' }};
             if (!taskId) {
                 flashMessage('Erro: ID da tarefa não encontrado. Recarregue a página.', 'danger');
+                console.error('ID da tarefa não encontrado para upload de áudio.'); // Log de depuração
                 return;
             }
 
@@ -584,8 +584,10 @@ $(document).ready(function() {
                 beforeSend: function() {
                     uploadAudioBtn.prop('disabled', true).text('Salvando...');
                     discardAudioBtn.prop('disabled', true);
+                    console.log('Iniciando AJAX para upload de áudio.'); // Log de depuração
                 },
                 success: function(response) {
+                    console.log('Upload de áudio sucesso:', response); // Log da resposta de sucesso
                     flashMessage(response.message, 'success');
                     // Atualiza o player de áudio existente com o novo áudio e mostra-o
                     const newAudioSrc = response.audio_url_base;
@@ -611,19 +613,21 @@ $(document).ready(function() {
                     setTimeout(() => location.reload(), 1500); // Recarrega a página para atualizar o status do áudio e botões
                 },
                 error: function(xhr) {
+                    console.error('Upload de áudio erro:', xhr); // Log da resposta de erro
                     const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao salvar o áudio.';
                     flashMessage(errorMessage, 'danger');
-                    console.error('Erro no upload de áudio:', xhr);
                     uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
                     discardAudioBtn.prop('disabled', false);
                 }
             });
         } else {
             flashMessage('Nenhum áudio gravado para salvar.', 'warning');
+            console.warn('Nenhum audioBlob para fazer upload.'); // Log de depuração
         }
     });
 
     discardAudioBtn.on('click', () => {
+        console.log('Botão Descartar clicado.'); // Log de depuração
         audioChunks = [];
         audioBlob = null;
         recordedAudio.src = '';
@@ -644,10 +648,12 @@ $(document).ready(function() {
     });
 
     deleteAudioBtn.on('click', () => {
+        console.log('Botão Excluir Áudio Existente clicado.'); // Log de depuração
         if (confirm('Tem certeza que deseja excluir o áudio existente? Esta ação não pode ser desfeita.')) {
             const taskId = {{ task.id if task else 'null' }};
             if (!taskId) {
                 flashMessage('Erro: Não há tarefa associada para excluir o áudio.', 'danger');
+                console.error('ID da tarefa não encontrado para exclusão de áudio.'); // Log de depuração
                 return;
             }
 
@@ -656,8 +662,10 @@ $(document).ready(function() {
                 type: 'DELETE',
                 beforeSend: function() {
                     deleteAudioBtn.prop('disabled', true).text('Excluindo...');
+                    console.log('Iniciando AJAX para exclusão de áudio.'); // Log de depuração
                 },
                 success: function(response) {
+                    console.log('Exclusão de áudio sucesso:', response); // Log da resposta de sucesso
                     flashMessage(response.message, 'success');
                     audioPlayerContainer.hide(); // Esconde o player principal
                     noAudioMessage.show(); // Mostra a mensagem de "nenhum áudio"
@@ -672,9 +680,9 @@ $(document).ready(function() {
                     setTimeout(() => location.reload(), 1500); // Recarrega a página para atualizar o status do áudio
                 },
                 error: function(xhr) {
+                    console.error('Exclusão de áudio erro:', xhr); // Log da resposta de erro
                     const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao excluir o áudio.';
                     flashMessage(errorMessage, 'danger');
-                    console.error('Erro na exclusão de áudio:', xhr);
                     deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
                 }
             });

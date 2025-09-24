@@ -1,4 +1,4 @@
-# C:\\\gerenciador-eventos\\\routes.py
+# C:\gerenciador-eventos\routes.py
 
 from flask import render_template, url_for, flash, redirect, request, Blueprint, jsonify, current_app, abort, send_from_directory
 from flask_login import login_user, current_user, logout_user, login_required
@@ -14,10 +14,12 @@ from forms import (RegistrationForm, LoginForm, EventForm, CategoryForm, StatusF
                    EventPermissionForm, CommentForm, AttachmentForm) # <-- ATUALIZADO: Importar AttachmentForm
 
 # NOVO: Importar as funções auxiliares diretamente do forms, se necessário.
+# NOVO: Importar as funções auxiliares diretamente do forms, se necessário.
 # (Alternativamente, podem ser importadas de forma mais puntual dentro das rotas que as usam)
 from forms import get_users, get_task_categories, get_task_statuses, get_roles, AdminRoleForm
 
 # IMPORTAÇÕES DE MODELS ATUALIZADAS
+# CORRIGIDO: Importação de models.py, assumindo que está no mesmo nível que routes.py
 from models import (User, Role, Event, Task, TaskAssignment, ChangeLogEntry, Status,
                     Category, PasswordResetToken, TaskHistory, Group,
                     UserGroup, EventPermission, Comment, TaskCategory, Attachment) # <-- ATUALIZADO: Importar Attachment
@@ -27,6 +29,9 @@ import json
 from sqlalchemy.orm import joinedload, selectinload # Adicionado selectinload
 import uuid
 from werkzeug.utils import secure_filename
+import os
+from flask import send_from_directory
+from utils.changelog_utils import diff_dicts
 import os
 from flask import send_from_directory
 from utils.changelog_utils import diff_dicts
@@ -184,7 +189,6 @@ def home():
     events = get_filtered_events(current_user, search_query, page, per_page)
 
     return render_template('home.html', events=events, title='Todos os Eventos Ativos com Minhas Tarefas', search_query=search_query, current_filter='active')
-
 @main.route("/events/active")
 @login_required
 def active_events():
@@ -1649,6 +1653,7 @@ def delete_task(task_id):
         return redirect(url_for('main.event', event_id=task_obj.event.id))
 
 # =========================================================================
+# =========================================================================
 # NOVA ROTA: CONCLUIR TAREFA
 # =========================================================================
 @main.route("/task/<int:task_id>/complete", methods=['POST'])
@@ -1838,7 +1843,6 @@ def new_group():
         flash('Grupo criado com sucesso!', 'success')
         return redirect(url_for('main.list_groups'))
     return render_template('create_edit_group.html', title='Novo Grupo', form=form, legend='Novo Grupo')
-
 @main.route("/groups")
 @login_required
 @admin_required
@@ -2423,6 +2427,7 @@ def delete_task_audio(task_id):
 
 # =========================================================================
 # =========================================================================
+# =========================================================================
 # NOVAS ROTAS PARA ANEXOS DE TAREFAS (ADICIONADO AQUI)
 # =========================================================================
 
@@ -2436,9 +2441,9 @@ def serve_attachment_file(filename):
     return send_from_directory(current_app.config['UPLOAD_FOLDER_ATTACHMENTS'], filename)
 
 
-@main.route("/task/<int:task_id>/attachment/upload", methods=['POST']) # Rota alterada para consistência
+@main.route("/task/<int:task_id>/attachment/upload", methods=['POST'])
 @login_required
-@permission_required('can_upload_attachments') # Verifica a permissão de upload
+@permission_required('can_upload_attachments')
 def upload_attachment(task_id):
     task_obj = Task.query.get_or_404(task_id)
     form = AttachmentForm()
@@ -2447,22 +2452,28 @@ def upload_attachment(task_id):
         file = form.file.data
         filename = secure_filename(file.filename)
         
-        # Validar tamanho do arquivo (ex: 10MB) - Boa prática de segurança
-        MAX_FILE_SIZE_MB = 10
-        if file.content_length > MAX_FILE_SIZE_MB * 1024 * 1024:
-            return jsonify({'message': f'O arquivo excede o tamanho máximo permitido de {MAX_FILE_SIZE_MB}MB.'}), 413 # Payload Too Large
-
+        # Validar tamanho do arquivo (ex: 20MB) - Boa prática de segurança
+        MAX_FILE_SIZE_MB = 20 # Alterado para 20MB
+        
         # Gerar um nome de arquivo único para evitar colisões
         file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
         unique_filename = str(uuid.uuid4()) + ('.' + file_extension if file_extension else '')
         
         # Definir o caminho completo para salvar o arquivo
-        upload_path = os.path.join(current_app.config['UPLOAD_FOLDER_ATTACHMENTS'], unique_filename)
+        upload_folder_path = current_app.config['UPLOAD_FOLDER_ATTACHMENTS']
+        os.makedirs(upload_folder_path, exist_ok=True) # Garante que a pasta exista
+        upload_path = os.path.join(upload_folder_path, unique_filename)
         
-        # Salvar o arquivo no sistema de arquivos
         try:
-            file.save(upload_path)
-            
+            file.save(upload_path) # Salva o arquivo no sistema de arquivos
+
+            # Verifica o tamanho real do arquivo APÓS salvar para maior precisão
+            actual_filesize = os.path.getsize(upload_path)
+            if actual_filesize > MAX_FILE_SIZE_MB * 1024 * 1024:
+                os.remove(upload_path) # Deleta o arquivo se for muito grande
+                flash(f'O arquivo excede o tamanho máximo permitido de {MAX_FILE_SIZE_MB}MB.', 'danger')
+                return redirect(url_for('main.task_detail', task_id=task_obj.id))
+
             # Criar registro no banco de dados
             attachment = Attachment(
                 task_id=task_obj.id,
@@ -2470,7 +2481,7 @@ def upload_attachment(task_id):
                 unique_filename=unique_filename,
                 storage_path=upload_path, # Guarda o caminho no servidor
                 mimetype=file.mimetype,
-                filesize=file.content_length, # tamanho em bytes
+                filesize=actual_filesize, # Usar o tamanho real
                 uploaded_by_user_id=current_user.id
             )
             db.session.add(attachment)
@@ -2486,19 +2497,28 @@ def upload_attachment(task_id):
             )
             db.session.commit()
             
-            # Retorna um JSON para o AJAX, incluindo o download_url
-            return jsonify({'message': 'Anexo enviado com sucesso!', 'attachment': attachment.to_dict()}), 200
+            # Mensagem de sucesso e REDIRECIONAMENTO
+            flash('Anexo enviado com sucesso!', 'success')
+            return redirect(url_for('main.task_detail', task_id=task_obj.id))
+
         except Exception as e:
             db.session.rollback()
             # Se houve erro no DB, tentar remover o arquivo físico se ele foi salvo
             if os.path.exists(upload_path):
                 os.remove(upload_path)
             current_app.logger.error(f"Erro ao salvar anexo para tarefa {task_obj.id}: {e}", exc_info=True)
-            return jsonify({'message': f'Erro ao salvar anexo: {str(e)}'}), 500
+            # Mensagem de erro e REDIRECIONAMENTO
+            flash(f'Erro ao salvar anexo: {str(e)}', 'danger')
+            return redirect(url_for('main.task_detail', task_id=task_obj.id))
     
-    # Se a validação do formulário falhar
+    # Se a validação do formulário falhar (ex: nenhum arquivo selecionado)
     errors = {field: [str(error) for error in errors] for field, errors in form.errors.items()}
-    return jsonify({'message': 'Erro de validação ao enviar anexo', 'errors': errors}), 400
+    # Exibe cada erro de validação do formulário com flash
+    for field, field_errors in errors.items():
+        for error in field_errors:
+            flash(f'Erro no campo {field}: {error}', 'danger')
+    # REDIRECIONAMENTO AQUI
+    return redirect(url_for('main.task_detail', task_id=task_obj.id))
 
 
 # Rota para download de anexo

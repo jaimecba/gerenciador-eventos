@@ -4,8 +4,8 @@
 <div class="container mt-4">
     <h2 class="calendar-page-title">Calendário de Eventos e Tarefas</h2>
 
-    {# Dropdown para seleção de visualização customizado para mobile #}
-    <div class="d-lg-none mb-3"> 
+    {# Dropdown para seleção de visualização customizado para mobile E DESKTOP #}
+    <div class="mb-3 w-100 w-lg-auto mx-lg-auto"> 
         <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="viewModeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
             Visualização: Mês {# Texto inicial do botão #}
         </button>
@@ -14,7 +14,6 @@
             <li><a class="dropdown-item" href="#" data-view="timeGridWeek">Semana (Agenda)</a></li>
             <li><a class="dropdown-item" href="#" data-view="timeGridDay">Dia (Agenda)</a></li>
             <li><a class="dropdown-item" href="#" data-view="listWeek">Lista (Semana)</a></li>
-            {# NOVO: Opções de lista adicionais #}
             <li><hr class="dropdown-divider"></li> {# Separador #}
             <li><a class="dropdown-item" href="#" data-view="listMonth">Lista (Mês)</a></li>
             <li><a class="dropdown-item" href="#" data-view="listDay">Lista (Dia)</a></li>
@@ -23,7 +22,7 @@
 
     <div id='calendar'></div>
 
-    {# NOVO: Modal para Detalhes de Evento/Tarefa #}
+    {# Modal para Detalhes de Evento/Tarefa #}
     <div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventDetailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -48,10 +47,18 @@
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth', 
             locale: 'pt-br',             
+            customButtons: { // NOVO: Definição do botão customizado
+                voltarHome: {
+                    text: 'Voltar',
+                    click: function() {
+                        window.location.href = '{{ url_for('main.home') }}'; // Redireciona para /home
+                    }
+                }
+            },
             headerToolbar: {
-                left: 'prev,next today',
+                left: 'prev,next voltarHome', // MODIFICADO: 'today' substituído por 'voltarHome'
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' 
+                right: '' // VAZIO: Nosso dropdown customizado é o único controle de visualização
             },
             slotMinTime: '08:00:00', 
             slotMaxTime: '20:00:00', 
@@ -64,7 +71,6 @@
                     alert('Houve um erro ao carregar os eventos!');
                 }
             },
-            {# MODIFICADO: eventClick para abrir modal #}
             eventClick: function(info) {
                 info.jsEvent.preventDefault(); // Impede o comportamento padrão (abrir URL diretamente)
                 
@@ -89,28 +95,26 @@
                 });
             },
             eventContent: function(arg) {
-                // Personaliza o conteúdo do evento/tarefa para mostrar apenas ícones em dayGridMonth/dayGridWeek
-                if (arg.view.type === 'dayGridMonth' || arg.view.type === 'dayGridWeek') {
-                    if (arg.event.extendedProps.type === 'Tarefa') {
-                        let iconHtml = '<i class="fas fa-tasks fc-event-task-icon"></i>'; 
-                        return { html: iconHtml };
-                    } else if (arg.event.extendedProps.type === 'Evento') {
-                        let iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; 
-                        return { html: iconHtml };
-                    }
+                let iconHtml = '';
+                let titleHtml = `<span class="fc-event-title-text">${arg.event.title}</span>`;
+
+                if (arg.event.extendedProps.type === 'Tarefa') {
+                    iconHtml = '<i class="fas fa-tasks fc-event-task-icon"></i>'; 
+                } else if (arg.event.extendedProps.type === 'Evento') {
+                    iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; 
                 }
-                // Para outras visualizações (timeGrid, list) ou tipos de evento, mostra o título normal
-                return { html: arg.event.title };
+
+                // Retorna ambos (ícone e título). O CSS decidirá qual mostrar baseado no dispositivo e visualização.
+                return { html: `<div class="fc-event-display-wrapper">${iconHtml}${titleHtml}</div>` };
             }
         });
         calendar.render();
 
-        // Lógica para o dropdown de visualização customizado (mobile)
+        // Lógica para o dropdown de visualização customizado
         $('.dropdown-menu .dropdown-item').on('click', function(e) {
             e.preventDefault();
             var view = $(this).data('view');
             calendar.changeView(view);
-            // Atualiza o texto do botão do dropdown para refletir a visualização atual
             var viewText = $(this).text();
             $('#viewModeDropdown').text('Visualização: ' + viewText);
         });
@@ -122,8 +126,8 @@
             else if (viewInfo.view.type === 'timeGridWeek') currentViewText = 'Semana (Agenda)';
             else if (viewInfo.view.type === 'timeGridDay') currentViewText = 'Dia (Agenda)';
             else if (viewInfo.view.type === 'listWeek') currentViewText = 'Lista (Semana)';
-            else if (viewInfo.view.type === 'listMonth') currentViewText = 'Lista (Mês)'; // NOVO
-            else if (viewInfo.view.type === 'listDay') currentViewText = 'Lista (Dia)';   // NOVO
+            else if (viewInfo.view.type === 'listMonth') currentViewText = 'Lista (Mês)';
+            else if (viewInfo.view.type === 'listDay') currentViewText = 'Lista (Dia)';
             $('#viewModeDropdown').text('Visualização: ' + currentViewText);
         });
 

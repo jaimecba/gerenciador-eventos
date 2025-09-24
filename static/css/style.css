@@ -171,7 +171,7 @@ legend.border-bottom {
     background-color: #17a2b8; /* Fundo preenchido com a cor de acento */
     color: #ffffff; /* Texto branco */
     border-color: #17a2b8; /* Borda também na cor de acento */
-    box-shadow: 0 0.2rem 0.5rem rgba(23, 162, 184, 0.2); /* Sombra sutil ao passar o mouse */
+    box-shadow: 0 0.2rem 0.5rem rgba(0, 0, 0, 0.2); /* Sombra sutil ao passar o mouse */
     outline: none; /* Garante que não haja outline duplicado */
 }
 
@@ -310,8 +310,6 @@ a:hover {
 .task-card .card-text {
     margin-bottom: 0.25rem;
 }
-
-/* Removido .task-card small { font-size: 0.8em; } pois agora usamos text-size-12px */
 
 /* Ajustado para garantir que os badges dos cards de tarefas também sejam 12px */
 .task-card .badge {
@@ -728,24 +726,60 @@ a:hover {
 }
 
 /* --- Responsividade do FullCalendar --- */
-@media (max-width: 991.98px) { /* Aplica-se a telas com largura de até 991.98px (breakpoints 'md' e 'sm' do Bootstrap) */
-    
-    /* Ponto 1: "Calendário de Eventos e Tarefas" */
-    .calendar-page-title { /* Para o <h2> "Calendário de Eventos e Tarefas" */
-        font-size: 20px !important; /* Tamanho fixo para o título principal em mobile */
+
+/* Estilos de Eventos: Mostra Ícone no Mobile, Título no Desktop */
+.fc-event-display-wrapper {
+    display: flex;
+    align-items: center; /* Alinha verticalmente ícone e texto */
+    justify-content: center; /* Centraliza horizontalmente (útil para ícone-only) */
+    width: 100%; /* Ocupa a largura total para ajudar na centralização */
+}
+.fc-event-display-wrapper .fc-event-task-icon,
+.fc-event-display-wrapper .fc-event-event-icon {
+    display: none; /* Por padrão, esconde os ícones */
+}
+.fc-event-display-wrapper .fc-event-title-text {
+    display: block; /* Por padrão, mostra o título */
+    flex-grow: 1; /* Permite que o título ocupe o espaço */
+    text-align: left; /* Alinhamento padrão do título */
+    white-space: nowrap; /* Tenta manter o título em uma linha */
+    overflow: hidden; /* Esconde overflow */
+    text-overflow: ellipsis; /* Adiciona elipses */
+    font-size: 0.85em; /* Tamanho da fonte padrão para eventos */
+    line-height: 1.2; /* Altura da linha padrão */
+    color: inherit; /* Herda a cor do texto do evento */
+}
+
+/* Estilos específicos para eventos no dayGridMonth/dayGridWeek */
+.fc-daygrid-event .fc-event-display-wrapper {
+    background: transparent !important; /* Fundo transparente para o wrapper dentro do evento */
+    border: none !important; /* Remove borda para o wrapper dentro do evento */
+    padding: 0 !important; /* Remove padding para o wrapper dentro do evento */
+    height: auto; /* Altura automática */
+    min-height: 20px; /* Garante altura mínima para ícones */
+    width: 100%; /* Ocupa largura total */
+}
+
+/* ========================================================== */
+/* ESTILOS PARA MOBILE (max-width: 991.98px) - ATUALIZADO */
+/* ========================================================== */
+@media (max-width: 991.98px) { 
+    /* Título principal da página do calendário */
+    .calendar-page-title { 
+        font-size: 20px !important; 
         text-align: center;
         margin-bottom: 1rem;
     }
 
-    /* Ponto 1: Título do FullCalendar (ex: "Setembro 2025") */
+    /* Título do FullCalendar (ex: "Setembro 2025") */
     .fc-toolbar-title { 
-        font-size: 0.8em !important; /* Menor, combina com os nomes dos dias da semana */
+        font-size: 0.9em !important; /* Ajustado para um pouco maior */
         text-align: center;
         width: 100%;
         margin: 0 !important;
     }
 
-    /* Ponto 1: Nomes dos dias da semana (Dom, Seg, Ter...) */
+    /* Nomes dos dias da semana (Dom, Seg, Ter...) */
     .fc-col-header-cell-cushion { 
         font-size: 0.8em !important;
         padding: 0.2em !important;
@@ -753,148 +787,127 @@ a:hover {
 
     /* Ajustes gerais para a barra de cabeçalho do calendário */
     .fc-header-toolbar {
-        flex-direction: column !important; /* Força empilhamento vertical */
-        align-items: flex-start !important; /* Alinha à esquerda */
+        flex-direction: column !important; 
+        align-items: flex-start !important; 
         padding: 0.5rem !important;
     }
 
     .fc-toolbar-chunk {
-        width: 100% !important; /* Ocupa a largura total */
-        margin-bottom: 0.5rem !important; /* Espaçamento entre as seções */
-        display: flex !important; /* Habilita flexbox */
+        width: 100% !important; 
+        margin-bottom: 0.5rem !important; 
+        display: flex !important; 
         align-items: center !important;
     }
 
-    /* Ponto 3: Botões 'Anterior, Próximo, Hoje' */
+    /* Botões 'Anterior, Próximo, Hoje' */
     .fc-header-toolbar .fc-toolbar-chunk:first-child { 
-        justify-content: space-around !important; /* Distribui o espaço entre os botões */
-        order: 2 !important; /* Move esta seção para baixo (o título virá primeiro) */
-        font-size: 0.7em !important; /* Fonte menor para os botões */
+        justify-content: space-around !important; 
+        order: 2 !important; /* Move para baixo no mobile */
+        font-size: 0.8em !important; /* Aumentado */
         padding: 0.5rem 0 !important;
     }
-    .fc-header-toolbar .fc-button { /* Alvo os botões individuais */
-        padding: 0.2em 0.5em !important; /* Padding menor */
-        font-size: 0.8em !important; /* Fonte menor dentro dos botões */
+    .fc-header-toolbar .fc-button { 
+        padding: 0.2em 0.5em !important; 
+        font-size: 0.9em !important; /* Aumentado */
     }
 
     /* Ajusta o título do calendário (chunk central da toolbar) */
     .fc-toolbar-chunk:nth-child(2) { 
-        order: 1 !important; /* Faz com que o título venha primeiro */
-        margin-bottom: 1rem !important; /* Espaçamento maior abaixo do título */
-        justify-content: center !important; /* Centraliza o título */
+        order: 1 !important; /* Move para cima no mobile */
+        margin-bottom: 1rem !important; 
+        justify-content: center !important; 
     }
 
-    /* Ponto 2: Oculta os botões de visualização padrão do FullCalendar (month, week, day, list) */
-    .fc-header-toolbar .fc-toolbar-chunk:last-child { /* Alvo o chunk que contém esses botões */
-        display: none !important; /* Força a ocultação em mobile */
+    /* Eventos/Tarefas em Mobile (dayGridMonth/dayGridWeek) - Mostra SÓ Ícone */
+    .fc-daygrid-event .fc-event-display-wrapper {
+        padding: 0 !important; 
+        min-height: 20px !important; 
+        background: transparent !important; 
+        border: none !important; 
+        display: flex !important; 
+        justify-content: center !important; 
+        align-items: center !important; 
+        width: 100% !important; 
     }
-    /* Regra de segurança extra para ocultar o grupo de botões caso a anterior não funcione */
-    .fc-header-toolbar .fc-button-group {
-        display: none !important;
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-title-text {
+        display: none !important; /* Esconde o título */
     }
-
-    /* Ponto 4: Ícone para Tarefas e Eventos (visíveis apenas em dayGridMonth/dayGridWeek) */
-    .fc-event-task-icon { 
-        font-size: 0.9em !important; /* Tamanho do ícone de tarefa */
-        color: #ffc107 !important; /* Cor amarela para tarefa (exemplo) */
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
+        display: block !important; /* Mostra o ícone */
+        font-size: 1em !important; /* Tamanho do ícone */
     }
-    .fc-event-event-icon { /* NOVO: Estilo para ícone de evento */
-        font-size: 0.9em !important; /* Tamanho do ícone de evento */
-        color: #007bff !important; /* Cor azul para evento (exemplo) */
-    }
+    .fc-event-task-icon { color: #ffc107 !important; } /* Cor amarela para tarefa */
+    .fc-event-event-icon { color: #007bff !important; } /* Cor azul para evento */
     
-    /* Centraliza o ícone dentro do espaço do evento e remove estilos de fundo/borda para ambos */
-    .fc-event:has(.fc-event-task-icon),
-    .fc-event:has(.fc-event-event-icon) {
-        padding: 0 !important; /* Remove todo o padding */
-        min-height: 20px !important; /* Garante altura mínima */
-        background: transparent !important; /* Fundo transparente */
-        border: none !important; /* Remove borda */
-        display: flex !important; /* Para centralização */
-        justify-content: center !important; /* Centraliza horizontalmente */
-        align-items: center !important; /* Centraliza verticalmente */
-        width: 100% !important; /* Ocupa largura total para centralização */
-    }
-
-    /* Ajuste para células do dia, se necessário, para evitar sobreposição */
-    .fc-daygrid-day-number {
-        font-size: 0.8em !important;
-    }
-    .fc-daygrid-event-harness { /* Garante que o evento (ícone) não seja muito alto */
-        height: auto !important;
-        min-height: 20px !important;
-    }
-    .fc-daygrid-day-events { /* Ajusta o espaçamento dos eventos dentro do dia */
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
+    /* Número do dia na célula do calendário */
+    .fc-daygrid-day-number { font-size: 0.8em !important; }
+    .fc-daygrid-event-harness { height: auto !important; min-height: 20px !important; }
+    .fc-daygrid-day-events { padding-top: 0 !important; padding-bottom: 0 !important; }
 }
 
-/* Em telas maiores (desktop), esconde o dropdown customizado e mostra os botões padrões do FullCalendar */
+/* ========================================================== */
+/* ESTILOS PARA DESKTOP (min-width: 992px) - ATUALIZADO */
+/* ========================================================== */
 @media (min-width: 992px) {
-    .d-lg-none { /* O dropdown customizado */
-        display: none !important; /* Esconde em desktop */
-    }
-    
-    /* Restaura o tamanho da fonte do título principal para desktop */
+    /* Título principal da página do calendário */
     .calendar-page-title {
-        font-size: 2.5rem !important; /* Ou o tamanho padrão que você usa para h2 em desktop */
+        font-size: 2.5rem !important; 
         text-align: left;
     }
 
-    /* Certifica que os botões de visualização padrão do FullCalendar aparecem em desktop */
-    .fc-header-toolbar .fc-toolbar-chunk:last-child { 
-        display: flex !important; /* Mostra o chunk */
-        width: auto !important; /* Retorna à largura padrão */
-        margin-bottom: 0 !important;
-        justify-content: flex-end !important; /* Alinha os botões à direita */
+    /* Título do FullCalendar (ex: "Setembro 2025") */
+    .fc-toolbar-title { 
+        font-size: 2em !important; /* Aumentado para desktop */
     }
-    /* Mostra o grupo de botões */
-    .fc-header-toolbar .fc-button-group {
-        display: inline-flex !important; /* Mostra o grupo de botões */
+    /* Nomes dos dias da semana (Dom, Seg, Ter...) */
+    .fc-col-header-cell-cushion { 
+        font-size: 1.1em !important; /* Ligeiramente maior para desktop */
+    }
+    /* Número do dia na célula do calendário */
+    .fc-daygrid-day-number { 
+        font-size: 1em !important; 
     }
 
-    /* Restaura o layout padrão da toolbar para desktop */
+    /* Layout da barra de ferramentas do FullCalendar para desktop */
     .fc-header-toolbar {
         flex-direction: row !important;
         align-items: center !important;
         padding: 0 !important;
     }
-    .fc-toolbar-chunk:first-child {
-        order: 0 !important; /* Volta à ordem normal */
+    .fc-toolbar-chunk:first-child { /* prev, next, today buttons */
+        order: 0 !important; 
         justify-content: flex-start !important;
-        font-size: inherit !important; /* Volta ao tamanho de fonte padrão */
+        font-size: inherit !important; 
     }
-    .fc-toolbar-chunk:nth-child(2) {
-        order: 0 !important; /* Volta à ordem normal */
+    .fc-toolbar-chunk:nth-child(2) { /* Title (e.g., September 2025) */
+        order: 0 !important; 
         margin-bottom: 0 !important;
     }
 
-    /* Restaura o tamanho da fonte do título do FullCalendar para desktop */
-    .fc-toolbar-title { 
-        font-size: 1.75em !important; /* Ou o padrão do FullCalendar */
+    /* Eventos/Tarefas em Desktop (dayGridMonth/dayGridWeek) - Mostra SÓ Título */
+    .fc-daygrid-event .fc-event-display-wrapper {
+        /* Restaura estilos padrão do FullCalendar para eventos */
+        background-color: var(--fc-event-bg-color, #3788d8) !important;
+        border-color: var(--fc-event-border-color, #3788d8) !important;
+        color: var(--fc-event-text-color, #fff) !important;
+        border-radius: var(--fc-event-border-radius, 3px) !important;
+        padding: var(--fc-event-padding, 1px 3px) !important;
+        display: block !important; /* Volta para o display block padrão do FC */
+        text-align: left !important; /* Garante que o texto esteja à esquerda */
+        width: auto !important; /* Deixa o FullCalendar gerenciar a largura */
+        justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
     }
-    /* Restaura o tamanho da fonte dos nomes dos dias para desktop */
-    .fc-col-header-cell-cushion { 
-        font-size: 1em !important; /* Padrão */
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-title-text {
+        display: block !important; /* Mostra o título */
+        font-size: 0.9em !important; /* Tamanho da fonte para eventos desktop (ajustado para ser legível) */
+        line-height: 1.2 !important;
+        white-space: normal !important; /* Permite quebra de linha se necessário */
+        text-overflow: ellipsis; /* Mantém elipses para overflow */
+        overflow: hidden; /* Esconde overflow */
     }
-    /* Restaura os botões de navegação para desktop */
-    .fc-header-toolbar .fc-button {
-        padding: var(--fc-button-padding, 0.4em 0.65em) !important; /* Restaura padding padrão do FC */
-        font-size: 1em !important; /* Restaura font size padrão */
-    }
-
-    /* Garante que eventos/tarefas mostrem o título completo em desktop */
-    .fc-event:has(.fc-event-task-icon),
-    .fc-event:has(.fc-event-event-icon) {
-        /* Desfaz os estilos de ícone se eles forem apenas para mobile, ou defina um novo estilo para desktop */
-        background: var(--fc-event-bg-color, #3788d8) !important; /* Restaura cor de fundo padrão */
-        border: var(--fc-event-border-color, #3788d8) !important; /* Restaura borda padrão */
-        padding: var(--fc-event-padding, 1px 3px) !important; /* Restaura padding padrão */
-        display: block !important; /* Retorna ao display padrão */
-        color: var(--fc-event-text-color, #fff) !important; /* Restaura cor de texto padrão */
-    }
-    .fc-event-task-icon, .fc-event-event-icon {
-        display: none !important; /* Esconde ícones em desktop, mostrando o título normal */
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
+        display: none !important; /* Esconde o ícone */
     }
 }

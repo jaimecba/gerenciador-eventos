@@ -265,11 +265,11 @@
             <!-- Comentários -->
             <div class="card">
                 <div class="card-header">
-                    <h6 class="mb-0">Comentários ({{ task.comments|length }})</h6>
+                    <h6 id="comments-count-header" class="mb-0">Comentários ({{ task.comments|length }})</h6> {# ADICIONADO ID #}
                 </div>
                 <div class="card-body">
                     {% if task.comments %}
-                        <div class="comments-list" style="max-height: 300px; overflow-y: auto;">
+                        <div id="comments-list-body" class="comments-list" style="max-height: 300px; overflow-y: auto;"> {# ADICIONADO ID #}
                             {% for comment in task.comments %}
                                 <div class="border-bottom pb-2 mb-2">
                                     <div class="d-flex justify-content-between">
@@ -281,12 +281,14 @@
                             {% endfor %}
                         </div>
                     {% else %}
-                        <p class="text-muted">Nenhum comentário ainda.</p>
+                        <div id="comments-list-body" class="comments-list" style="max-height: 300px; overflow-y: auto;"> {# ADICIONADO ID #}
+                            <p class="text-muted" id="no-comments-message">Nenhum comentário ainda.</p> {# ADICIONADO ID #}
+                        </div>
                     {% endif %}
 
                     {% if can_manage_task_comments %}
                         <hr>
-                        <form id="add-comment-form" method="POST" action="{{ url_for('main.add_comment', event_id=event.id, task_id=task.id) }}">
+                        <form id="add-comment-form" method="POST" action="{{ url_for('main.get_or_add_task_comments_api', task_id=task.id) }}"> {# CORRIGIDO ACTION #}
                             {{ comment_form.hidden_tag() }}
                             <div class="mb-3">
                                 {{ comment_form.content(class="form-control", rows="3", placeholder="Adicione um comentário...") }}
@@ -436,31 +438,65 @@ $(document).ready(function() {
         }
     });
 
-    // Adicionar comentário
+    // Adicionar comentário (ATUALIZADO PARA USAR A API E ATUALIZAR DINAMICAMENTE)
     $('#add-comment-form').on('submit', function(e) {
         e.preventDefault();
-        console.log('Formulário de comentário submetido.'); // Log de depuração
-        var form = $(this);
-        var formData = new FormData(form[0]);
+        console.log('Formulário de comentário submetido.');
+        // Assumindo que o campo 'content' do Flask-WTF CommentForm renderiza com id="content"
+        var commentTextarea = $('#content'); 
+        var commentText = commentTextarea.val().trim();
+        var taskId = {{ task.id }}; // Obter ID da tarefa do contexto Jinja
+
+        if (!commentText) {
+            flashMessage('Por favor, digite um comentário.', 'warning');
+            return;
+        }
 
         $.ajax({
-            url: form.attr('action'),
+            url: "{{ url_for('main.get_or_add_task_comments_api', task_id=task.id) }}", // URL da API correta
             type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
+            contentType: 'application/json', // Enviar como JSON
+            data: JSON.stringify({ content: commentText }), // Enviar o conteúdo do comentário
             success: function(response) {
-                console.log('AJAX comentário sucesso:', response); // Log da resposta de sucesso
-                if (response.success) {
-                    flashMessage('Comentário adicionado com sucesso!', 'success');
-                    location.reload();
-                } else {
-                    flashMessage('Erro ao adicionar comentário.', 'danger');
+                console.log('AJAX comentário sucesso:', response);
+                flashMessage(response.message || 'Comentário adicionado com sucesso!', 'success');
+                commentTextarea.val(''); // Limpar o textarea
+
+                // Adicionar dinamicamente o novo comentário à lista
+                var commentsList = $('#comments-list-body');
+                var newCommentHtml = `
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong>${response.user}</strong>
+                            <small class="text-muted">${response.date}</small>
+                        </div>
+                        <p class="mb-0">${response.text}</p>
+                    </div>
+                `;
+                commentsList.append(newCommentHtml);
+                
+                // Remover a mensagem "Nenhum comentário ainda." se ela existir
+                $('#no-comments-message').remove();
+
+                // Rolar para o final da lista de comentários
+                commentsList.scrollTop(commentsList[0].scrollHeight);
+
+                // Atualizar o cabeçalho de contagem de comentários
+                var commentsCountHeader = $('#comments-count-header');
+                var currentCountMatch = commentsCountHeader.text().match(/\((\d+)\)/);
+                if (currentCountMatch) {
+                    var currentCount = parseInt(currentCountMatch[1]);
+                    commentsCountHeader.html(`Comentários (${currentCount + 1})`);
                 }
+
             },
             error: function(xhr) {
-                console.error('AJAX comentário erro:', xhr); // Log da resposta de erro
-                flashMessage('Erro ao adicionar comentário.', 'danger');
+                console.error('AJAX comentário erro:', xhr);
+                var errorMessage = 'Erro ao adicionar comentário.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                flashMessage(errorMessage, 'danger');
             }
         });
     });

@@ -30,6 +30,9 @@ import uuid
 from werkzeug.utils import secure_filename
 import os
 from flask import send_from_directory
+from werkzeug.utils import secure_filename
+import os
+from flask import send_from_directory
 from utils.changelog_utils import diff_dicts
 from functools import wraps # Importado para o decorator permission_required
 
@@ -157,7 +160,6 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
 
     else: # Se não está autenticado, não deve ver eventos
         return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
-    
     search_query_text = request.args.get('search', '')
     if search_query_text:
         base_query = base_query.filter(
@@ -423,6 +425,7 @@ def reset_token(token):
     return render_template('reset_token.html', title='Redefinir Senha', form=form)
 
 
+# =========================================================================
 # =========================================================================
 # =========================================================================
 # =========================================================================
@@ -1102,6 +1105,7 @@ def new_task(event_id):
 
 # =========================================================================
 # =========================================================================
+# =========================================================================
 # NOVA ROTA: task_detail (Página de detalhes completa da Tarefa)
 # =========================================================================
 @main.route("/task/<int:task_id>")
@@ -1238,78 +1242,138 @@ def serve_audio_file(filename):
 
 
 # =========================================================================
-# NOVO: Rota API para buscar comentários de uma tarefa (agora na página da tarefa)
+# ATUALIZADO: Rota API para buscar E ADICIONAR comentários de uma tarefa
+# AGORA SUPORTA GET e POST e espera 'content' no POST
 # =========================================================================
-@main.route('/api/tasks/<int:task_id>/comments', methods=['GET'])
+@main.route('/api/comments/task/<int:task_id>', methods=['GET', 'POST'])
 @login_required
-def get_task_comments_api(task_id):
+def get_or_add_task_comments_api(task_id):
     task = Task.query.get_or_404(task_id)
 
-    # Verifique se o usuário tem permissão para ver os comentários da tarefa
-    # (Por exemplo, se ele pode visualizar o evento ou gerenciar os comentários)
-    if not (current_user.is_admin or
-            task.event.author_id == current_user.id or
-            current_user.id in [u.id for u in task.assignees] or
-            (current_user.role_obj and current_user.role_obj.can_view_task_history) or
-            (current_user.role_obj and current_user.role_obj.can_manage_task_comments)):
-        return jsonify({'message': 'Você não tem permissão para ver comentários desta tarefa.'}), 403
+    # --- Verificação de permissão geral para comentários (GET e POST) ---
+    can_manage_or_view_comments = (
+        current_user.is_admin or
+        task.event.author_id == current_user.id or
+        current_user.id in [u.id for u in task.assignees] or # CORREÇÃO AQUI
+        (current_user.role_obj and (current_user.role_obj.can_view_task_history or current_user.role_obj.can_manage_task_comments))
+    )
+    if not can_manage_or_view_comments:
+        return jsonify({'message': 'Você não tem permissão para gerenciar comentários desta tarefa.'}), 403
 
-    # === CORREÇÃO AQUI: Adicionado .options(joinedload(Comment.author)) para carregar a relação ===
-    # === E certifique-se de que o `from sqlalchemy.orm import joinedload` está no topo do seu routes.py ===
-    comments = Comment.query.filter_by(task_id=task.id).options(joinedload(Comment.author)).order_by(Comment.timestamp.desc()).all()
-    comments_data = []
-    for comment in comments:
-        comments_data.append({
-            'id': comment.id,
-            'content': comment.content,
-            'timestamp': comment.timestamp.isoformat(),
-            # === CORREÇÃO AQUI: Usando comment.author.username em vez de comment.user.username ===
-            'author': comment.author.username if comment.author else 'Usuário Desconhecido'
-        })
-    return jsonify(comments_data)
+    if request.method == 'GET':
+        # --- Lógica GET (Buscar Comentários) ---
+        comments = Comment.query.filter_by(task_id=task.id).options(joinedload(Comment.author)).order_by(Comment.timestamp.asc()).all()
+        comments_data = []
+        for comment in comments:
+            comments_data.append({
+                'id': comment.id,
+                'content': comment.content, # Campo no seu modelo é 'content'
+                'timestamp': comment.timestamp.isoformat(),
+                'user': comment.author.username if comment.author else 'Usuário Desconhecido', # Nome do campo no seu modelo é 'author'
+                'date': comment.timestamp.strftime('%d/%m/%Y %H:%M') # Formato para o frontend
+            })
+        return jsonify(comments_data)
+
+    elif request.method == 'POST':
+        # --- Lógica POST (Adicionar Comentário) ---
+        # Permissão específica para adicionar (se for mais restrita que ver)
+        can_add_comment = (
+            current_user.is_admin or
+            task.event.author_id == current_user.id or
+            current_user.id in [u.id for u in task.assignees] or # CORREÇÃO AQUI
+            (current_user.role_obj and current_user.role_obj.can_manage_task_comments)
+        )
+        if not can_add_comment:
+            return jsonify({'message': 'Você não tem permissão para adicionar comentários a esta tarefa.'}), 403
+        
+        data = request.get_json()
+        # >>> MODIFICAÇÃO AQUI: Espera 'content' em vez de 'text' <<<
+        comment_text = data.get('content', '').strip() 
+
+        if not comment_text:
+            return jsonify({'message': 'O texto do comentário não pode ser vazio.'}), 400
+
+        try:
+            new_comment = Comment(
+                content=comment_text,
+                task_id=task.id,
+                user_id=current_user.id,
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(new_comment)
+            db.session.commit()
+
+            # Log no ChangeLogEntry
+            ChangeLogEntry.log_creation(
+                user_id=current_user.id,
+                record_type='Comment',
+                record_id=new_comment.id,
+                new_data=new_comment.to_dict(), # Adapte se new_comment.to_dict() não existir ou for diferente
+                description=f"Comentário adicionado por '{current_user.username}' na tarefa '{task.title}'."
+            )
+            db.session.commit() # Commit do changelog
+
+            # Retorna o comentário recém-criado para que o frontend possa atualizá-lo
+            formatted_date = new_comment.timestamp.strftime('%d/%m/%Y %H:%M')
+            return jsonify({
+                'id': new_comment.id,
+                'user': current_user.username,
+                'date': formatted_date,
+                'text': new_comment.content, # Retorna como 'text' para o frontend que espera isso
+                'message': 'Comentário adicionado com sucesso!'
+            }), 201
+
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Erro ao adicionar comentário à tarefa {task_id}: {e}", exc_info=True)
+            return jsonify({'message': f'Erro interno do servidor ao adicionar comentário: {str(e)}'}), 500
 
 # =========================================================================
-# NOVO: Rota para adicionar comentário a uma tarefa
+# FIM DA ROTA API DE COMENTÁRIOS ATUALIZADA
 # =========================================================================
-@main.route('/events/<int:event_id>/tasks/<int:task_id>/comments/add', methods=['POST'])
-@login_required
-def add_comment(event_id, task_id):
-    event = Event.query.get_or_404(event_id)
-    task = Task.query.get_or_404(task_id)
 
-    # Verifica permissão para gerenciar comentários da tarefa
-    if not (current_user.is_admin or
-            task.event.author_id == current_user.id or
-            current_user.id in [u.id for u in task.assignees] or
-            (current_user.role_obj and current_user.role_obj.can_manage_task_comments)):
-        # Retorna JSON para requisições AJAX que falham permissão
-        return jsonify({'success': False, 'message': 'Você não tem permissão para adicionar comentários.'}), 403
 
-    form = CommentForm()
-    if form.validate_on_submit():
-        new_comment = Comment(
-            content=form.content.data,
-            task_id=task.id,
-            user_id=current_user.id,
-            timestamp=datetime.now()
-        )
-        db.session.add(new_comment)
-        db.session.commit()
+# =========================================================================
+# NOVO: Rota para adicionar comentário a uma tarefa (foi substituída pela rota API acima)
+# Esta rota /events/<int:event_id>/tasks/<int:task_id>/comments/add NÃO É MAIS NECESSÁRIA
+# pois a API /api/comments/task/<int:task_id> agora lida com o POST.
+# Vou mantê-la comentada por segurança, mas ela não será usada pelo frontend do calendário.
+# =========================================================================
+# @main.route('/events/<int:event_id>/tasks/<int:task_id>/comments/add', methods=['POST'])
+# @login_required
+# def add_comment(event_id, task_id):
+#     event = Event.query.get_or_404(event_id)
+#     task = Task.query.get_or_404(task_id)
 
-        ChangeLogEntry.log_creation(
-            user_id=current_user.id,
-            record_type='Comment',
-            record_id=new_comment.id,
-            new_data=new_comment.to_dict(),
-            description=f"Comentário adicionado por '{current_user.username}' na tarefa '{task.title}'."
-        )
-        db.session.commit()
+#     if not (current_user.is_admin or
+#             task.event.author_id == current_user.id or
+#             current_user.id in [u.id for u in task.assignees] or
+#             (current_user.role_obj and current_user.role_obj.can_manage_task_comments)):
+#         return jsonify({'success': False, 'message': 'Você não tem permissão para adicionar comentários.'}), 403
 
-        # Retorna JSON de sucesso para requisições AJAX
-        return jsonify({'success': True, 'message': 'Comentário adicionado com sucesso!'})
-    else:
-        # Retorna JSON com erros de validação para requisições AJAX
-        return jsonify({'success': False, 'errors': form.errors, 'message': 'Erros de validação.'}), 400
+#     form = CommentForm()
+#     if form.validate_on_submit():
+#         new_comment = Comment(
+#             content=form.content.data,
+#             task_id=task.id,
+#             user_id=current_user.id,
+#             timestamp=datetime.now()
+#         )
+#         db.session.add(new_comment)
+#         db.session.commit()
+
+#         ChangeLogEntry.log_creation(
+#             user_id=current_user.id,
+#             record_type='Comment',
+#             record_id=new_comment.id,
+#             new_data=new_comment.to_dict(),
+#             description=f"Comentário adicionado por '{current_user.username}' na tarefa '{task.title}'."
+#         )
+#         db.session.commit()
+
+#         return jsonify({'success': True, 'message': 'Comentário adicionado com sucesso!'})
+#     else:
+#         return jsonify({'success': False, 'errors': form.errors, 'message': 'Erros de validação.'}), 400
 
 # =========================================================================
 # FIM NOVAS ROTAS DE COMENTÁRIOS
@@ -1325,7 +1389,7 @@ def update_task(task_id):
     can_edit_task_permission = (
         current_user.is_admin or
         event_obj.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # Comparação por ID
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
         (current_user.role_obj and current_user.role_obj.can_edit_task)
     )
 
@@ -1658,6 +1722,7 @@ def delete_task(task_id):
 # =========================================================================
 # =========================================================================
 # =========================================================================
+# =========================================================================
 # NOVA ROTA: CONCLUIR TAREFA
 # =========================================================================
 @main.route("/task/<int:task_id>/complete", methods=['POST'])
@@ -1670,7 +1735,7 @@ def complete_task(task_id):
     can_complete_task_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # Comparação por ID
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
         (current_user.role_obj and current_user.role_obj.can_complete_task)
     )
 
@@ -1695,8 +1760,6 @@ def complete_task(task_id):
             task_obj.task_status = completed_status
         else:
             flash("Status 'Concluída' para tarefas não encontrado, por favor, crie-o no admin.", 'warning')
-
-
         history_entry = TaskHistory(
             task_id=task_obj.id,
             action_type='conclusao',
@@ -1743,7 +1806,7 @@ def uncomplete_task(task_id):
     can_uncomplete_task_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # Comparação por ID
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
         (current_user.role_obj and current_user.role_obj.can_uncomplete_task)
     )
 
@@ -1814,7 +1877,7 @@ def task_history_view(task_id):
     can_view_task_history_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # Comparação por ID
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
         (current_user.role_obj and current_user.role_obj.can_view_task_history)
     )
 
@@ -2290,7 +2353,7 @@ def upload_task_audio(task_id):
     can_upload_task_audio_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # Comparação por ID
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
         (current_user.role_obj and current_user.role_obj.can_upload_task_audio)
     )
 
@@ -2325,8 +2388,6 @@ def upload_task_audio(task_id):
             task_obj.audio_path = unique_filename
             task_obj.audio_duration_seconds = audio_duration
             db.session.commit()
-
-            new_data_for_changelog = task_obj.to_dict()
 
             history_entry = TaskHistory(
                 task_id=task_obj.id,
@@ -2375,7 +2436,7 @@ def delete_task_audio(task_id):
     can_delete_task_audio_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # Comparação por ID
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
         (current_user.role_obj and current_user.role_obj.can_delete_task_audio)
     )
 
@@ -2542,7 +2603,7 @@ def download_attachment(attachment_id):
         can_download = True
     elif task_obj.event.author_id == current_user.id: # Autor do evento pode baixar
         can_download = True
-    elif current_user.id in [u.id for u in task_obj.assignees]: # Atribuído à tarefa pode baixar
+    elif current_user.id in [u.id for u in task_obj.assignees]: # CORREÇÃO AQUI
         can_download = True
     elif current_user.role_obj and current_user.role_obj.can_view_event: # Tem permissão global de role para ver eventos
         can_download = True
@@ -2719,7 +2780,7 @@ def calendar_events_feed():
             event_color = "#dc3545" # Vermelho para atrasado (se due_date passou e não está completo)
 
         events_for_calendar.append({
-            'id': f"event-{event_obj.id}",
+            'id': f"event-{event_obj.id}", # Adiciona 'event-' para diferenciar de tarefas se IDs se sobrepuserem
             'title': event_obj.title,
             'start': event_obj.due_date.isoformat(),
             'end': (event_obj.end_date + timedelta(days=1)).isoformat() if event_obj.end_date else (event_obj.due_date + timedelta(days=1)).isoformat(), # FullCalendar end é exclusivo
@@ -2762,8 +2823,8 @@ def calendar_events_feed():
             task_color = "#dc3545" # Vermelho para atrasado
         
         events_for_calendar.append({
-            'id': f"task-{task_obj.id}",
-            'title': f"Tarefa: {task_obj.title}",
+            'id': f"task-{task_obj.id}", # Adiciona 'task-' para diferenciar de eventos se IDs se sobrepuserem
+            'title': task_obj.title,
             'start': task_obj.due_date.isoformat(),
             'end': (task_obj.due_date + timedelta(minutes=60)).isoformat(), # Padrão de 1h de duração para tarefas
             'url': url_for('main.task_detail', task_id=task_obj.id),

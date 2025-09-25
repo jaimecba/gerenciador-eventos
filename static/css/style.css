@@ -994,7 +994,7 @@ a:hover {
 
     /* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
     .comments-list {
-        max-height: 200px; /* Altura máxima para a lista de comentários */
+        max-height: 250px; /* Altura máxima para a lista de comentários, aumentado um pouco */
         overflow-y: auto; /* Adiciona scroll se houver muitos comentários */
         border: 1px solid #e9ecef;
         border-radius: 5px;

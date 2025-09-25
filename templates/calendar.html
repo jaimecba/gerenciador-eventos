@@ -38,12 +38,12 @@
 
                 <hr class="my-3">
 
-                {# NOVO: Seção de Comentários #}
+                {# Seção de Comentários #}
                 <div class="comments-section">
                     <h5 class="mb-2">Comentários</h5>
                     <div id="eventDetailSidebarCommentsList" class="comments-list mb-3">
                         {# Comentários serão carregados aqui via JS #}
-                        <p class="text-muted">Carregando comentários...</p>
+                        <p class="text-muted">Selecione uma tarefa para ver os comentários.</p>
                     </div>
                     <div class="comment-form">
                         <textarea id="commentTextarea" class="form-control mb-2" rows="3" placeholder="Adicionar um comentário..."></textarea>
@@ -76,7 +76,8 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
-        var currentEventId = null; // Para armazenar o ID do evento atualmente exibido na sidebar
+        var currentItemId = null; // Para armazenar o ID do evento/tarefa atualmente exibido na sidebar
+        var currentItemType = null; // Para armazenar o tipo (Evento/Tarefa)
 
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth', 
@@ -92,7 +93,7 @@
             headerToolbar: {
                 left: 'prev,next voltarHome', 
                 center: 'title',
-                right: '' // VAZIO: Nosso dropdown customizado é o único controle de visualização
+                right: '' 
             },
             slotMinTime: '08:00:00', 
             slotMaxTime: '20:00:00', 
@@ -106,13 +107,11 @@
                 }
             },
             eventClick: function(info) {
-                // Se for uma visualização de lista E o elemento clicado for o link do título,
-                // não faz nada e permite que o navegador siga o href do link.
                 if (info.view.type.startsWith('list') && $(info.jsEvent.target).is('a.fc-list-event-title-link')) {
                     return; 
                 }
                 
-                info.jsEvent.preventDefault(); // Impede o comportamento padrão
+                info.jsEvent.preventDefault(); 
                 
                 var eventTitle = info.event.extendedProps.description || info.event.title;
                 var eventUrl = info.event.url;
@@ -121,15 +120,13 @@
                 var eventEnd = info.event.end ? new Date(info.event.end).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
                 var eventDescription = info.event.extendedProps.fullDescription || info.event.extendedProps.description || info.event.title || 'Nenhuma descrição.';
 
-                // Extrai o ID do evento da URL
-                const urlParts = eventUrl.split('/');
-                const idIndex = urlParts.indexOf('detail') + 1; // Supondo URL tipo /events/detail/ID ou /tasks/detail/ID
-                currentEventId = idIndex > 0 && idIndex < urlParts.length ? urlParts[idIndex] : null;
+                // Atualiza o ID e Tipo do item atualmente selecionado
+                currentItemId = info.event.id; // Assume que info.event.id é o ID único do DB
+                currentItemType = eventType;
 
                 const isDesktop = window.matchMedia('(min-width: 992px)').matches;
 
                 if (isDesktop) {
-                    // Preenche o painel lateral
                     $('#eventDetailSidebarTitle').text(eventTitle);
                     $('#eventDetailSidebarType').text(eventType);
                     $('#eventDetailSidebarStart').text(eventStart);
@@ -137,29 +134,27 @@
                     $('#eventDetailSidebarDescription').text(eventDescription);
                     $('#eventDetailSidebarLink').attr('href', eventUrl);
                     
-                    // Abre o painel lateral e ajusta o layout
                     $('#eventDetailSidebar').addClass('open');
                     $('#calendar-container-wrapper').addClass('sidebar-open');
 
-                    // Carrega os comentários para o evento atual
-                    if (currentEventId) {
-                        loadCommentsForEvent(currentEventId, eventType); // Passa o tipo para talvez diferenciar a rota da API
+                    if (currentItemType === 'Tarefa' && currentItemId) {
+                        $('.comments-section').show(); // Mostra a seção de comentários
+                        loadCommentsForItem(currentItemId, currentItemType);
                     } else {
-                        $('#eventDetailSidebarCommentsList').html('<p class="text-danger">Não foi possível carregar os comentários. ID do evento não encontrado.</p>');
+                        // Esconde a seção de comentários para Eventos ou se o ID não for válido
+                        $('.comments-section').hide();
+                        $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Comentários não disponíveis para este tipo de item.</p>');
                     }
 
                 } else {
-                    // Popula o modal (para mobile)
                     $('#eventDetailModalLabel').text(eventTitle);
                     $('#eventDetailLink').attr('href', eventUrl);
 
-                    // Mostra o modal
                     var myModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
                     myModal.show();
                 }
             },
             eventDidMount: function(info) {
-                // Tooltip para todos os tipos de evento/tarefa, exceto para links de lista diretos
                 if (!(info.view.type.startsWith('list') && $(info.el).find('a.fc-list-event-title-link').length)) {
                     $(info.el).tooltip({
                         title: info.event.extendedProps.description || info.event.title,
@@ -171,10 +166,8 @@
             },
             eventContent: function(arg) {
                 if (arg.view.type.startsWith('list')) {
-                    // Para visualizações de lista, torna o título um link direto.
                     return { html: `<a class="fc-list-event-title-link" href="${arg.event.url}">${arg.event.title}</a>` };
                 } else {
-                    // Para outras visualizações (dayGrid, timeGrid), mantém o wrapper de ícone/título
                     let iconHtml = '';
                     let titleHtml = `<span class="fc-event-title-text">${arg.event.title}</span>`;
 
@@ -189,7 +182,6 @@
         });
         calendar.render();
 
-        // Lógica para o dropdown de visualização customizado
         $('.dropdown-menu .dropdown-item').on('click', function(e) {
             e.preventDefault();
             var view = $(this).data('view');
@@ -198,7 +190,6 @@
             $('#viewModeDropdown').text('Visualização: ' + viewText);
         });
 
-        // Atualiza o texto do dropdown customizado quando a visualização do calendário muda 
         calendar.on('viewDidMount', function(viewInfo) {
             var currentViewText = '';
             if (viewInfo.view.type === 'dayGridMonth') currentViewText = 'Mês';
@@ -210,82 +201,85 @@
             $('#viewModeDropdown').text('Visualização: ' + currentViewText);
         });
 
-        // Lógica para fechar o painel lateral
         $('#closeSidebar').on('click', function() {
             $('#eventDetailSidebar').removeClass('open');
             $('#calendar-container-wrapper').removeClass('sidebar-open');
-            currentEventId = null; // Limpa o ID do evento ao fechar
+            currentItemId = null; 
+            currentItemType = null;
         });
 
-        // NOVO: Função para carregar e exibir comentários
-        function loadCommentsForEvent(eventId, eventType) {
+        // Função para carregar e exibir comentários de um item (tarefa)
+        function loadCommentsForItem(itemId, itemType) {
             $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Carregando comentários...</p>');
             
-            // Simulação de chamada AJAX - SUBSTITUA ESTA LÓGICA PELO SEU BACKEND REAL
-            // Supondo que você terá uma rota como /api/comments/event/<event_id> ou /api/comments/task/<task_id>
-            // E que a resposta seja um JSON como: [{user: 'User 1', date: 'DD/MM/YYYY HH:MM', text: 'Comentário 1'}, ...]
-            setTimeout(function() { // Simula um delay de rede
-                const mockComments = [
-                    { user: 'João Silva', date: '25/09/2025 10:30', text: 'Excelente evento! Mal posso esperar.' },
-                    { user: 'Maria Souza', date: '25/09/2025 14:15', text: 'Preciso confirmar minha presença até o final da semana.' },
-                    { user: 'Carlos Mendes', date: '26/09/2025 09:00', text: 'Lembrete: verificar a disponibilidade da sala principal.' }
-                ];
-
-                let commentsHtml = '';
-                if (mockComments.length > 0) {
-                    mockComments.forEach(comment => {
-                        commentsHtml += `
-                            <div class="comment-item mb-2 p-2 border rounded">
-                                <small class="text-muted"><strong>${comment.user}</strong> em ${comment.date}</small>
-                                <p class="mb-0">${comment.text}</p>
-                            </div>
-                        `;
-                    });
-                } else {
-                    commentsHtml = '<p class="text-muted">Nenhum comentário ainda.</p>';
-                }
-                $('#eventDetailSidebarCommentsList').html(commentsHtml);
-            }, 1000); // 1 segundo de delay
-        }
-
-        // NOVO: Função para adicionar um novo comentário
-        $('#addCommentBtn').on('click', function() {
-            const commentText = $('#commentTextarea').val().trim();
-            if (commentText && currentEventId) {
-                // Simulação de chamada AJAX para adicionar comentário
-                // SUBSTITUA ESTA LÓGICA PELO SEU BACKEND REAL
-                console.log(`Adicionando comentário para Evento ID ${currentEventId}: ${commentText}`);
-                
-                // Exemplo de como você faria uma requisição POST com jQuery:
-                /*
+            if (itemType === 'Tarefa') {
+                // Rota real para buscar comentários de tarefas
+                // Ajuste a URL se sua API for diferente
                 $.ajax({
-                    url: `/api/comments/${currentEventId}`, // Ajuste sua rota de API
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ text: commentText }),
-                    success: function(response) {
-                        $('#commentTextarea').val(''); // Limpa o campo
-                        loadCommentsForEvent(currentEventId); // Recarrega os comentários
+                    url: `/api/comments/task/${itemId}`, 
+                    method: 'GET',
+                    success: function(comments) {
+                        let commentsHtml = '';
+                        if (comments && comments.length > 0) {
+                            comments.forEach(comment => {
+                                commentsHtml += `
+                                    <div class="comment-item mb-2 p-2 border rounded">
+                                        <small class="text-muted"><strong>${comment.user}</strong> em ${comment.date}</small>
+                                        <p class="mb-0">${comment.text}</p>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            commentsHtml = '<p class="text-muted">Nenhum comentário ainda para esta tarefa.</p>';
+                        }
+                        $('#eventDetailSidebarCommentsList').html(commentsHtml);
                     },
-                    error: function(error) {
-                        alert('Erro ao adicionar comentário.');
-                        console.error('Erro ao adicionar comentário:', error);
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('Erro ao carregar comentários:', textStatus, errorThrown, jqXHR.responseText);
+                        $('#eventDetailSidebarCommentsList').html('<p class="text-danger">Erro ao carregar comentários.</p>');
                     }
                 });
-                */
-
-                // Para simulação:
-                setTimeout(() => {
-                    $('#commentTextarea').val(''); // Limpa o campo
-                    // Para ver a mudança, você precisaria adicionar o comentário mockado e recarregar.
-                    // Para esta fase, apenas recarregar para ver a simulação é suficiente.
-                    loadCommentsForEvent(currentEventId); 
-                    alert('Comentário adicionado (simulado)!');
-                }, 500);
-
-            } else if (!commentText) {
-                alert('Por favor, digite um comentário.');
+            } else {
+                // Comentários não disponíveis para outros tipos (Eventos)
+                $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Comentários não disponíveis para eventos.</p>');
+                $('.comment-form').hide(); // Esconde o formulário para eventos
             }
+        }
+
+        // Função para adicionar um novo comentário
+        $('#addCommentBtn').on('click', function() {
+            const commentText = $('#commentTextarea').val().trim();
+            
+            // Substitua '{{ current_user.username }}' pelo método real de obter o nome de usuário logado.
+            // Por exemplo, você pode passar para uma variável JS no template: var currentUser = "{{ current_user.username }}";
+            const currentUser = '{{ current_user.username if current_user.is_authenticated else "Usuário Desconhecido" }}'; // Exemplo para Flask-Login
+
+            if (!commentText) {
+                alert('Por favor, digite um comentário.');
+                return;
+            }
+            if (!currentItemId || currentItemType !== 'Tarefa') {
+                alert('Não é possível adicionar comentários para este item.');
+                return;
+            }
+
+            // Rota real para adicionar comentários a tarefas
+            // Ajuste a URL se sua API for diferente
+            $.ajax({
+                url: `/api/comments/task/${currentItemId}`, 
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ text: commentText, user: currentUser }), // Inclui o nome do usuário
+                success: function(response) {
+                    $('#commentTextarea').val(''); // Limpa o campo
+                    loadCommentsForItem(currentItemId, currentItemType); // Recarrega os comentários para mostrar o novo
+                    // console.log('Comentário adicionado:', response);
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert('Erro ao adicionar comentário. Verifique o console para detalhes.');
+                    console.error('Erro ao adicionar comentário:', textStatus, errorThrown, jqXHR.responseText);
+                }
+            });
         });
     });
 </script>

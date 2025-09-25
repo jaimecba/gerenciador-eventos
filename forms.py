@@ -3,8 +3,8 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField, DateField, SelectField, SelectMultipleField, HiddenField, DateTimeField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, Optional, Regexp
-# --- ATUALIZADO: Importar Attachment (ADICIONADO AQUI) ---
-from models import User, Category, Status, TaskCategory, Role, Group, Attachment
+# --- ATUALIZADO: Importar Attachment e EventPermission ---
+from models import User, Category, Status, TaskCategory, Role, Group, Attachment, EventPermission
 from extensions import db
 from flask_login import current_user
 from datetime import date, datetime
@@ -95,6 +95,7 @@ class RequestResetForm(FlaskForm):
         user = User.query.filter_by(email=email.data).first()
         if user is None:
             raise ValidationError('Não existe conta com este e-mail. Você pode se registrar primeiro.')
+
 class ResetPasswordForm(FlaskForm):
     password = PasswordField('Nova Senha', validators=[DataRequired()])
     confirm_password = PasswordField('Confirmar Nova Senha',
@@ -310,9 +311,11 @@ class AssignUsersToGroupForm(FlaskForm):
         self.users.choices = [(u.id, u.username) for u in User.query.order_by(User.username).all()]
 
 class EventPermissionForm(FlaskForm):
-    user = SelectField('Usuário', coerce=int, validators=[Optional()])
-    group = SelectField('Grupo', coerce=int, validators=[Optional()])
-    role = SelectField('Papel de Permissão', coerce=int, validators=[DataRequired()])
+    user = SelectField('Usuário', coerce=int, validators=[DataRequired()])
+    # REMOVIDO: group e role fields
+    # group = SelectField('Grupo', coerce=int, validators=[Optional()])
+    # role = SelectField('Papel de Permissão', coerce=int, validators=[DataRequired()])
+    
     event = HiddenField() # Para passar o objeto do evento para a validação
     submit = SubmitField('Adicionar Permissão')
 
@@ -322,50 +325,37 @@ class EventPermissionForm(FlaskForm):
         # --- DEBUG TEMPORÁRIO ---
         all_users = User.query.order_by(User.username).all()
         print(f"DEBUG EventPermissionForm: Encontrados {len(all_users)} usuários.")
-        
-        all_groups = Group.query.order_by(Group.name).all()
-        print(f"DEBUG EventPermissionForm: Encontrados {len(all_groups)} grupos.")
-        
-        all_roles = Role.query.order_by(Role.name).all()
-        print(f"DEBUG EventPermissionForm: Encontrados {len(all_roles)} papéis.")
+        # REMOVIDO: DEBUG para grupos e papéis
+        # all_groups = Group.query.order_by(Group.name).all()
+        # print(f"DEBUG EventPermissionForm: Encontrados {len(all_groups)} grupos.")
+        # all_roles = Role.query.order_by(Role.name).all()
+        # print(f"DEBUG EventPermissionForm: Encontrados {len(all_roles)} papéis.")
         # --- FIM DEBUG TEMPORÁRIO ---
 
-        self.user.choices = [(0, "-- Selecione um Usuário (Opcional) --")] + [(u.id, u.username) for u in all_users]
-        self.group.choices = [(0, "-- Selecione um Grupo (Opcional) --")] + [(g.id, g.name) for g in all_groups]
-        self.role.choices = [(r.id, r.name) for r in all_roles]
+        self.user.choices = [(0, "-- Selecione um Usuário --")] + [(u.id, u.username) for u in all_users]
+        # REMOVIDO: group.choices e role.choices
+        # self.group.choices = [(0, "-- Selecione um Grupo (Opcional) --")] + [(g.id, g.name) for g in all_groups]
+        # self.role.choices = [(r.id, r.name) for r in all_roles]
 
-    # --- CORREÇÃO AQUI: Adicionar extra_validators como argumento e passá-lo para super() ---
+    # --- CORRIGIDO E SIMPLIFICADO: A validação agora só lida com o usuário ---
     def validate(self, extra_validators=None):
         if not super(EventPermissionForm, self).validate(extra_validators=extra_validators):
             return False
-    # --- FIM CORREÇÃO ---
 
-        user_selected = self.user.data != 0
-        group_selected = self.group.data != 0
-
-        if not user_selected and not group_selected:
-            self.user.errors.append('Selecione um usuário OU um grupo para definir a permissão.')
-            self.group.errors.append('Selecione um usuário OU um grupo para definir a permissão.')
+        # Verifica se um usuário foi realmente selecionado (DataRequired no campo user já faz isso)
+        if self.user.data == 0:
+            self.user.errors.append('Por favor, selecione um usuário.')
             return False
 
-        if user_selected and group_selected:
-            self.user.errors.append('Selecione apenas um usuário OU um grupo, não ambos.')
-            self.group.errors.append('Selecione apenas um usuário OU um grupo, não ambos.')
-            return False
-
-        # Validação para evitar permissões duplicadas (usuário ou grupo já tem permissão para este evento)
+        # Validação para evitar permissões duplicadas (usuário já tem permissão para este evento)
         event_id = self.event.data if self.event.data else None
         if event_id:
-            from models import EventPermission
-            existing_permission = None
-            if user_selected:
-                existing_permission = db.session.query(EventPermission).filter_by(event_id=event_id, user_id=self.user.data).first()
-            elif group_selected:
-                existing_permission = db.session.query(EventPermission).filter_by(event_id=event_id, group_id=self.group.data).first()
-
-            if existing_permission and (self.obj is None or self.obj.id != existing_permission.id):
-                self.user.errors.append('Já existe uma permissão definida para este usuário/grupo neste evento.')
-                self.group.errors.append('Já existe uma permissão definida para este usuário/grupo neste evento.')
+            existing_permission = db.session.query(EventPermission).filter_by(event_id=event_id, user_id=self.user.data).first()
+            
+            # self.obj é usado para edições; se não for None, significa que estamos editando uma permissão existente.
+            # O objetivo é evitar adicionar uma permissão duplicada, mas permitir a edição da mesma.
+            if existing_permission and (not hasattr(self, 'obj') or (hasattr(self, 'obj') and self.obj.id != existing_permission.id)):
+                self.user.errors.append('Este usuário já tem uma permissão para este evento.')
                 return False
 
         return True
@@ -378,7 +368,6 @@ class CommentForm(FlaskForm):
     content = TextAreaField('Seu Comentário', validators=[DataRequired(), Length(min=1, max=500)])
     submit = SubmitField('Adicionar Comentário')
 
-# =========================================================================
 # =========================================================================
 # NOVO: Formulário para upload de anexos (ADICIONADO AQUI)
 # =========================================================================

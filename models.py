@@ -1,4 +1,4 @@
-# C:\gerenciador-eventos\models.py
+# C:\\\\\\\\\\\gerenciador-eventos\\\\\\\\\\\models.py
 
 from extensions import db, login_manager
 from datetime import datetime, timedelta
@@ -311,29 +311,18 @@ class User(db.Model, UserMixin):
 
         # 3. Buscar permissões específicas do usuário para este evento
         # Usamos joinedload para carregar a Role junto e evitar N+1 queries
-        user_event_permission = EventPermission.query.options(joinedload(EventPermission.role)).filter(
+        user_event_permission = EventPermission.query.options(joinedload(EventPermission.user)).filter( # Mudei aqui para joinedload(EventPermission.user)
             EventPermission.user_id == self.id,
             EventPermission.event_id == event_id
         ).first()
 
-        if user_event_permission and user_event_permission.role:
-            # 4. Verificar se a role associada a essa EventPermission concede edição de evento
-            # (que atualmente engloba a capacidade de manipular tarefas, mas isso será refinado nas rotas)
-            if user_event_permission.role.can_edit_event: # Alterado de can_view_event AND can_edit_event para apenas can_edit_event
-                return True
+        # Aqui, como EventPermission é user-only, a existência da permissão já é suficiente.
+        # Não precisamos mais verificar uma role dentro de EventPermission
+        if user_event_permission:
+            return True
 
-        # 5. Verificar permissões de grupo
-        # Isso envolve:
-        # b) Para cada grupo, buscar EventPermission para esse event_id e group_id.
-        # c) Se encontrar e a role do grupo permitir can_edit_event, retornar True.
-        for user_group_assoc in self.user_groups:
-            group_permission = EventPermission.query.options(joinedload(EventPermission.role)).filter(
-                EventPermission.group_id == user_group_assoc.group_id,
-                EventPermission.event_id == event_id
-            ).first()
-            if group_permission and group_permission.role and \
-               group_permission.role.can_edit_event: # Alterado de can_view_event AND can_edit_event para apenas can_edit_event
-                return True
+        # 5. Permissões de grupo não são mais consideradas para EventPermission.has_event_permission_for_task.
+        # Este método foi simplificado para refletir a nova estrutura.
 
         return False # Nenhuma permissão suficiente encontrada
     # --- FIM NOVO MÉTODO ---
@@ -509,7 +498,7 @@ class TaskCategory(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
-    def __repr__(self):
+    def __repr__(self): # CORRIGIDO AQUI: Apenas 'self'
         return f"TaskCategory('{self.name}')"
 
 
@@ -733,7 +722,8 @@ class Group(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     users_in_group = db.relationship('UserGroup', back_populates='group', lazy=True, cascade='all, delete-orphan')
-    event_permissions = db.relationship('EventPermission', back_populates='group', lazy=True, cascade='all, delete-orphan')
+    # --- CORREÇÃO AQUI: A relação 'event_permissions' foi removida da classe Group ---
+    # event_permissions = db.relationship('EventPermission', back_populates='group', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -766,33 +756,26 @@ class UserGroup(db.Model):
     def __repr__(self):
         return f"UserGroup(User ID: {self.user_id}, Group ID: {self.group_id})"
 
+
 class EventPermission(db.Model):
     __tablename__ = 'event_permission'
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id', name='fk_event_permission_event_id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_event_permission_user_id', ondelete='CASCADE'), nullable=True)
-    group_id = db.Column(db.Integer, db.ForeignKey('group.id', name='fk_event_permission_group_id', ondelete='CASCADE'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_event_permission_user_id', ondelete='CASCADE'), nullable=False) # AGORA nullable=False
 
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id', name='fk_event_permission_role_id'), nullable=False)
+    # --- REMOVIDAS: group_id e role_id
+    # role_id foi removida porque a permissão de evento é AGORA APENAS baseada no user_id
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     event = db.relationship('Event', back_populates='event_permissions')
     user = db.relationship('User', back_populates='event_permissions')
-    group = db.relationship('Group', back_populates='event_permissions')
-    role = db.relationship('Role') # Mantenha este relacionamento para carregar as propriedades da Role
+    # role = db.relationship('Role') # A relação com Role foi removida de EventPermission
 
     __table_args__ = (
-        CheckConstraint(
-            '(user_id IS NOT NULL AND group_id IS NULL) OR (user_id IS NULL AND group_id IS NOT NULL)', # Correção para XOR lógico
-            name='_user_or_group_check'
-        ),
-        # --- CORREÇÃO AQUI: Usando db.Index para unique constraints parciais ---
-        Index('_event_user_unique_idx', 'event_id', 'user_id', unique=True,
-                 postgresql_where=db.Column('user_id').isnot(None)),
-        Index('_event_group_unique_idx', 'event_id', 'group_id', unique=True,
-                 postgresql_where=db.Column('group_id').isnot(None)),
-        # --- FIM DA CORREÇÃO ---
+        # A nova UniqueConstraint garante que um usuário só pode ter uma permissão por evento
+        db.UniqueConstraint('event_id', 'user_id', name='_event_user_unique_uc'),
     )
 
     def to_dict(self):
@@ -800,16 +783,13 @@ class EventPermission(db.Model):
             'id': self.id,
             'event_id': self.event_id,
             'user_id': self.user_id,
-            'group_id': self.group_id,
-            'role_id': self.role_id,
-            'role_name': self.role.name if self.role else None,
+            'user_username': self.user.username if self.user else 'N/A', # Adicionado para melhor visualização
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
     def __repr__(self):
-        target = f"User ID: {self.user_id}" if self.user_id else f"Group ID: {self.group_id}"
-        return f"EventPermission(Event ID: {self.event_id}, {target}, Role: {self.role.name if self.role else 'N/A'})"
+        return f"EventPermission(Event ID: {self.event_id}, User ID: {self.user.id if self.user else 'N/A'}, User: {self.user.username if self.user else 'N/A'})"
 
 
 # =========================================================================
@@ -899,7 +879,6 @@ class Notification(db.Model):
 
     # Relacionamento com o usuário que recebe a notificação
     user = db.relationship('User', backref=db.backref('notifications', lazy=True, cascade="all, delete-orphan"))
-
     def __repr__(self):
         return f"Notification('{self.user.username}', '{self.message[:30]}...', Read: {self.is_read})"
 

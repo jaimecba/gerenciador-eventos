@@ -318,13 +318,27 @@ class EventPermissionForm(FlaskForm):
 
     def __init__(self, *args, **kwargs):
         super(EventPermissionForm, self).__init__(*args, **kwargs)
-        self.user.choices = [(0, "-- Selecione um Usuário (Opcional) --")] + [(u.id, u.username) for u in User.query.order_by(User.username).all()]
-        self.group.choices = [(0, "-- Selecione um Grupo (Opcional) --")] + [(g.id, g.name) for g in Group.query.order_by(Group.name).all()]
-        self.role.choices = [(r.id, r.name) for r in Role.query.order_by(Role.name).all()]
+        
+        # --- DEBUG TEMPORÁRIO ---
+        all_users = User.query.order_by(User.username).all()
+        print(f"DEBUG EventPermissionForm: Encontrados {len(all_users)} usuários.")
+        
+        all_groups = Group.query.order_by(Group.name).all()
+        print(f"DEBUG EventPermissionForm: Encontrados {len(all_groups)} grupos.")
+        
+        all_roles = Role.query.order_by(Role.name).all()
+        print(f"DEBUG EventPermissionForm: Encontrados {len(all_roles)} papéis.")
+        # --- FIM DEBUG TEMPORÁRIO ---
 
-    def validate(self):
-        if not super(EventPermissionForm, self).validate():
+        self.user.choices = [(0, "-- Selecione um Usuário (Opcional) --")] + [(u.id, u.username) for u in all_users]
+        self.group.choices = [(0, "-- Selecione um Grupo (Opcional) --")] + [(g.id, g.name) for g in all_groups]
+        self.role.choices = [(r.id, r.name) for r in all_roles]
+
+    # --- CORREÇÃO AQUI: Adicionar extra_validators como argumento e passá-lo para super() ---
+    def validate(self, extra_validators=None):
+        if not super(EventPermissionForm, self).validate(extra_validators=extra_validators):
             return False
+    # --- FIM CORREÇÃO ---
 
         user_selected = self.user.data != 0
         group_selected = self.group.data != 0

@@ -148,8 +148,6 @@
             console.log("Initial values - user_select:", $userField.val(), "group_select:", $groupField.val());
 
             // 1. Inicializa Select2 para todos os campos
-            // Verifique se o jQuery está carregado ANTES deste script.
-            // Se as caixas não aparecem, verifique o console do navegador (F12) para erros JS.
             try {
                 $userField.select2({
                     placeholder: "--- Selecione um Usuário (Opcional) ---",
@@ -186,9 +184,11 @@
                 var userValue = $userField.val();
                 var groupValue = $groupField.val();
 
-                // Determine if a selection is active for user or group (excluding the '__None' option of QuerySelectField)
-                var userIsSelected = (userValue !== null && userValue !== '__None' && userValue !== '');
-                var groupIsSelected = (groupValue !== null && groupValue !== '__None' && groupValue !== '');
+                // --- CORREÇÃO AQUI: Interpretar 0 como "não selecionado" ---
+                // userField e groupField são SelectFields com coerce=int, e 0 é a opção "não selecionado".
+                var userIsSelected = (parseInt(userValue) !== 0 && userValue !== null && userValue !== '');
+                var groupIsSelected = (parseInt(groupValue) !== 0 && groupValue !== null && groupValue !== '');
+                // --- FIM CORREÇÃO ---
 
                 console.log("applyMutualExclusionLogic called. userIsSelected:", userIsSelected, "groupIsSelected:", groupIsSelected);
 
@@ -197,10 +197,11 @@
                     $groupField.prop('disabled', true);
                     // Apenas limpa o campo do grupo se ele *tinha* uma seleção ativa para evitar loops ou limpar o que não deve
                     if (groupIsSelected) {
-                        $groupField.val('__None').trigger('change.select2'); // Define a opção em branco e notifica Select2
+                        // Limpa para a opção de placeholder (value="0") e notifica Select2
+                        $groupField.val('0').trigger('change.select2'); 
                         console.log("User selected, Group field disabled and cleared.");
                     } else {
-                        console.log("User selected, Group field disabled (was already empty).");
+                        console.log("User selected, Group field disabled (was already empty or 0).");
                     }
                 } else {
                     $groupField.prop('disabled', false);
@@ -212,10 +213,11 @@
                     $userField.prop('disabled', true);
                     // Apenas limpa o campo do usuário se ele *tinha* uma seleção ativa
                     if (userIsSelected) {
-                        $userField.val('__None').trigger('change.select2'); // Define a opção em branco e notifica Select2
+                        // Limpa para a opção de placeholder (value="0") e notifica Select2
+                        $userField.val('0').trigger('change.select2'); 
                         console.log("Group selected, User field disabled and cleared.");
                     } else {
-                        console.log("Group selected, User field disabled (was already empty).");
+                        console.log("Group selected, User field disabled (was already empty or 0).");
                     }
                 } else {
                     $userField.prop('disabled', false);

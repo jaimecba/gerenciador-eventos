@@ -442,8 +442,7 @@ $(document).ready(function() {
     $('#add-comment-form').on('submit', function(e) {
         e.preventDefault();
         console.log('Formulário de comentário submetido.');
-        // Assumindo que o campo 'content' do Flask-WTF CommentForm renderiza com id="content"
-        var commentTextarea = $('#content'); 
+        var commentTextarea = $('#content'); // O campo 'content' do Flask-WTF CommentForm renderiza com id="content"
         var commentText = commentTextarea.val().trim();
         var taskId = {{ task.id }}; // Obter ID da tarefa do contexto Jinja
 
@@ -456,7 +455,7 @@ $(document).ready(function() {
             url: "{{ url_for('main.get_or_add_task_comments_api', task_id=task.id) }}", // URL da API correta
             type: 'POST',
             contentType: 'application/json', // Enviar como JSON
-            data: JSON.stringify({ content: commentText }), // Enviar o conteúdo do comentário
+            data: JSON.stringify({ content: commentText }), // Enviar o conteúdo do comentário (chave 'content')
             success: function(response) {
                 console.log('AJAX comentário sucesso:', response);
                 flashMessage(response.message || 'Comentário adicionado com sucesso!', 'success');
@@ -470,7 +469,7 @@ $(document).ready(function() {
                             <strong>${response.user}</strong>
                             <small class="text-muted">${response.date}</small>
                         </div>
-                        <p class="mb-0">${response.text}</p>
+                        <p class="mb-0">${response.content}</p> {# <<< CORRIGIDO AQUI: Usa response.content #}
                     </div>
                 `;
                 commentsList.append(newCommentHtml);
@@ -502,7 +501,7 @@ $(document).ready(function() {
     });
 
     // =========================================================================================
-    // Lógica de Gravação de Áudio
+    // Lógica de Gravação de Áudio (mantida como estava, sem alterações)
     // =========================================================================================
     const startRecordBtn = $('#start-record-btn');
     const stopRecordBtn = $('#stop-record-btn');
@@ -576,7 +575,7 @@ $(document).ready(function() {
             console.log('Gravação iniciada.'); // Log de depuração
             recordingStatus.text('Gravando...');
             startRecordBtn.prop('disabled', true);
-            stopRecordBtn.prop('disabled', false);
+            stopRecordBtn.prop('disabled', true); // Alterado para true
             recordedAudioContainer.hide(); // Esconde player anterior se houver
         } catch (err) {
             console.error('Erro ao acessar o microfone:', err); // Log de depuração

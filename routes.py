@@ -13,15 +13,14 @@ from forms import (RegistrationForm, LoginForm, EventForm, CategoryForm, StatusF
                    TaskForm, UserForm, TaskCategoryForm, GroupForm, AssignUsersToGroupForm,
                    EventPermissionForm, CommentForm, AttachmentForm) # <-- ATUALIZADO: Importar AttachmentForm
 
-# NOVO: Importar as funções auxiliares diretamente do forms, se necessário.
-# (Alternativamente, podem ser importadas de forma mais puntual dentro das rotas que as usam)
+# Importar as funções auxiliares diretamente do forms
 from forms import get_users, get_task_categories, get_task_statuses, get_roles, AdminRoleForm
 
 # IMPORTAÇÕES DE MODELS ATUALIZADAS
-# CORRIGIDO: Importação de models.py, assumindo que está no mesmo nível que routes.py
+# Importação de models.py, assumindo que está no mesmo nível que routes.py
 from models import (User, Role, Event, Task, TaskAssignment, ChangeLogEntry, Status,
                     Category, PasswordResetToken, TaskHistory, Group,
-                    UserGroup, EventPermission, Comment, TaskCategory, Attachment) # <-- ATUALIZADO: Importar Attachment
+                    UserGroup, EventPermission, Comment, TaskCategory, Attachment) # <-- Importar Attachment
 from sqlalchemy import func, or_, distinct, false, and_
 from datetime import datetime, date, timedelta
 import json
@@ -30,9 +29,7 @@ import uuid
 from werkzeug.utils import secure_filename
 import os
 from flask import send_from_directory
-from werkzeug.utils import secure_filename
 import os
-from flask import send_from_directory
 from utils.changelog_utils import diff_dicts
 from functools import wraps # Importado para o decorator permission_required
 
@@ -42,7 +39,7 @@ from decorators import admin_required, project_manager_required, role_required
 main = Blueprint('main', __name__)
 
 # =========================================================================
-# NOVO: Decorator de Permissão Genérico
+# Decorator de Permissão Genérico
 # =========================================================================
 def permission_required(permission_name):
     def decorator(f):
@@ -121,7 +118,7 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
 
             active_status_obj = Status.query.filter_by(name='Ativo', type='event').first()
 
-            # Condição base para visibilidade (autor OU tarefa atribuída) - CORRIGIDO: Comparando IDs dos usuários
+            # Condição base para visibilidade (autor OU tarefa atribuída) - Comparando IDs dos usuários
             visibility_condition = or_(
                 Event.author_id == user.id, # Comparação por ID
                 Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == user.id)) # Comparação por ID
@@ -134,7 +131,7 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
                     base_query = base_query.filter(and_(visibility_condition, Event.status == status_filter_obj))
                 else:
                     current_app.logger.warning(f"Status de Evento '{event_status_name}' solicitado, mas não encontrado para o tipo 'event' no banco de dados.")
-                    # CORRIGIDO: Mensagem flash com escape de caracteres
+                    # Mensagem flash com escape de caracteres
                     flash(f"Status '{event_status_name}' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
                     return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
             else: # Se nenhum status específico foi solicitado, default para 'Ativo'
@@ -143,7 +140,7 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
                 else:
                     # Se nem 'Ativo' foi encontrado, e nenhum status específico foi pedido, não mostra eventos.
                     current_app.logger.warning("Status 'Ativo' para eventos não encontrado. Eventos não serão filtrados por status ativo e podem não ser visíveis.")
-                    # CORRIGIDO: Mensagem flash com escape de caracteres
+                    # Mensagem flash com escape de caracteres
                     flash("Status 'Ativo' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
                     return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
 
@@ -154,7 +151,7 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
                 base_query = base_query.filter(Event.status == status_filter_obj)
             else:
                 current_app.logger.warning(f"Status de Evento '{event_status_name}' solicitado para admin, mas não encontrado para o tipo 'event' no banco de dados.")
-                # CORRIGIDO: Mensagem flash com escape de caracteres
+                # Mensagem flash com escape de caracteres
                 flash(f"Status '{event_status_name}' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
                 return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
 
@@ -437,7 +434,7 @@ def reset_token(token):
 @main.route("/event/new", methods=['GET', 'POST'])
 @login_required
 def new_event():
-    # NOVO: Verificação de permissão para criar eventos
+    # Verificação de permissão para criar eventos
     can_create_event_permission = (
         current_user.is_admin or
         (current_user.role_obj and current_user.role_obj.can_create_event)
@@ -488,10 +485,10 @@ def new_event():
 @login_required
 def event(event_id): # <-- ESTA É A ROTA PARA event.html
     # Eager loading para tarefas e seus atribuídos para evitar problemas de N+1 queries.
-    # NOVO: Adicionado .joinedload(Attachment.uploader) para carregar o uploader do anexo
+    # Adicionado .joinedload(Attachment.uploader) para carregar o uploader do anexo
     event_obj = Event.query.options(
         joinedload(Event.tasks).joinedload(Task.assignees_associations).joinedload(TaskAssignment.user),
-        joinedload(Event.tasks).joinedload(Task.attachments).joinedload(Attachment.uploader), # --- NOVO: Eager load attachments and their uploaders ---
+        joinedload(Event.tasks).joinedload(Task.attachments).joinedload(Attachment.uploader), # --- Eager load attachments and their uploaders ---
         joinedload(Event.author), # Load event author for permission checks
         joinedload(Event.event_permissions).joinedload(EventPermission.role), # Load event permissions and their roles
         joinedload(Event.event_permissions).joinedload(EventPermission.user),
@@ -509,8 +506,8 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
         elif is_event_author: # Autor do evento
             can_view_event = True
         else:
-            # Usuário não é admin nem autor, mas pode estar atribuído a uma tarefa no evento
-            # CORRIGIDO: Comparando IDs dos usuários nas atribuições
+            # Usuário não é admin nem autor, mas pode estar atribuído a alguma tarefa no evento
+            # Comparando IDs dos usuários nas atribuições
             if any(current_user.id == assignment.user_id for task in event_obj.tasks for assignment in task.assignees_associations):
                 can_view_event = True
             # Verifica permissões de visualização específicas para o evento
@@ -539,7 +536,7 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
         for task in event_obj.tasks:
             # task.assignees é uma @property que acessa a lista de usuários atribuídos.
             # Graças ao joinedload acima, esta chamada não fará uma nova consulta ao DB para cada tarefa.
-            # CORRIGIDO: Comparando IDs dos usuários
+            # Comparando IDs dos usuários
             if current_user.id in [assignee.id for assignee in task.assignees]:
                 if not task.is_completed:
                     filtered_active_tasks.append(task)
@@ -560,7 +557,7 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
             if ep.user_id == current_user.id and ep.role and ep.role.can_manage_permissions: # Comparação por ID
                 can_manage_event_permissions = True
                 break
-            # CORRIGIDO: user_groups é uma relação, não precisa de .filter_by
+            # user_groups é uma relação, não precisa de .filter_by
             if ep.group and ep.group in [ug.group for ug in current_user.user_groups] and ep.role and ep.role.can_manage_permissions:
                 can_manage_event_permissions = True
                 break
@@ -572,7 +569,7 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
             if ep.user_id == current_user.id and ep.role and ep.role.can_edit_event: # Comparação por ID
                 can_edit_event = True
                 break
-            # CORRIGIDO: user_groups é uma relação, não precisa de .filter_by
+            # user_groups é uma relação, não precisa de .filter_by
             if ep.group and ep.group in [ug.group for ug in current_user.user_groups] and ep.role and ep.role.can_edit_event:
                 can_edit_event = True
                 break
@@ -581,16 +578,16 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
     can_create_tasks = is_admin or is_event_author or \
                        (current_user.role_obj and current_user.role_obj.can_create_task)
 
-    # --- NOVO: Permissão para upload de anexo ---
+    # --- Permissão para upload de anexo ---
     can_upload_attachments = current_user.is_admin or \
                              (current_user.role_obj and current_user.role_obj.can_upload_attachments)
-    # --- NOVO: Permissão para gerenciar (excluir) anexos ---
+    # --- Permissão para gerenciar (excluir) anexos ---
     can_manage_attachments = current_user.is_admin or \
                              (current_user.role_obj and current_user.role_obj.can_manage_attachments)
 
-    # NOVO: Instancia o formulário de comentário para passar ao template
+    # Instancia o formulário de comentário para passar ao template
     comment_form = CommentForm()
-    # --- NOVO: Instancia o formulário de anexo para passar ao template ---
+    # Instancia o formulário de anexo para passar ao template
     attachment_form = AttachmentForm()
 
     return render_template('event.html',
@@ -604,7 +601,7 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
                            can_manage_event_permissions=can_manage_event_permissions,
                            can_edit_event=can_edit_event,
                            can_create_tasks=can_create_tasks,
-                           # --- NOVO: Passa as permissões e o formulário de anexo ---
+                           # --- Passa as permissões e o formulário de anexo ---
                            can_upload_attachments=can_upload_attachments,
                            can_manage_attachments=can_manage_attachments,
                            attachment_form=attachment_form,
@@ -758,7 +755,7 @@ def search():
         if not current_user.is_admin:
             active_status_obj = Status.query.filter_by(name='Ativo', type='event').first()
 
-            # CORRIGIDO: Usando IDs para comparação
+            # Usando IDs para comparação
             visibility_condition = or_(
                 Event.author_id == current_user.id,
                 Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == current_user.id))
@@ -768,7 +765,7 @@ def search():
                 events_query = events_query.filter(and_(visibility_condition, Event.status == active_status_obj))
             else: # Fallback if 'Ativo' status is not found
                 events_query = events_query.filter(visibility_condition)
-                # CORRIGIDO: Mensagem flash com escape de caracteres
+                # Mensagem flash com escape de caracteres
                 flash("Status 'Ativo' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
         # Execute the query to get viewable events
         viewable_events = events_query.all()
@@ -989,7 +986,7 @@ def delete_task_category(task_category_id):
 def new_task(event_id):
     event_obj = Event.query.get_or_404(event_id)
 
-    # NOVO: Verificação de permissão para criar tarefas
+    # Verificação de permissão para criar tarefas
     can_create_task_permission = (
         current_user.is_admin or
         event_obj.author_id == current_user.id or # Comparação por ID
@@ -1056,6 +1053,7 @@ def new_task(event_id):
             for user_id in selected_assignee_ids:
                 user_obj = User.query.get(user_id)
                 if user_obj:
+                    # CORREÇÃO: Usando o atributo assignees diretamente que espera objetos User
                     task.assignees.append(user_obj) # Adiciona o objeto User à relação
                     print(f"--- DEBUG: new_task - Atribuindo: Tarefa '{task.title}' para Usuário '{user_obj.username}' ---")
 
@@ -1230,7 +1228,7 @@ def task_detail(task_id):
 
 
 # =========================================================================
-# ROTA PARA SERVIR ARQUIVOS DE ÁUDIO UPLOADED (NOVO)
+# ROTA PARA SERVIR ARQUIVOS DE ÁUDIO UPLOADED
 # =========================================================================
 @main.route("/uploads/audio/<path:filename>")
 @login_required
@@ -1243,7 +1241,8 @@ def serve_audio_file(filename):
 
 # =========================================================================
 # ATUALIZADO: Rota API para buscar E ADICIONAR comentários de uma tarefa
-# AGORA SUPORTA GET e POST e espera 'content' no POST
+# AGORA SUPORTA GET e POST e espera 'content' no POST e retorna 'content'
+# para GET e POST
 # =========================================================================
 @main.route('/api/comments/task/<int:task_id>', methods=['GET', 'POST'])
 @login_required
@@ -1254,7 +1253,7 @@ def get_or_add_task_comments_api(task_id):
     can_manage_or_view_comments = (
         current_user.is_admin or
         task.event.author_id == current_user.id or
-        current_user.id in [u.id for u in task.assignees] or # CORREÇÃO AQUI
+        current_user.id in [u.id for u in task.assignees] or # CORRIGIDO AQUI
         (current_user.role_obj and (current_user.role_obj.can_view_task_history or current_user.role_obj.can_manage_task_comments))
     )
     if not can_manage_or_view_comments:
@@ -1280,14 +1279,13 @@ def get_or_add_task_comments_api(task_id):
         can_add_comment = (
             current_user.is_admin or
             task.event.author_id == current_user.id or
-            current_user.id in [u.id for u in task.assignees] or # CORREÇÃO AQUI
+            current_user.id in [u.id for u in task.assignees] or # CORRIGIDO AQUI
             (current_user.role_obj and current_user.role_obj.can_manage_task_comments)
         )
         if not can_add_comment:
             return jsonify({'message': 'Você não tem permissão para adicionar comentários a esta tarefa.'}), 403
         
         data = request.get_json()
-        # >>> MODIFICAÇÃO AQUI: Espera 'content' em vez de 'text' <<<
         comment_text = data.get('content', '').strip() 
 
         if not comment_text:
@@ -1313,13 +1311,13 @@ def get_or_add_task_comments_api(task_id):
             )
             db.session.commit() # Commit do changelog
 
-            # Retorna o comentário recém-criado para que o frontend possa atualizá-lo
+            # >>> CORREÇÃO CRÍTICA AQUI: Retorna 'content' em vez de 'text' <<<
             formatted_date = new_comment.timestamp.strftime('%d/%m/%Y %H:%M')
             return jsonify({
                 'id': new_comment.id,
                 'user': current_user.username,
                 'date': formatted_date,
-                'text': new_comment.content, # Retorna como 'text' para o frontend que espera isso
+                'content': new_comment.content, # Agora é 'content' para consistência
                 'message': 'Comentário adicionado com sucesso!'
             }), 201
 
@@ -1334,10 +1332,9 @@ def get_or_add_task_comments_api(task_id):
 
 
 # =========================================================================
-# NOVO: Rota para adicionar comentário a uma tarefa (foi substituída pela rota API acima)
+# Rota para adicionar comentário a uma tarefa (foi substituída pela rota API acima)
 # Esta rota /events/<int:event_id>/tasks/<int:task_id>/comments/add NÃO É MAIS NECESSÁRIA
-# pois a API /api/comments/task/<int:task_id> agora lida com o POST.
-# Vou mantê-la comentada por segurança, mas ela não será usada pelo frontend do calendário.
+# Está comentada para referência futura, mas o frontend não a utiliza.
 # =========================================================================
 # @main.route('/events/<int:event_id>/tasks/<int:task_id>/comments/add', methods=['POST'])
 # @login_required
@@ -1385,11 +1382,11 @@ def update_task(task_id):
     task_obj = Task.query.get_or_404(task_id)
     event_obj = task_obj.event
 
-    # NOVO: Verificação de permissão para editar tarefas
+    # Verificação de permissão para editar tarefas
     can_edit_task_permission = (
         current_user.is_admin or
         event_obj.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORRIGIDO AQUI
         (current_user.role_obj and current_user.role_obj.can_edit_task)
     )
 
@@ -1494,6 +1491,7 @@ def update_task(task_id):
                     # Busca todos os objetos User correspondentes aos IDs selecionados
                     assignee_users = User.query.filter(User.id.in_(selected_assignee_ids)).all()
                     for user_obj in assignee_users:
+                        # CORREÇÃO: Usando o atributo assignees diretamente que espera objetos User
                         task_obj.assignees.append(user_obj) # Adiciona cada objeto User à relação
                         print(f"--- DEBUG: update_task - Adicionando nova atribuição: Tarefa '{task_obj.title}' para Usuário '{user_obj.username}' ---")
                 else:
@@ -1672,7 +1670,7 @@ def delete_task(task_id):
     task_obj = Task.query.get_or_404(task_id)
     event_obj = task_obj.event
 
-    # NOVO: Verificação de permissão para deletar tarefas
+    # Verificação de permissão para deletar tarefas
     can_delete_task_permission = (
         current_user.is_admin or
         event_obj.author_id == current_user.id or # Comparação por ID
@@ -1731,11 +1729,11 @@ def complete_task(task_id):
     task_obj = Task.query.get_or_404(task_id)
     comment = request.form.get('completion_comment')
 
-    # NOVO: Autorização para concluir tarefa
+    # Autorização para concluir tarefa
     can_complete_task_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORRIGIDO AQUI
         (current_user.role_obj and current_user.role_obj.can_complete_task)
     )
 
@@ -1802,11 +1800,11 @@ def complete_task(task_id):
 def uncomplete_task(task_id):
     task_obj = Task.query.get_or_404(task_id)
 
-    # NOVO: Autorização para desfazer conclusão de tarefa
+    # Autorização para desfazer conclusão de tarefa
     can_uncomplete_task_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORRIGIDO AQUI
         (current_user.role_obj and current_user.role_obj.can_uncomplete_task)
     )
 
@@ -1873,11 +1871,11 @@ def uncomplete_task(task_id):
 def task_history_view(task_id):
     task_obj = Task.query.get_or_404(task_id)
 
-    # NOVO: Autorização para visualizar histórico de tarefa
+    # Autorização para visualizar histórico de tarefa
     can_view_task_history_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORRIGIDO AQUI
         (current_user.role_obj and current_user.role_obj.can_view_task_history)
     )
 
@@ -2214,7 +2212,7 @@ def new_user():
     if form.validate_on_submit():
         print(f"--- DEBUG: new_user - Formulário validado com sucesso! ---")
         try:
-            # CORRIGIDO: form.role_obj.data já é o objeto Role
+            # form.role_obj.data já é o objeto Role
             user_role = form.role_obj.data
             if not user_role: # Redundante se o campo é DataRequired, mas seguro.
                 flash(f'Erro: O papel não foi encontrado ou selecionado.', 'danger')
@@ -2253,7 +2251,7 @@ def new_user():
 @admin_required
 def update_user(user_id):
     user = User.query.get_or_404(user_id)
-    # CORRIGIDO: Passa o objeto Role do usuário para o formulário
+    # Passa o objeto Role do usuário para o formulário
     form = UserForm(obj=user, original_username=user.username, original_email=user.email, is_new_user=False, role_obj=user.role_obj)
     if form.validate_on_submit():
         print(f"--- DEBUG: update_user - Formulário validado com sucesso! ---")
@@ -2263,7 +2261,7 @@ def update_user(user_id):
             user.username = form.username.data
             user.email = form.email.data
 
-            # CORRIGIDO: form.role_obj.data já é o objeto Role
+            # form.role_obj.data já é o objeto Role
             new_role_obj = form.role_obj.data
             if not new_role_obj: # Redundante se o campo é DataRequired, mas seguro.
                 flash(f'Erro: O papel não foi encontrado ou selecionado.', 'danger')
@@ -2308,7 +2306,7 @@ def delete_user(user_id):
         flash('Você não pode deletar sua própria conta através do painel de administração.', 'danger')
         return redirect(url_for('main.list_users'))
 
-    if Event.query.filter_by(author=user).first() or TaskAssignment.query.filter_by(user=user).first() or Comment.query.filter_by(author=user).first(): # NOVO: Verifica se o usuário é autor de comentários
+    if Event.query.filter_by(author=user).first() or TaskAssignment.query.filter_by(user=user).first() or Comment.query.filter_by(author=user).first(): # Verifica se o usuário é autor de comentários
         flash(f"Não é possível deletar o usuário '{user.username}' porque ele está associado a eventos, tarefas ou comentários. Desvincule-o primeiro.", 'danger')
         return redirect(url_for('main.list_users'))
 
@@ -2349,11 +2347,11 @@ def teste2():
 def upload_task_audio(task_id):
     task_obj = Task.query.get_or_404(task_id)
 
-    # NOVO: Autorização para upload de áudio
+    # Autorização para upload de áudio
     can_upload_task_audio_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORRIGIDO AQUI
         (current_user.role_obj and current_user.role_obj.can_upload_task_audio)
     )
 
@@ -2417,7 +2415,7 @@ def upload_task_audio(task_id):
             return jsonify({
                 'message': 'Áudio salvo com sucesso!',
                 'audio_filename': unique_filename,
-                'audio_url_base': url_for('main.serve_audio_file', filename=unique_filename) # CORRIGIDO AQUI
+                'audio_url_base': url_for('main.serve_audio_file', filename=unique_filename)
             }), 200
 
         except Exception as e:
@@ -2432,11 +2430,11 @@ def upload_task_audio(task_id):
 def delete_task_audio(task_id):
     task_obj = Task.query.get_or_404(task_id)
 
-    # NOVO: Autorização para deletar áudio
+    # Autorização para deletar áudio
     can_delete_task_audio_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
-        (current_user.id in [u.id for u in task_obj.assignees]) or # CORREÇÃO AQUI
+        (current_user.id in [u.id for u in task_obj.assignees]) or # CORRIGIDO AQUI
         (current_user.role_obj and current_user.role_obj.can_delete_task_audio)
     )
 
@@ -2491,10 +2489,7 @@ def delete_task_audio(task_id):
 
 
 # =========================================================================
-# =========================================================================
-# =========================================================================
-# =========================================================================
-# NOVAS ROTAS PARA ANEXOS DE TAREFAS (ADICIONADO AQUI)
+# NOVAS ROTAS PARA ANEXOS DE TAREFAS
 # =========================================================================
 
 # Rota para servir arquivos de anexo (para download)
@@ -2603,7 +2598,7 @@ def download_attachment(attachment_id):
         can_download = True
     elif task_obj.event.author_id == current_user.id: # Autor do evento pode baixar
         can_download = True
-    elif current_user.id in [u.id for u in task_obj.assignees]: # CORREÇÃO AQUI
+    elif current_user.id in [u.id for u in task_obj.assignees]: # CORRIGIDO AQUI
         can_download = True
     elif current_user.role_obj and current_user.role_obj.can_view_event: # Tem permissão global de role para ver eventos
         can_download = True
@@ -2697,9 +2692,6 @@ def delete_attachment(attachment_id):
         return jsonify({'message': f'Erro ao excluir anexo do banco de dados: {str(e)}'}), 500
 
 
-# =========================================================================
-# =========================================================================
-# =========================================================================
 # =========================================================================
 # ROTA API PARA RETORNAR EVENTOS E TAREFAS PARA O CALENDÁRIO
 # =========================================================================

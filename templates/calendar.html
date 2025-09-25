@@ -79,6 +79,9 @@
         var currentItemId = null; // Para armazenar o ID do evento/tarefa atualmente exibido na sidebar
         var currentItemType = null; // Para armazenar o tipo (Evento/Tarefa)
 
+        // Variável JS para o username do usuário logado (passado do Flask)
+        const currentUsername = '{{ current_user.username if current_user.is_authenticated else "Usuário Desconhecido" }}';
+
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth', 
             locale: 'pt-br',             
@@ -121,7 +124,8 @@
                 var eventDescription = info.event.extendedProps.fullDescription || info.event.extendedProps.description || info.event.title || 'Nenhuma descrição.';
 
                 // Atualiza o ID e Tipo do item atualmente selecionado
-                currentItemId = info.event.id; // Assume que info.event.id é o ID único do DB
+                // info.event.id é do tipo "event-X" ou "task-Y", precisamos do ID numérico
+                currentItemId = info.event.id.split('-')[1]; 
                 currentItemType = eventType;
 
                 const isDesktop = window.matchMedia('(min-width: 992px)').matches;
@@ -139,10 +143,12 @@
 
                     if (currentItemType === 'Tarefa' && currentItemId) {
                         $('.comments-section').show(); // Mostra a seção de comentários
-                        loadCommentsForItem(currentItemId, currentItemType);
+                        $('.comment-form').show(); // Mostra o formulário de comentários
+                        loadCommentsForItem(currentItemId); // Passa apenas o ID, o tipo já é 'Tarefa'
                     } else {
                         // Esconde a seção de comentários para Eventos ou se o ID não for válido
                         $('.comments-section').hide();
+                        $('.comment-form').hide(); // Esconde o formulário para eventos
                         $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Comentários não disponíveis para este tipo de item.</p>');
                     }
 
@@ -209,51 +215,43 @@
         });
 
         // Função para carregar e exibir comentários de um item (tarefa)
-        function loadCommentsForItem(itemId, itemType) {
+        function loadCommentsForItem(taskId) { // Recebe apenas o taskId
             $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Carregando comentários...</p>');
             
-            if (itemType === 'Tarefa') {
-                // Rota real para buscar comentários de tarefas
-                // Ajuste a URL se sua API for diferente
-                $.ajax({
-                    url: `/api/comments/task/${itemId}`, 
-                    method: 'GET',
-                    success: function(comments) {
-                        let commentsHtml = '';
-                        if (comments && comments.length > 0) {
-                            comments.forEach(comment => {
-                                commentsHtml += `
-                                    <div class="comment-item mb-2 p-2 border rounded">
-                                        <small class="text-muted"><strong>${comment.user}</strong> em ${comment.date}</small>
-                                        <p class="mb-0">${comment.text}</p>
-                                    </div>
-                                `;
-                            });
-                        } else {
-                            commentsHtml = '<p class="text-muted">Nenhum comentário ainda para esta tarefa.</p>';
-                        }
-                        $('#eventDetailSidebarCommentsList').html(commentsHtml);
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        console.error('Erro ao carregar comentários:', textStatus, errorThrown, jqXHR.responseText);
-                        $('#eventDetailSidebarCommentsList').html('<p class="text-danger">Erro ao carregar comentários.</p>');
+            $.ajax({
+                url: `/api/comments/task/${taskId}`, 
+                method: 'GET',
+                success: function(comments) {
+                    let commentsHtml = '';
+                    if (comments && comments.length > 0) {
+                        comments.forEach(comment => {
+                            // >>> CORRIGIDO AQUI: comment.content (espera a chave 'content' do backend) <<<
+                            commentsHtml += `
+                                <div class="comment-item mb-2 p-2 border rounded">
+                                    <small class="text-muted"><strong>${comment.user}</strong> em ${comment.date}</small>
+                                    <p class="mb-0">${comment.content}</p>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        commentsHtml = '<p class="text-muted">Nenhum comentário ainda para esta tarefa.</p>';
                     }
-                });
-            } else {
-                // Comentários não disponíveis para outros tipos (Eventos)
-                $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Comentários não disponíveis para eventos.</p>');
-                $('.comment-form').hide(); // Esconde o formulário para eventos
-            }
+                    $('#eventDetailSidebarCommentsList').html(commentsHtml);
+                    // Rola para o final da lista de comentários para ver o mais recente
+                    $('#eventDetailSidebarCommentsList').scrollTop($('#eventDetailSidebarCommentsList')[0].scrollHeight);
+
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('Erro ao carregar comentários:', textStatus, errorThrown, jqXHR.responseText);
+                    $('#eventDetailSidebarCommentsList').html('<p class="text-danger">Erro ao carregar comentários.</p>');
+                }
+            });
         }
 
         // Função para adicionar um novo comentário
         $('#addCommentBtn').on('click', function() {
             const commentText = $('#commentTextarea').val().trim();
             
-            // Substitua '{{ current_user.username }}' pelo método real de obter o nome de usuário logado.
-            // Por exemplo, você pode passar para uma variável JS no template: var currentUser = "{{ current_user.username }}";
-            const currentUser = '{{ current_user.username if current_user.is_authenticated else "Usuário Desconhecido" }}'; // Exemplo para Flask-Login
-
             if (!commentText) {
                 alert('Por favor, digite um comentário.');
                 return;
@@ -263,17 +261,16 @@
                 return;
             }
 
-            // Rota real para adicionar comentários a tarefas
-            // Ajuste a URL se sua API for diferente
             $.ajax({
                 url: `/api/comments/task/${currentItemId}`, 
                 method: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ text: commentText, user: currentUser }), // Inclui o nome do usuário
+                // >>> CORRIGIDO AQUI: Enviando 'content' (chave esperada pelo backend) <<<
+                data: JSON.stringify({ content: commentText }), 
                 success: function(response) {
                     $('#commentTextarea').val(''); // Limpa o campo
-                    loadCommentsForItem(currentItemId, currentItemType); // Recarrega os comentários para mostrar o novo
-                    // console.log('Comentário adicionado:', response);
+                    // Não precisa de reload completo, apenas recarrega os comentários via AJAX
+                    loadCommentsForItem(currentItemId); 
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     alert('Erro ao adicionar comentário. Verifique o console para detalhes.');

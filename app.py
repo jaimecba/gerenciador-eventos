@@ -1,71 +1,89 @@
-# C:\gerenciador-eventos\app.py
+# C:\gerenciador-em-python\app.py
 
 from dotenv import load_dotenv
-load_dotenv() # Isso é para seu ambiente local, no Render as variáveis serão definidas no painel
+# Carrega variáveis do arquivo .env para desenvolvimento local.
+# No Render, as variáveis de ambiente serão definidas no painel do serviço.
+load_dotenv() 
+
 from flask import Flask, render_template, redirect, url_for, flash, request
-# --- IMPORTAÇÕES ATUALIZADAS DE extensions.py ---
+# Importações das extensões Flask que você configurou em extensions.py
 from extensions import db, login_manager, mail, migrate
-# --- FIM DAS IMPORTAÇÕES ATUALIZADAS ---
 from datetime import datetime
-import click
+import click # Para comandos da CLI (Command Line Interface) do Flask
 import os
 import json
-import ast
+import ast # Para parsear literais Python de forma segura
 from sqlalchemy import text
 from sqlalchemy.inspection import inspect
-# NOVO: Importar joinedload para eager-loading
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload # Para otimização de carregamento de relacionamentos
 
-# --- NOVO: Flask-Admin Imports ---
+# --- Flask-Admin Imports ---
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
 from flask_login import current_user
 from werkzeug.security import generate_password_hash
-# --- ATUALIZADO: Importar Attachment para o Flask-Admin (ADICIONADO AQUI) ---
-from models import User, Role, Status, Category, TaskCategory, Group, Event, EventPermission, Attachment # Importar todos os modelos relevantes, incluindo EventPermission para a validação do form
-# CORREÇÃO AQUI: Importar os nomes corretos dos Forms do forms.py (sem o prefixo 'Admin')
-# --- ATUALIZADO: Importar AttachmentForm para o Flask-Admin (ADICIONADO AQUI) ---
-from forms import UserForm, AdminRoleForm, GroupForm, CategoryForm, TaskCategoryForm, StatusForm, EventForm, AttachmentForm # Importar todos os forms necessários
+# Importa todos os modelos relevantes para o Flask-Admin
+from models import User, Role, Status, Category, TaskCategory, Group, Event, EventPermission, Attachment
+# Importa todos os forms necessários do forms.py
+from forms import UserForm, AdminRoleForm, GroupForm, CategoryForm, TaskCategoryForm, StatusForm, EventForm, AttachmentForm 
 from flask_admin.menu import MenuLink
-# --- FIM: Flask-Admin Imports ---
+# --- Fim Flask-Admin Imports ---
 
 def create_app():
     app = Flask(__name__)
 
     # --- Configuração da SECRET_KEY ---
+    # Busca a SECRET_KEY das variáveis de ambiente ou usa um fallback para desenvolvimento.
+    # **É CRÍTICO que esta chave seja gerada de forma segura e mantida secreta em produção.**
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_longa_aqui_fallback_dev')
-# --- Configuração do Banco de Dados ---
+
+    # --- Configuração do Banco de Dados ---
+    # Busca a URL do banco de dados das variáveis de ambiente (ex: no Render) ou usa um SQLite local.
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///events.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # --- Configurações para FLASK-MAIL ---
+    # Busca as configurações de e-mail das variáveis de ambiente.
     app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.googlemail.com')
-    app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+    app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587)) # Converte para inteiro
+    # Converte string 'True'/'False' para booleano
     app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() in ('true', '1', 't')
     app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_USER')
     app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_PASS')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'seu_email@example.com')
 
+    # --- DEBUG: Verifica se as variáveis de ambiente de email estão sendo lidas ---
+    print(f"DEBUG MAIL_SERVER: {app.config['MAIL_SERVER']}")
+    print(f"DEBUG MAIL_PORT: {app.config['MAIL_PORT']}")
+    print(f"DEBUG MAIL_USE_TLS: {app.config['MAIL_USE_TLS']}")
+    print(f"DEBUG MAIL_USERNAME (primeiras 3 letras): {app.config['MAIL_USERNAME'][:3] if app.config['MAIL_USERNAME'] else 'N/A'}")
+    print(f"DEBUG MAIL_PASSWORD (primeiras 3 letras): {app.config['MAIL_PASSWORD'][:3] if app.config['MAIL_PASSWORD'] else 'N/A'}")
+    print(f"DEBUG MAIL_DEFAULT_SENDER: {app.config['MAIL_DEFAULT_SENDER']}")
+    # --- FIM DEBUG ---
+
     # --- Configuração para uploads de áudio ---
+    # Cria a pasta de uploads se não existir, garantindo que seja absoluta.
     app.config['UPLOAD_FOLDER_AUDIO'] = os.path.join(app.instance_path, 'uploads', 'audio')
     os.makedirs(app.config['UPLOAD_FOLDER_AUDIO'], exist_ok=True)
 
-    # --- NOVO: Configuração para uploads de anexos (ADICIONADO AQUI) ---
+    # --- Configuração para uploads de anexos ---
+    # Cria a pasta de uploads se não existir.
     app.config['UPLOAD_FOLDER_ATTACHMENTS'] = os.path.join(app.instance_path, 'uploads', 'attachments')
     os.makedirs(app.config['UPLOAD_FOLDER_ATTACHMENTS'], exist_ok=True)
-    # --- FIM NOVO ---
 
-    # --- Inicializa as extensões com o app (DEPOIS que o objeto 'app' é criado) ---
+    # --- Inicializa as extensões com o app ---
+    # É fundamental que isso aconteça APÓS a criação do objeto 'app' e suas configurações.
     db.init_app(app)
     login_manager.init_app(app)
     mail.init_app(app)
     migrate.init_app(app, db)
 
-    login_manager.login_view = 'main.login'
-    login_manager.login_message_category = 'info'
-    login_manager.session_protection = "strong"
+    # Configuração do Flask-Login
+    login_manager.login_view = 'main.login' # Define a rota para redirecionar usuários não logados.
+    login_manager.login_message_category = 'info' # Categoria da mensagem flash para login requerido.
+    login_manager.session_protection = "strong" # Proteção de sessão para evitar sequestro de sessão.
 
-    # Habilita a extensão 'do' do Jinja2
+    # Habilita a extensão 'do' do Jinja2 para melhor controle de fluxo em templates.
     app.jinja_env.add_extension('jinja2.ext.do')
 
     # Context processor para injetar o ano atual em todos os templates
@@ -73,11 +91,12 @@ def create_app():
     def inject_current_year():
         return {'current_year': datetime.now().year}
 
-    # CORREÇÃO AQUI: Eager-load o role_obj do User
+    # Carrega um usuário dado seu ID para o Flask-Login, carregando o objeto Role junto para otimização.
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.options(joinedload(User.role_obj)).get(int(user_id))
 
+    # Injeta a role do usuário atual em todos os templates.
     @app.context_processor
     def inject_user_role():
         if current_user.is_authenticated:
@@ -86,11 +105,14 @@ def create_app():
 
     ### INÍCIO: Configuração do Flask-Admin ###
 
+    # View customizada para o índice do painel administrativo.
     class MyAdminIndexView(AdminIndexView):
         def is_accessible(self):
+            # Apenas usuários autenticados e com role 'Admin' podem acessar.
             return current_user.is_authenticated and current_user.is_admin
 
         def _handle_view(self, name, **kwargs):
+            # Lida com o acesso não autorizado.
             if not self.is_accessible():
                 if not current_user.is_authenticated:
                     flash('Por favor, faça login para acessar o painel de administração.', 'warning')
@@ -99,11 +121,14 @@ def create_app():
                     flash('Você não tem permissão para acessar o painel de administração.', 'danger')
                     return redirect(url_for('main.home'))
 
+    # View base customizada para modelos do Flask-Admin.
     class MyModelView(ModelView):
         def is_accessible(self):
+            # Apenas usuários autenticados e com role 'Admin' podem acessar.
             return current_user.is_authenticated and current_user.is_admin
 
         def _handle_view(self, name, **kwargs):
+            # Lida com o acesso não autorizado.
             if not self.is_accessible():
                 if not current_user.is_authenticated:
                     flash('Por favor, faça login para acessar esta seção do painel de administração.', 'warning')
@@ -112,16 +137,19 @@ def create_app():
                     flash('Você não tem permissão para acessar esta seção do painel de administração.', 'danger')
                     return redirect(url_for('main.home'))
 
+    # Views específicas para cada modelo no Flask-Admin.
     class UserAdminView(MyModelView):
-        form = UserForm
+        form = UserForm # Usa o UserForm que você criou
 
-        column_list = ('id', 'username', 'email', 'role_obj', 'is_active', 'created_at', 'last_login')
-        column_labels = dict(role_obj='Papel', is_active='Ativo')
+        column_list = ('id', 'username', 'email', 'role_obj', 'is_active_db', 'created_at', 'updated_at')
+        column_labels = dict(role_obj='Papel', is_active_db='Ativo', created_at='Criado Em', updated_at='Última Atualização')
         column_searchable_list = ('username', 'email')
-        column_filters = ('role_obj.name',)
+        column_filters = ('role_obj.name', 'is_active_db')
 
-        form_columns = ['username', 'email', 'password', 'confirm_password', 'role_obj']
+        # Define as colunas do formulário.
+        form_columns = ['username', 'email', 'password', 'confirm_password', 'role_obj', 'is_active_db']
 
+        # Sobrescreve o método get_form para passar o contexto de 'is_new_user' para o formulário.
         def get_form(self):
             class UserAdminFormWrapper(self.form):
                 def __init__(self, formdata=None, obj=None, prefix='', data=None, meta=None, **kwargs):
@@ -139,33 +167,43 @@ def create_app():
                     )
             return UserAdminFormWrapper
 
+        # Hook executado antes de salvar um modelo.
         def on_model_change(self, form, model, is_created):
-            if form.password.data:
+            if form.password.data: # Se uma senha foi fornecida, faz o hash.
                 model.set_password(form.password.data)
 
-            if form.role_obj.data:
+            if form.role_obj.data: # Garante que o role_id seja atualizado com base no objeto selecionado.
                 model.role_id = form.role_obj.data.id
             else:
-                model.role_id = None
+                model.role_id = None # Ou define um valor padrão se não selecionado.
 
     class RoleAdminView(MyModelView):
-        form = AdminRoleForm
+        form = AdminRoleForm # Usa o AdminRoleForm que você criou
 
-        column_list = ('id', 'name', 'description')
-        column_labels = dict(name='Nome do Papel', description='Descrição')
+        column_list = ('id', 'name', 'description', 'can_view_event', 'can_edit_event', 'can_manage_permissions',
+                        'can_create_event', 'can_create_task', 'can_edit_task', 'can_delete_task',
+                        'can_complete_task', 'can_uncomplete_task', 'can_upload_task_audio',
+                        'can_delete_task_audio', 'can_view_task_history', 'can_manage_task_comments',
+                        'can_upload_attachments', 'can_manage_attachments')
+        column_labels = dict(name='Nome do Papel', description='Descrição', can_view_event='Pode Ver Evento',
+                             can_edit_event='Pode Editar Evento', can_manage_permissions='Pode Gerenciar Permissões',
+                             can_create_event='Pode Criar Evento', can_create_task='Pode Criar Tarefa',
+                             can_edit_task='Pode Editar Tarefa', can_delete_task='Pode Deletar Tarefa',
+                             can_complete_task='Pode Concluir Tarefa', can_uncomplete_task='Pode Reverter Tarefa',
+                             can_upload_task_audio='Pode Upload Audio', can_delete_task_audio='Pode Deletar Audio',
+                             can_view_task_history='Pode Ver Histórico', can_manage_task_comments='Pode Gerenciar Comentários',
+                             can_upload_attachments='Pode Upload Anexos', can_manage_attachments='Pode Gerenciar Anexos')
         column_searchable_list = ('name', 'description')
 
-        form_excluded_columns = ['users']
-
-        # --- ATUALIZADO: Adicionar novas permissões de anexo (ADICIONADO AQUI) ---
+        # Define as colunas do formulário, incluindo todas as permissões granulares.
         form_columns = ('name', 'description', 'can_view_event', 'can_edit_event', 'can_manage_permissions',
                         'can_create_event', 'can_create_task', 'can_edit_task', 'can_delete_task',
                         'can_complete_task', 'can_uncomplete_task', 'can_upload_task_audio',
                         'can_delete_task_audio', 'can_view_task_history', 'can_manage_task_comments',
-                        'can_upload_attachments', 'can_manage_attachments') # Adicionado can_upload_attachments e can_manage_attachments aqui
-        # --- FIM ATUALIZADO ---
+                        'can_upload_attachments', 'can_manage_attachments') 
 
         def on_model_change(self, form, model, is_created):
+            # Validação para garantir a unicidade do nome do papel.
             existing_role = Role.query.filter_by(name=form.name.data).first()
             if existing_role and existing_role.id != model.id:
                 raise ValueError('Este nome de papel já existe. Por favor, escolha outro.')
@@ -177,8 +215,7 @@ def create_app():
         column_labels = dict(name='Nome do Grupo', description='Descrição')
         column_searchable_list = ('name', 'description')
 
-        form_excluded_columns = ['members']
-
+        form_excluded_columns = ['members'] # Não editar membros do grupo por aqui, use a rota específica.
         form_columns = ('name', 'description')
 
         def on_model_change(self, form, model, is_created):
@@ -186,7 +223,6 @@ def create_app():
             if existing_group and existing_group.id != model.id:
                 raise ValueError('Este nome de grupo já existe. Por favor, escolha outro.')
 
-    # View Personalizada para Category
     class CategoryAdminView(MyModelView):
         form = CategoryForm
         column_list = ('id', 'name', 'description')
@@ -195,12 +231,10 @@ def create_app():
         form_columns = ('name', 'description')
 
         def on_model_change(self, form, model, is_created):
-            # Validação para garantir que o nome da categoria é único
             existing_category = Category.query.filter_by(name=form.name.data).first()
             if existing_category and existing_category.id != model.id:
                 raise ValueError('Este nome de categoria já existe. Por favor, escolha outro.')
 
-    # View Personalizada para TaskCategory
     class TaskCategoryAdminView(MyModelView):
         form = TaskCategoryForm
         column_list = ('id', 'name', 'description')
@@ -209,12 +243,10 @@ def create_app():
         form_columns = ('name', 'description')
 
         def on_model_change(self, form, model, is_created):
-            # Validação para garantir que o nome da categoria de tarefa é único
             existing_task_category = TaskCategory.query.filter_by(name=form.name.data).first()
             if existing_task_category and existing_task_category.id != model.id:
                 raise ValueError('Este nome de categoria de tarefa já existe. Por favor, escolha outro.')
 
-    # View Personalizada para Status
     class StatusAdminView(MyModelView):
         form = StatusForm
         column_list = ('id', 'name', 'type', 'description')
@@ -223,12 +255,10 @@ def create_app():
         form_columns = ('name', 'type', 'description')
 
         def on_model_change(self, form, model, is_created):
-            # Validação para garantir que a combinação nome e tipo do status é única
             existing_status = Status.query.filter_by(name=form.name.data, type=form.type.data).first()
             if existing_status and existing_status.id != model.id:
                 raise ValueError(f"Um status com o nome '{form.name.data}' e tipo '{form.type.data}' já existe. Por favor, escolha outro nome ou tipo.")
 
-    # View Personalizada para Event
     class EventAdminView(MyModelView):
         form = EventForm
         column_list = ('id', 'title', 'due_date', 'author', 'category', 'status', 'location')
@@ -236,74 +266,70 @@ def create_app():
         column_searchable_list = ('title', 'location', 'description')
         column_filters = ('author.username', 'category.name', 'status.name')
 
-        # Define quais colunas serão mostradas no formulário de criação/edição
         form_columns = [
             'title', 'description', 'due_date', 'end_date', 'location',
             'author', 'category', 'status'
         ]
 
-        # Ordenar eventos por 'due_date' (data de início) em ordem crescente por padrão
         column_default_sort = ('due_date', False)
 
         def on_model_change(self, form, model, is_created):
-            # O autor, categoria e status são objetos selecionados, precisamos atribuir os IDs
+            # O autor, categoria e status são objetos selecionados, precisamos atribuir os IDs.
+            # O Flask-Admin geralmente lida com isso se os campos são Foreign Key, mas se houver customização...
             model.author_id = form.author.data.id
             model.category_id = form.category.data.id if form.category.data else None
             model.status_id = form.status.data.id
-            # O restante dos campos são atribuídos automaticamente pelo form.populate_obj(model)
 
-    # --- NOVO: Classe para gerenciar Anexos no Flask-Admin (ADICIONADO AQUI) ---
     class AttachmentAdminView(MyModelView):
-        form = AttachmentForm # Usará o formulário de anexo se você criar um
+        form = AttachmentForm # Pode usar um formulário para visualização/edição, se necessário.
         column_list = ('id', 'task', 'filename', 'unique_filename', 'mimetype', 'filesize', 'uploader', 'upload_timestamp')
         column_labels = dict(task='Tarefa', filename='Nome Original', unique_filename='Nome no Servidor',
                              mimetype='Tipo', filesize='Tamanho', uploader='Feito por', upload_timestamp='Data Upload')
         column_searchable_list = ('filename', 'unique_filename', 'mimetype')
         column_filters = ('task.title', 'uploader.username', 'mimetype')
 
-        # Para que o admin possa ver o arquivo real, pode-se adicionar um link
+        # Formatter para criar um link de download na coluna 'filename'.
         def _attachment_download_link(view, context, model, name):
             if not model.unique_filename:
                 return ''
-            return f'<a href="{url_for("main.download_attachment", attachment_id=model.id)}" target="_blank">Download</a>'
+            # Usa url_for para gerar o URL de download para a rota principal.
+            return f'<a href="{url_for("main.download_attachment", attachment_id=model.id)}" target="_blank">{model.filename}</a>'
         column_formatters = {
             'filename': _attachment_download_link
         }
 
-        # Sobrescrever o método de exclusão para remover o arquivo do sistema de arquivos
+        # Sobrescreve o método de exclusão para remover o arquivo do sistema de arquivos.
         def on_model_delete(self, model):
             file_path = os.path.join(app.config['UPLOAD_FOLDER_ATTACHMENTS'], model.unique_filename)
             if os.path.exists(file_path):
                 os.remove(file_path)
             flash(f"Anexo '{model.filename}' e arquivo excluídos com sucesso.", 'success')
 
-        # Desabilitar criação e edição via admin, pois o upload é feito via rota de tarefa.
+        # Desabilita a criação e edição via admin, pois o upload é feito via rota de tarefa.
         # O administrador poderá apenas visualizar e deletar.
         can_create = False
         can_edit = False
-    # --- FIM NOVO ---
 
-
-    # CORREÇÃO AQUI para o "Página Não Encontrada" do Flask-Admin:
-    # A AdminIndexView é a página inicial DO PAINEL ADMIN.
-    # O link "Ir para Home do Site" é para a home da sua APLICAÇÃO.
+    # Inicialização do Flask-Admin.
+    # O `index_view` define a página inicial do PAINEL ADMIN.
     admin = Admin(app, name='Gerenciador de Eventos', template_mode='bootstrap4',
-                  index_view=MyAdminIndexView(name='Início do Admin')) # Nome para o índice do próprio painel admin
-    # Adiciona um link no menu do Admin para a home page da aplicação principal
+                  index_view=MyAdminIndexView(name='Início do Admin')) 
+    # Adiciona um link no menu do Admin para a home page da aplicação principal.
+    # Isso corresponde ao que você queria para "Ir para Home do Site".
     admin.add_link(MenuLink(name='Ir para Home do Site', url='/', target="_top", icon_type='fa', icon_value='fa-home'))
 
+    # Adiciona as views dos modelos ao Flask-Admin.
     admin.add_view(UserAdminView(User, db.session, name='Usuários', category='Administração'))
     admin.add_view(RoleAdminView(Role, db.session, name='Papéis', category='Administração'))
     admin.add_view(GroupAdminView(Group, db.session, name='Grupos', category='Administração'))
     admin.add_view(CategoryAdminView(Category, db.session, name='Categorias de Evento', category='Configurações'))
     admin.add_view(TaskCategoryAdminView(TaskCategory, db.session, name='Categorias de Tarefa', category='Configurações'))
     admin.add_view(StatusAdminView(Status, db.session, name='Status', category='Configurações'))
-    admin.add_view(EventAdminView(Event, db.session, name='Eventos')) # O modelo Event agora usa EventAdminView
-    # --- NOVO: Adicionar a View de Anexos ao Flask-Admin (ADICIONADO AQUI) ---
+    admin.add_view(EventAdminView(Event, db.session, name='Eventos'))
     admin.add_view(AttachmentAdminView(Attachment, db.session, name='Anexos', category='Configurações'))
-    # --- FIM NOVO ---
 
 
+    # Filtro Jinja2 para processar JSON/literais Python em templates para exibir diferenças.
     def from_json_and_extract_value(input_string):
         """
         Função para processar strings JSON (ou literais Python como dict/list)
@@ -399,53 +425,76 @@ def create_app():
 
     app.jinja_env.filters['format_diff_values'] = format_diff_values
 
+    # Importa e registra o blueprint 'main'.
     from routes import main as main_blueprint
-    # from admin_routes import admin_bp # REMOVIDO: Já não temos este arquivo
-
     app.register_blueprint(main_blueprint)
-    # app.register_blueprint(admin_bp) # REMOVIDO: Já não temos este arquivo
 
+    # Comandos da CLI do Flask.
     @app.cli.command('create-db')
     def create_db_command():
         """Cria as tabelas do banco de dados, papéis padrão e um usuário administrador inicial."""
         with app.app_context():
             click.echo("Verificando e criando papéis padrão (Admin, User, Project Manager)...")
-            default_roles_data = {
-                'Admin': 'Administrador do sistema com acesso total.',
-                'User': 'Usuário padrão com acesso básico.',
-                'Project Manager': 'Gerente de projeto com permissões elevadas.'
+            # Define as permissões padrão para cada role na criação, conforme discutido.
+            default_roles_config = {
+                'Admin': {'description': 'Administrador do sistema com acesso total.', 'perms': {
+                    'can_view_event': True, 'can_edit_event': True, 'can_manage_permissions': True,
+                    'can_create_event': True, 'can_create_task': True, 'can_edit_task': True,
+                    'can_delete_task': True, 'can_complete_task': True, 'can_uncomplete_task': True,
+                    'can_upload_task_audio': True, 'can_delete_task_audio': True, 'can_view_task_history': True,
+                    'can_manage_task_comments': True, 'can_upload_attachments': True, 'can_manage_attachments': True
+                }},
+                'Project Manager': {'description': 'Gerente de projeto com permissões elevadas.', 'perms': {
+                    'can_view_event': True, 'can_edit_event': True, 'can_manage_permissions': True,
+                    'can_create_event': True, 'can_create_task': True, 'can_edit_task': True,
+                    'can_delete_task': True, 'can_complete_task': True, 'can_uncomplete_task': True,
+                    'can_upload_task_audio': True, 'can_delete_task_audio': True, 'can_view_task_history': True,
+                    'can_manage_task_comments': True, 'can_upload_attachments': True, 'can_manage_attachments': True
+                }},
+                'User': {'description': 'Usuário padrão com acesso básico.', 'perms': {
+                    'can_view_event': True, 'can_edit_event': False, 'can_manage_permissions': False,
+                    'can_create_event': False, 'can_create_task': True, 'can_edit_task': True,
+                    'can_delete_task': False, 'can_complete_task': True, 'can_uncomplete_task': True,
+                    'can_upload_task_audio': True, 'can_delete_task_audio': True, 'can_view_task_history': True,
+                    'can_manage_task_comments': True, 'can_upload_attachments': True, 'can_manage_attachments': False
+                }}
             }
-            for name, description in default_roles_data.items():
-                if not Role.query.filter_by(name=name).first():
-                    role = Role(name=name, description=description)
+
+            for name, config in default_roles_config.items():
+                role = Role.query.filter_by(name=name).first()
+                if not role:
+                    # Cria a role com as permissões definidas.
+                    role = Role(name=name, description=config['description'], **config['perms'])
                     db.session.add(role)
-                    click.echo(f"Papel '{name}' criado.")
+                    click.echo(f"Papel '{name}' criado com permissões iniciais.")
                 else:
-                    click.echo(f"Papel '{name}' já existe.")
+                    # Se a role já existe, atualiza as permissões para garantir consistência.
+                    # Isso é útil caso você adicione novas permissões ao modelo Role.
+                    for perm_name, perm_value in config['perms'].items():
+                        setattr(role, perm_name, perm_value)
+                    click.echo(f"Papel '{name}' já existe e permissões atualizadas.")
             db.session.commit()
-            click.echo("Papéis verificados/criados.")
+            click.echo("Papéis verificados/criados/atualizados.")
 
-            click.echo("Verificando e criando status padrão de evento (Ativo)...")
-            if not Status.query.filter_by(name='Ativo', type='event').first():
-                ativo_event_status = Status(name='Ativo', type='event', description='Evento em andamento ou futuro.')
-                db.session.add(ativo_event_status)
-                click.echo("Status de evento 'Ativo' criado.")
-            else:
-                click.echo("Status de evento 'Ativo' já existe.")
-
-            if not Status.query.filter_by(name='Pendente', type='task').first():
-                pendente_task_status = Status(name='Pendente', type='task', description='Tarefa aguardando início ou atribuição.')
-                db.session.add(pendente_task_status)
-                click.echo("Status de tarefa 'Pendente' criado.")
-            else:
-                click.echo("Status de tarefa 'Pendente' já existe.")
-
-            if not Status.query.filter_by(name='Concluída', type='task').first():
-                concluida_task_status = Status(name='Concluída', type='task', description='Tarefa concluída com sucesso.')
-                db.session.add(concluida_task_status)
-                click.echo("Status de tarefa 'Concluída' criado.")
-            else:
-                click.echo("Status de tarefa 'Concluída' já existe.")
+            click.echo("Verificando e criando status padrão de evento (Ativo, Realizado, Arquivado)...")
+            default_event_statuses = {'Ativo': 'Evento em andamento ou futuro.', 'Realizado': 'Evento que já ocorreu.', 'Arquivado': 'Evento antigo ou inativo.'}
+            for name, desc in default_event_statuses.items():
+                if not Status.query.filter_by(name=name, type='event').first():
+                    status = Status(name=name, type='event', description=desc)
+                    db.session.add(status)
+                    click.echo(f"Status de evento '{name}' criado.")
+                else:
+                    click.echo(f"Status de evento '{name}' já existe.")
+            
+            click.echo("Verificando e criando status padrão de tarefa (Pendente, Em Andamento, Concluída, Cancelada)...")
+            default_task_statuses = {'Pendente': 'Tarefa aguardando início ou atribuição.', 'Em Andamento': 'Tarefa em progresso.', 'Concluída': 'Tarefa concluída com sucesso.', 'Cancelada': 'Tarefa foi cancelada.'}
+            for name, desc in default_task_statuses.items():
+                if not Status.query.filter_by(name=name, type='task').first():
+                    status = Status(name=name, type='task', description=desc)
+                    db.session.add(status)
+                    click.echo(f"Status de tarefa '{name}' criado.")
+                else:
+                    click.echo(f"Status de tarefa '{name}' já existe.")
 
             db.session.commit()
             click.echo("Status de evento/tarefa verificado/criado.")
@@ -481,7 +530,6 @@ def create_app():
                     table_names = inspector.get_table_names()
                     if 'alembic_version' in table_names:
                         try:
-                            # CORREÇÃO PARA SQLITE: CASCADE não é suportado diretamente
                             connection.execute(text("DROP TABLE alembic_version;"))
                             connection.commit()
                             print("Tabela 'alembic_version' apagada.")
@@ -511,6 +559,7 @@ def create_app():
             else:
                 click.echo("Nenhuma tabela encontrada no banco de dados.")
 
+    # Handlers de erro para páginas não encontradas e erros internos do servidor.
     @app.errorhandler(500)
     def internal_server_error(error):
         return render_template('errors/500.html'), 500
@@ -521,6 +570,7 @@ def create_app():
 
     return app
 
+# Cria a instância da aplicação Flask.
 app = create_app()
 
 if __name__ == '__main__':

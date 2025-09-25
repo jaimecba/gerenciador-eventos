@@ -14,13 +14,14 @@ from forms import (RegistrationForm, LoginForm, EventForm, CategoryForm, StatusF
                    EventPermissionForm, CommentForm, AttachmentForm) # <-- ATUALIZADO: Importar AttachmentForm
 
 # Importar as funções auxiliares diretamente do forms
+# Importar as funções auxiliares diretamente do forms
 from forms import get_users, get_task_categories, get_task_statuses, get_roles, AdminRoleForm
 
 # IMPORTAÇÕES DE MODELS ATUALIZADAS
 # Importação de models.py, assumindo que está no mesmo nível que routes.py
 from models import (User, Role, Event, Task, TaskAssignment, ChangeLogEntry, Status,
                     Category, PasswordResetToken, TaskHistory, Group,
-                    UserGroup, EventPermission, Comment, TaskCategory, Attachment) # <-- Importar Attachment
+                    UserGroup, EventPermission, Comment, TaskCategory, Attachment, Notification) # <-- ADICIONADO Notification
 from sqlalchemy import func, or_, distinct, false, and_
 from datetime import datetime, date, timedelta
 import json
@@ -31,6 +32,7 @@ import os
 from flask import send_from_directory
 import os
 from utils.changelog_utils import diff_dicts
+from functools import wraps # Importado para o decorator permission_required
 from functools import wraps # Importado para o decorator permission_required
 
 from decorators import admin_required, project_manager_required, role_required
@@ -94,6 +96,51 @@ Se você não solicitou isso, ignore este e-mail e nenhuma alteração será fei
     mail.send(msg)
     current_app.logger.info(f"Email de redefinição enviado para {user.email} com token {token_uuid_str[:8]}...")
 # --- FIM FUNÇÃO AUXILIAR ---
+
+# =========================================================================
+# NOVO: FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
+# =========================================================================
+
+def send_notification_email(recipient_email, subject, body, html_body=None):
+    """Envia um e-mail de notificação."""
+    try:
+        msg = Message(subject,
+                      sender=current_app.config['MAIL_DEFAULT_SENDER'],
+                      recipients=[recipient_email])
+        msg.body = body
+        if html_body:
+            msg.html = html_body
+        mail.send(msg)
+        current_app.logger.info(f"Email de notificação enviado para {recipient_email} com assunto '{subject}'.")
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Erro ao enviar email de notificação para {recipient_email}: {e}", exc_info=True)
+        return False
+
+def create_in_app_notification(user_id, message, link_url=None, related_object_type=None, related_object_id=None):
+    """Cria uma notificação in-app para um usuário."""
+    try:
+        notification = Notification(
+            user_id=user_id,
+            message=message,
+            link_url=link_url,
+            related_object_type=related_object_type,
+            related_object_id=related_object_id
+        )
+        db.session.add(notification)
+        # Não commit aqui, o commit principal da transação da rota fará isso.
+        # db.session.commit()
+        current_app.logger.info(f"Notificação in-app criada para user {user_id}: '{message[:50]}'.")
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Erro ao criar notificação in-app para user {user_id}: {e}", exc_info=True)
+        db.session.rollback() # Rollback em caso de erro na notificação, mas o comentário já pode ter sido salvo.
+# Idealmente, tudo seria em uma única transação, mas por simplicidade aqui.
+        return False
+
+# =========================================================================
+# FIM: FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
+# =========================================================================
 
 # Defina quantos itens você quer por página (para o ChangeLog)
 LOGS_PER_PAGE = 10
@@ -422,6 +469,7 @@ def reset_token(token):
     return render_template('reset_token.html', title='Redefinir Senha', form=form)
 
 
+# =========================================================================
 # =========================================================================
 # =========================================================================
 # =========================================================================
@@ -1039,7 +1087,7 @@ def new_task(event_id):
             )
 
             db.session.add(task)
-            db.session.flush() # flush para que o task.id seja gerado
+            db.session.flush() # flush para que o task.id seja gerado ANTES de criar os TaskAssignment
 
             print(f"--- DEBUG: new_task - Tarefa adicionada à sessão e ID gerado: {task.id} ---")
 
@@ -1049,16 +1097,18 @@ def new_task(event_id):
             if not selected_assignee_ids:
                  print("--- DEBUG: new_task - Nenhum usuário selecionado para atribuição. ---")
 
-            # Adiciona os usuários selecionados à relação assignees
+            # === CORREÇÃO APLICADA AQUI ===
+            # Adiciona os usuários selecionados criando objetos TaskAssignment
             for user_id in selected_assignee_ids:
                 user_obj = User.query.get(user_id)
                 if user_obj:
-                    # CORREÇÃO: Usando o atributo assignees diretamente que espera objetos User
-                    task.assignees.append(user_obj) # Adiciona o objeto User à relação
-                    print(f"--- DEBUG: new_task - Atribuindo: Tarefa '{task.title}' para Usuário '{user_obj.username}' ---")
-
-            db.session.commit()
-            print("--- DEBUG: new_task - Transação comitada com sucesso! ---")
+                    new_assignment = TaskAssignment(task=task, user=user_obj) # CRIA O OBJETO TaskAssignment
+                    task.assignees_associations.append(new_assignment) # E O ADICIONA À RELAÇÃO CORRETA
+                    print(f"--- DEBUG: new_task - Atribuindo TaskAssignment: Tarefa '{task.title}' para Usuário '{user_obj.username}' ---")
+            # === FIM DA CORREÇÃO ===
+            
+            # Não precisamos mais do db.session.commit() aqui. Tudo será comitado no final.
+            print("--- DEBUG: new_task - Atribuições processadas. Preparando para commit final. ---")
 
             history_description = f'Tarefa "{task.title}" criada.'
             history_new_value = {
@@ -1079,8 +1129,8 @@ def new_task(event_id):
                 comment=f"Criada por {current_user.username}"
             )
             db.session.add(history_entry)
-            db.session.commit()
-
+            
+            # === Unificando o commit do ChangeLogEntry com o commit principal ===
             ChangeLogEntry.log_creation(
                 user_id=current_user.id,
                 record_type='Task',
@@ -1088,7 +1138,9 @@ def new_task(event_id):
                 new_data=task.to_dict(),
                 description=f"Tarefa '{task.title}' criada no evento '{event_obj.title}'."
             )
-            db.session.commit()
+            
+            db.session.commit() # Commit ÚNICO para tudo!
+            print("--- DEBUG: new_task - Transação comitada com sucesso! ---") # Mantido para verificar o commit final
 
             flash('Sua tarefa foi criada!', 'success')
             return redirect(url_for('main.event', event_id=event_obj.id))
@@ -1234,7 +1286,8 @@ def task_detail(task_id):
 @login_required
 def serve_audio_file(filename):
     """Serve arquivos de áudio uploaded."""
-    # Adicione verificações de permissão mais granulares se desejar
+    # Adicione verificações de permissão mais granulares se desejar,
+    # por exemplo, verificar se o current_user tem acesso ao evento/tarefa ao qual o áudio pertence.
     # Por enquanto, apenas exige login.
     return send_from_directory(current_app.config['UPLOAD_FOLDER_AUDIO'], filename)
 
@@ -1247,7 +1300,7 @@ def serve_audio_file(filename):
 @main.route('/api/comments/task/<int:task_id>', methods=['GET', 'POST'])
 @login_required
 def get_or_add_task_comments_api(task_id):
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.options(joinedload(Task.assignees_associations).joinedload(TaskAssignment.user), joinedload(Task.event).joinedload(Event.author)).get_or_404(task_id)
 
     # --- Verificação de permissão geral para comentários (GET e POST) ---
     can_manage_or_view_comments = (
@@ -1309,9 +1362,45 @@ def get_or_add_task_comments_api(task_id):
                 new_data=new_comment.to_dict(), # Adapte se new_comment.to_dict() não existir ou for diferente
                 description=f"Comentário adicionado por '{current_user.username}' na tarefa '{task.title}'."
             )
-            db.session.commit() # Commit do changelog
+            
+            # =====================================================================
+            # NOVO: LÓGICA DE NOTIFICAÇÕES (APÓS COMENTÁRIO ADICIONADO COM SUCESSO)
+            # =====================================================================
+            notification_message_template = f"'{current_user.username}' comentou na tarefa '{task.title}'."
+            notification_link = url_for('main.task_detail', task_id=task.id, _external=True)
 
-            # >>> CORREÇÃO CRÍTICA AQUI: Retorna 'content' em vez de 'text' <<<
+            recipients_to_notify = set() # Usar set para evitar duplicidade de usuários
+            
+            # 1. Notificar todos os atribuídos à tarefa (exceto o próprio autor do comentário)
+            for assignee in task.assignees:
+                if assignee.id != current_user.id:
+                    recipients_to_notify.add(assignee)
+            
+            # 2. Notificar o autor do evento (se não for o autor do comentário e não estiver já na lista de atribuídos)
+            if task.event.author_id != current_user.id and task.event.author not in recipients_to_notify:
+                recipients_to_notify.add(task.event.author)
+
+            for recipient in recipients_to_notify:
+                # Cria notificação in-app
+                create_in_app_notification(
+                    user_id=recipient.id,
+                    message=notification_message_template,
+                    link_url=notification_link,
+                    related_object_type='Task',
+                    related_object_id=task.id
+                )
+                
+                # Envia email (opcional)
+                email_subject = f"[Gerenciador de Eventos] Novo Comentário na Tarefa: {task.title}"
+                email_body = f"Olá {recipient.username},\n\n{current_user.username} comentou na tarefa '{task.title}' do evento '{task.event.title}'.\n\nComentário: {comment_text}\n\nPara ver o comentário e a tarefa, clique aqui: {notification_link}\n\nAtenciosamente,\nSua Equipe de Gerenciamento de Eventos"
+                send_notification_email(recipient.email, email_subject, email_body)
+            
+            db.session.commit() # Commit das notificações in-app e do ChangeLog (se não houver um commit anterior para o ChangeLog)
+            # =====================================================================
+            # FIM: LÓGICA DE NOTIFICAÇÕES
+            # =====================================================================
+
+            # Retorna o comentário recém-criado para que o frontend possa atualizá-lo
             formatted_date = new_comment.timestamp.strftime('%d/%m/%Y %H:%M')
             return jsonify({
                 'id': new_comment.id,
@@ -1335,6 +1424,7 @@ def get_or_add_task_comments_api(task_id):
 # Rota para adicionar comentário a uma tarefa (foi substituída pela rota API acima)
 # Esta rota /events/<int:event_id>/tasks/<int:task_id>/comments/add NÃO É MAIS NECESSÁRIA
 # Está comentada para referência futura, mas o frontend não a utiliza.
+# =========================================================================
 # =========================================================================
 # @main.route('/events/<int:event_id>/tasks/<int:task_id>/comments/add', methods=['POST'])
 # @login_required
@@ -1476,7 +1566,7 @@ def update_task(task_id):
                                        form=form, legend='Atualizar Tarefa', event=event_obj, task=task_obj)
             # --- FIM CORREÇÃO para task_status ---
 
-            # --- CORREÇÃO APLICADA AQUI para assignees (relação muitos-para-muitos) ---
+            # === CORREÇÃO APLICADA AQUI para assignees (relação muitos-para-muitos) ===
             selected_assignee_ids = form.assignees.data # Isso será uma lista de IDs inteiros
 
             # Verifica se os atribuídos mudaram para evitar operações desnecessárias
@@ -1484,21 +1574,23 @@ def update_task(task_id):
             assignees_changed = current_assignee_ids != sorted(selected_assignee_ids)
 
             if assignees_changed:
-                task_obj.assignees.clear() # Limpa os atribuídos existentes
+                # CORREÇÃO: Manipulando a relação assignees_associations para limpar e adicionar TaskAssignment
+                task_obj.assignees_associations.clear() # Limpa as atribuições existentes na tabela de associação
                 print(f"--- DEBUG: update_task - Limpas atribuições existentes para a tarefa {task_obj.id}. ---")
 
                 if selected_assignee_ids:
                     # Busca todos os objetos User correspondentes aos IDs selecionados
                     assignee_users = User.query.filter(User.id.in_(selected_assignee_ids)).all()
                     for user_obj in assignee_users:
-                        # CORREÇÃO: Usando o atributo assignees diretamente que espera objetos User
-                        task_obj.assignees.append(user_obj) # Adiciona cada objeto User à relação
-                        print(f"--- DEBUG: update_task - Adicionando nova atribuição: Tarefa '{task_obj.title}' para Usuário '{user_obj.username}' ---")
+                        new_assignment = TaskAssignment(task=task_obj, user=user_obj) # CRIA O OBJETO TaskAssignment
+                        task_obj.assignees_associations.append(new_assignment) # E O ADICIONA À RELAÇÃO CORRETA
+                        print(f"--- DEBUG: update_task - Adicionando nova atribuição (TaskAssignment): Tarefa '{task_obj.title}' para Usuário '{user_obj.username}' ---")
                 else:
                     print("--- DEBUG: update_task - Nenhum usuário selecionado para atribuição. ---")
+            # === FIM DA CORREÇÃO ===
 
-            db.session.commit()
-            print("--- DEBUG: update_task - Transação comitada com sucesso! ---")
+            # db.session.commit() # Removido commit intermediário. Tudo será comitado no final.
+            print("--- DEBUG: update_task - Transação principal de dados processada. Preparando para histórico e commit final. ---")
 
             new_task_data_for_changelog = task_obj.to_dict()
 
@@ -1639,8 +1731,8 @@ def update_task(task_id):
                 db.session.add(history_entry)
                 changes_logged_in_history = True
 
-            if changes_logged_in_history:
-                db.session.commit()
+            # if changes_logged_in_history: # Não precisamos mais deste if, tudo é comitado junto.
+            #     db.session.commit()
 
             ChangeLogEntry.log_update(
                 user_id=current_user.id,
@@ -1650,7 +1742,7 @@ def update_task(task_id):
                 new_data=new_task_data_for_changelog,
                 description=f"Tarefa '{task_obj.title}' atualizada no evento '{task_obj.event.title}'."
             )
-            db.session.commit()
+            db.session.commit() # Commit ÚNICO para tudo!
 
             flash('Sua tarefa foi atualizada!', 'success')
             return redirect(url_for('main.event', event_id=task_obj.event.id))
@@ -2289,7 +2381,7 @@ def update_user(user_id):
             return redirect(url_for('main.list_users'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Erro ao atualizar usuário: {e}. Por favor, tente novamente.', 'danger')
+            flash(f'Ocorreu um erro ao atualizar usuário: {e}. Por favor, tente novamente.', 'danger')
             current_app.logger.error(f"Erro ao atualizar usuário: {e}", exc_info=True)
             print(f"--- DEBUG: update_user - ERRO: {e} ---")
     else:
@@ -2407,7 +2499,7 @@ def upload_task_audio(task_id):
                 record_type='Task',
                 record_id=task_obj.id,
                 old_data=old_data_for_changelog,
-                new_data=new_data_for_changelog,
+                new_data=task_obj.to_dict(), # Usar task_obj.to_dict() para new_data atualizado
                 description=f"Áudio adicionado/atualizado na tarefa '{task_obj.title}'. Duração: {audio_duration}s."
             )
             db.session.commit()
@@ -2489,6 +2581,7 @@ def delete_task_audio(task_id):
 
 
 # =========================================================================
+# =========================================================================
 # NOVAS ROTAS PARA ANEXOS DE TAREFAS
 # =========================================================================
 
@@ -2496,7 +2589,7 @@ def delete_task_audio(task_id):
 @main.route("/uploads/attachments/<path:filename>")
 @login_required
 def serve_attachment_file(filename):
-    # ATENÇÃO: Aqui você pode adicionar lógica de permissão mais granular se desejar,
+    # ATENÇÃO: Aqui você pode adicionar lógica de permissão mais granulares se desejar,
     # por exemplo, verificar se o current_user tem acesso ao evento/tarefa ao qual o anexo pertence.
     # Por enquanto, apenas exige login.
     return send_from_directory(current_app.config['UPLOAD_FOLDER_ATTACHMENTS'], filename)
@@ -2831,3 +2924,41 @@ def calendar_events_feed():
         })
     
     return jsonify(events_for_calendar)
+
+# =========================================================================
+# NOVAS ROTAS DE NOTIFICAÇÕES
+# =========================================================================
+@main.route("/notifications")
+@login_required
+def list_notifications():
+    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.timestamp.desc()).all()
+    
+    # Marcar todas as notificações como lidas ao serem visualizadas
+    # Esta é uma abordagem simples. Em sistemas maiores, pode-se usar AJAX para marcar individualmente.
+    for notification in notifications:
+        if not notification.is_read:
+            notification.is_read = True
+    db.session.commit()
+
+    return render_template('notifications.html', title='Minhas Notificações', notifications=notifications)
+
+@main.route("/notification/<int:notification_id>/mark_read", methods=['POST'])
+@login_required
+def mark_notification_as_read(notification_id):
+    notification = Notification.query.get_or_404(notification_id)
+    if notification.user_id != current_user.id:
+        abort(403) # Não permitir que um usuário marque a notificação de outro
+    
+    notification.is_read = True
+    db.session.commit()
+    flash('Notificação marcada como lida.', 'success')
+    return redirect(url_for('main.list_notifications'))
+
+@main.route("/api/notifications/unread_count")
+@login_required
+def unread_notifications_count():
+    count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+    return jsonify({'unread_count': count})
+# =========================================================================
+# FIM: NOVAS ROTAS DE NOTIFICAÇÕES
+# =========================================================================

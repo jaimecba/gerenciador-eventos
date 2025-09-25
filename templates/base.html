@@ -19,7 +19,7 @@
     {# FullCalendar CSS #}
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
     {# SEU CSS PERSONALIZADO (style.css) - AGORA COM CACHE-BUSTER E CARREGADO POR ÚLTIMO #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20240428v20') }}"> {# AQUI MUDOU O V #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20240428v21') }}"> {# AQUI MUDOU O V #}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
@@ -60,6 +60,13 @@
                 </ul>
                 <ul class="navbar-nav ms-auto"> {# ms-auto para alinhar à direita #}
                     {% if current_user.is_authenticated %}
+                        {# NOVO: Link e Ícone de Notificações #}
+                        <li class="nav-item position-relative me-3">
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.list_notifications') }}" target="_top" title="Notificações">
+                                <i class="fas fa-bell"></i>
+                                <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle notification-count" style="font-size: 0.65em; padding: 0.3em 0.5em;">0</span> {# Pequeno e posicionamento #}
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <span class="nav-link text-primary fw-bold fs-6">
                                 <i class="fas fa-user-circle me-1"></i> Olá, {{ current_user.username }}!
@@ -134,6 +141,36 @@
             })
         });
     </script>
-    {% block scripts %}{% endblock %}
+    {% block scripts %}
+    {# NOSSO NOVO SCRIPT PARA O CONTADOR DE NOTIFICAÇÕES #}
+    <script>
+        $(document).ready(function() {
+            function updateUnreadNotificationsCount() {
+                $.ajax({
+                    url: '{{ url_for('main.unread_notifications_count') }}',
+                    method: 'GET',
+                    success: function(data) {
+                        const count = data.unread_count;
+                        const notificationBadge = $('.notification-count');
+                        if (count > 0) {
+                            notificationBadge.text(count).show();
+                        } else {
+                            notificationBadge.text(0).hide(); // Esconde o badge se não houver notificações
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Erro ao buscar contador de notificações não lidas:', xhr);
+                        $('.notification-count').text('!').show(); // Exibe um erro visual se a API falhar
+                    }
+                });
+            }
+
+            // Chama a função ao carregar a página
+            updateUnreadNotificationsCount();
+            // Atualiza a cada 60 segundos (1 minuto)
+            setInterval(updateUnreadNotificationsCount, 60000); 
+        });
+    </script>
+    {% endblock %}
 </body>
 </html>

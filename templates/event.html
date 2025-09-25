@@ -1,4 +1,4 @@
-{# C:\\\\\\\\\\\gerenciador-eventos\\\\\\\\\\\templates\\\\\\\\\\\event.html #}
+{# C:\\\\gerenciador-eventos\\\\templates\\\\event.html #}
 {% extends "base.html" %}
 {% block content %}
     <div class="container mt-4">
@@ -66,10 +66,10 @@
                 {# Legenda para as cores dos cards de tarefas #}
                 <div class="alert alert-info small py-2 mb-4" role="alert">
                     <strong>Legenda de Cores dos Cartões de Tarefas:</strong><br>
-                    <span class="badge" style="background-color: #FF0000; color: white;">Vencida</span>
-                    <span class="badge" style="background-color: #008000; color: white;">Prazo Longo (>10 dias)</span>
-                    <span class="badge" style="background-color: #FF4500; color: white;">Urgência de Prazo (<=5 dias)</span>
-                    <span class="badge" style="background-color: #FFD700; color: black;">Alerta de Prazo (6-10 dias)</span>
+                    <span class="badge" style="background-color: #dc3545; color: white;">Vencida</span>
+                    <span class="badge" style="background-color: #28a745; color: white;">Prazo Longo (>10 dias)</span>
+                    <span class="badge" style="background-color: #ffc107; color: black;">Alerta de Prazo (6-10 dias)</span>
+                    <span class="badge" style="background-color: #fd7e14; color: white;">Urgência de Prazo (<=5 dias)</span>
                 </div>
 
                 {# Seção de Tarefas ATIVAS #}
@@ -106,6 +106,19 @@
                                         {# Prazo #}
                                         <p class="task-due-date mb-1 text-size-12px"><span class="text-muted">Prazo:</span> <span class="{{ due_date_text_color_class }}" >{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}</span></p>
 
+                                        {# INÍCIO DA CORREÇÃO: Atribuído a #}
+                                        {% if task.assignees %}
+                                            <p class="task-assignees mb-1 text-size-12px">
+                                                <span class="text-muted">Atribuído a:</span> 
+                                                {% for assignee in task.assignees %}
+                                                    <span class="assignee-name">{{ assignee.username }}</span>{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </p>
+                                        {% else %}
+                                            <p class="task-assignees mb-1 text-size-12px"><span class="text-muted">Atribuído a:</span> Nenhum</p>
+                                        {% endif %}
+                                        {# FIM DA CORREÇÃO: Atribuído a #}
+
                                         {# Descrição #}
                                         {% if task.description %}
                                             <div class="task-text-truncate mb-1 text-size-12px"><span class="text-muted">Descrição:</span> <span>{{ task.description }}</span></div>
@@ -118,7 +131,7 @@
 
                                         {# Link #}
                                         {% if task.cloud_storage_link %}
-                                            <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
+                                            <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
                                         {% endif %}
                                         {# Obs. do Link #}
                                         {% if task.link_notes %}
@@ -202,6 +215,19 @@
                                             <h6 class="card-title mb-2 fs-6 fw-bold text-truncate"><strong>{{ task.title }}</strong></h6>
                                             {# Data de Conclusão e por quem #}
                                             <p class="task-due-date mb-1 text-size-12px"><span class="text-muted">Concluída em:</span> <span>{{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</span> {% if task.completed_by_user %}<br><small>Por: {{ task.completed_by_user.username }}</small>{% endif %}</p>
+                                            
+                                            {# INÍCIO DA CORREÇÃO: Atribuído a #}
+                                            {% if task.assignees %}
+                                                <p class="task-assignees mb-1 text-size-12px">
+                                                    <span class="text-muted">Atribuído a:</span> 
+                                                    {% for assignee in task.assignees %}
+                                                        <span class="assignee-name">{{ assignee.username }}</span>{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                </p>
+                                            {% else %}
+                                                <p class="task-assignees mb-1 text-size-12px"><span class="text-muted">Atribuído a:</span> Nenhum</p>
+                                            {% endif %}
+                                            {# FIM DA CORREÇÃO: Atribuído a #}
 
                                             {# Descrição (truncada) #}
                                             {% if task.description %}
@@ -214,7 +240,7 @@
 
                                             {# Link de Armazenamento #}
                                             {% if task.cloud_storage_link %}
-                                                <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
+                                                <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
                                             {% endif %}
                                             {# Obs. do Link #}
                                             {% if task.link_notes %}

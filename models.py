@@ -450,7 +450,6 @@ class Event(db.Model):
     status = db.relationship('Status', foreign_keys=[status_id], backref='events', lazy=True)
 
     tasks = db.relationship('Task', backref='event', lazy='selectin', cascade="all, delete-orphan")
-
     event_permissions = db.relationship('EventPermission', back_populates='event', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -471,7 +470,6 @@ class Event(db.Model):
 
     def __repr__(self):
         return f"Event('{self.title}', Due: '{self.due_date}', End: '{self.end_date}', Loc: '{self.location}')"
-
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
@@ -534,7 +532,6 @@ class Task(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey('event.id', name='fk_task_event_id'), nullable=False)
 
     task_status_id = db.Column(db.Integer, db.ForeignKey('status.id', name='fk_task_status_id'), nullable=False)
-
     task_category_id = db.Column(db.Integer, db.ForeignKey('task_category.id', name='fk_task_task_category_id'), nullable=True)
 
     is_completed = db.Column(db.Boolean, default=False, nullable=False)
@@ -847,8 +844,7 @@ class Comment(db.Model):
 # =========================================================================
 
 # =========================================================================
-# =========================================================================
-# NOVO MODELO: Attachment (para anexos em tarefas - ADICIONADO AQUI)
+# NOVO MODELO: Attachment (para anexos em tarefas)
 # =========================================================================
 class Attachment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -884,4 +880,40 @@ class Attachment(db.Model):
         return f"Attachment(ID: {self.id}, Task ID: {self.task_id}, Filename: '{self.filename}')"
 # =========================================================================
 # FIM NOVO MODELO: Attachment
+# =========================================================================
+
+# =========================================================================
+# NOVO MODELO: Notification (para notificações in-app e metadados de email)
+# =========================================================================
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    link_url = db.Column(db.String(500), nullable=True)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Adicionar campos para relacionar a notificação a um objeto específico
+    related_object_type = db.Column(db.String(50), nullable=True) # Ex: 'Task', 'Event', 'Comment'
+    related_object_id = db.Column(db.Integer, nullable=True)
+
+    # Relacionamento com o usuário que recebe a notificação
+    user = db.relationship('User', backref=db.backref('notifications', lazy=True, cascade="all, delete-orphan"))
+
+    def __repr__(self):
+        return f"Notification('{self.user.username}', '{self.message[:30]}...', Read: {self.is_read})"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'message': self.message,
+            'link_url': self.link_url,
+            'is_read': self.is_read,
+            'timestamp': self.timestamp.isoformat(),
+            'related_object_type': self.related_object_type,
+            'related_object_id': self.related_object_id
+        }
+# =========================================================================
+# FIM NOVO MODELO: Notification
 # =========================================================================

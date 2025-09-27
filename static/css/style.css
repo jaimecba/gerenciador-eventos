@@ -23,7 +23,7 @@ body {
     margin-left: auto; /* Centraliza o wrapper horizontalmente */
     margin-right: auto; /* Centraliza o wrapper horizontalmente */
     padding-left: 1.5rem; /* Espaçamento interno nas laterais para evitar que o conteúdo "cole" nas bordas */
-    padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
+padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
 }
 
 /* Ajustes de responsividade para o wrapper em telas menores */
@@ -45,6 +45,11 @@ body {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
 h1 {
@@ -96,6 +101,8 @@ button:hover {
 
 /* Container principal do formulário - content-section */
 .content-section {
+/* Container principal do formulário - content-section */
+.content-section {
     background: #ffffff; /* Fundo branco para o "cartão" do formulário */
     padding: 2.5rem; /* Espaçamento interno generoso para respiro */
     border: 1px solid #dee2e6; /* Borda sutil */
@@ -112,6 +119,7 @@ legend.border-bottom {
     border-bottom: 2px solid #dee2e6; /* Linha divisória um pouco mais pronunciada */
     padding-bottom: 1rem; /* Espaço entre o título e a linha */
     margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
+margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
     text-align: center; /* Centraliza o título */
 }
 
@@ -131,6 +139,7 @@ legend.border-bottom {
     margin-top: 0.5rem; /* Espaço acima da mensagem de erro */
     display: block; /* Garante que o erro esteja em sua própria linha */
     background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
+background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
     padding: 0.4rem 0.75rem; /* Preenchimento interno */
     border-radius: 0.25rem; /* Bordas levemente arredondadas */
     border: 1px solid rgba(220, 53, 69, 0.2); /* Borda sutil de erro */
@@ -149,6 +158,8 @@ legend.border-bottom {
 /* Campos de texto em foco */
 .form-control:focus {
     border-color: #17a2b8; /* Borda na cor de acento */
+.form-control:focus {
+    border-color: #17a2b8; /* Borda na cor de acento */
     box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); /* Sombra de foco na cor de acento */
     outline: none; /* Remove o outline padrão do navegador */
 }
@@ -163,6 +174,11 @@ legend.border-bottom {
     transition: all 0.2s ease-in-out; /* Transição suave para hover */
     margin-top: 1.5rem; /* Espaço acima do botão */
     width: 100%; /* Botão com largura total, para melhor UX em mobile */
+}
+
+/* Botão de submit em hover/focus */
+.btn-outline-info:hover,
+.btn-outline-info:focus {
 }
 
 /* Botão de submit em hover/focus */
@@ -190,8 +206,9 @@ legend.border-bottom {
         padding: 0.6rem 1.2rem;
     }
 }
-
-/* -- Fim dos Estilos de Formulário Elegantes e Modernos -- */
+padding: 0.6rem 1.2rem;
+    }
+}
 
 ul {
     list-style-type: none;
@@ -229,6 +246,7 @@ a:hover {
 .flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
 /* Efeitos visuais sutis para o Painel de Eventos (Adicionado para melhorias de UX) */
+/* Efeitos visuais sutis para o Painel de Eventos (Adicionado para melhorias de UX) */
 
 /* Efeito de hover para cards */
 .custom-card-hover {
@@ -254,6 +272,9 @@ a:hover {
 .btn-outline-primary:focus,
 .btn-outline-secondary:focus,
 .btn-outline-danger:focus,
+.btn-outline-primary:focus,
+.btn-outline-secondary:focus,
+.btn-outline-danger:focus,
 .btn-outline-info:focus { /* Adicionado btn-outline-info aqui também */
     box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
 }
@@ -273,6 +294,7 @@ a:hover {
 .text-overdue-red { color: #FF0000 !important; }
 .text-long-term-green { color: #008000 !important; }
 .text-urgent-orange { color: #FF4500 !important; }
+.text-alert-yellow { color: #FFD700 !important; }
 .text-alert-yellow { color: #FFD700 !important; }
 
 /* NOVA CLASSE PARA PADRONIZAR FONTES EM 12px (para textos de detalhes do evento em /home E tarefas em /event) */
@@ -301,6 +323,12 @@ a:hover {
 .task-card .card-body {
     padding: 1rem; /* Reduz o padding interno do card para torná-lo mais compacto */
     height: 100%; 
+}
+
+.task-card .card-title {
+    margin-bottom: 0.25rem;
+}
+height: 100%; 
 }
 
 .task-card .card-title {
@@ -338,6 +366,7 @@ a:hover {
 
 /* ========================================================== */
 /* NOVOS ESTILOS PARA A PÁGINA DE CHANGELOG (COM MODAL) - AJUSTADO */
+/* NOVOS ESTILOS PARA A PÁGINA DE CHANGELOG (COM MODAL) - AJUSTADO */
 /* ========================================================== */
 .table-responsive .changelog-table {
     table-layout: fixed;
@@ -373,6 +402,7 @@ a:hover {
 }
 
 .table-responsive .changelog-table th:nth-child(3),
+.table-responsive .changelog-table td:nth-child(3) {
 .table-responsive .changelog-table td:nth-child(3) {
     width: 80px;
     min-width: 80px;
@@ -412,6 +442,9 @@ a:hover {
         font-size: 0.7em;
         padding: 0.3rem;
     }
+font-size: 0.7em;
+        padding: 0.3rem;
+    }
     .table-responsive .changelog-table th:nth-child(1), .table-responsive .changelog-table td:nth-child(1),
     .table-responsive .changelog-table th:nth-child(2), .table-responsive .changelog-table td:nth-child(2),
     .table-responsive .changelog-table th:nth-child(3), .table-responsive .changelog-table td:nth-child(3),
@@ -425,6 +458,12 @@ a:hover {
     .table-responsive .changelog-table td:nth-child(6) {
         max-width: none;
     }
+}
+
+.modal-body pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
 }
 
 .modal-body pre {
@@ -473,6 +512,9 @@ a:hover {
     padding: 0.5rem 0.75rem;
     font-size: 0.85em;
     vertical-align: middle;
+padding: 0.5rem 0.75rem;
+    font-size: 0.85em;
+    vertical-align: middle;
     text-align: left;
 }
 
@@ -519,6 +561,11 @@ a:hover {
 }
 
 .user-data-table th:nth-child(7),
+width: 140px;
+    min-width: 140px;
+}
+
+.user-data-table th:nth-child(7),
 .user-data-table td:nth-child(7) {
     width: 100px;
     min-width: 100px;
@@ -553,6 +600,7 @@ a:hover {
 
 /* ========================================================== */
 /* NOVOS ESTILOS PARA A BARRA DE NAVEGAÇÃO (NAVBAR) - AJUSTADO */
+/* NOVOS ESTILOS PARA A BARRA DE NAVEGAÇÃO (NAVBAR) - AJUSTADO */
 /* ========================================================== */
 
 /* Estilo para garantir que o espaçamento entre os itens seja consistente */
@@ -573,6 +621,8 @@ a:hover {
 .dropdown-item {
     display: flex;
     align-items: center; /* Alinha verticalmente ícone e texto */
+display: flex;
+    align-items: center; /* Alinha verticalmente ícone e texto */
     white-space: nowrap; /* Impede que o texto quebre para a linha de baixo */
 }
 
@@ -591,6 +641,8 @@ a:hover {
 }
 
 /* No breakpoint 'lg' (991.98px) e abaixo, remove o margin-left extra do botão Sair para comprimir */
+@media (max-width: 991.98px) {
+    .navbar-nav.ms-auto .nav-item .btn {
 @media (max-width: 991.98px) {
     .navbar-nav.ms-auto .nav-item .btn {
         margin-left: 0 !important; /* Sobrescreve ms-lg-2 do Bootstrap para telas menores */
@@ -615,6 +667,9 @@ a:hover {
 /* .task-card .card-body já tem height: 100% definido acima */
 
 .task-card .card-title {
+/* .task-card .card-body já tem height: 100% definido acima */
+
+.task-card .card-title {
     margin-bottom: 0.5rem !important; /* Reduz o espaço após o título */
     /* Removido font-size: 1.1em; para deixar o fs-6 do HTML controlar (16px) */
 }
@@ -634,6 +689,10 @@ a:hover {
 }
 .task-due-date .fw-bold {
     /* Removido o estilo 'color' daqui para que as novas classes possam controlá-lo */
+}
+
+/* -- Estilo para Truncamento de Descrição e Notas -- */
+.task-text-truncate {
 }
 
 /* -- Estilo para Truncamento de Descrição e Notas -- */
@@ -673,6 +732,7 @@ a:hover {
     flex-shrink: 0; /* Impede que os botões encolham em telas pequenas */
     vertical-align: middle; /* Alinha o elemento ao meio da linha */
     line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
+line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
     box-sizing: border-box; /* Assegura que padding e border sejam incluídos na largura/altura */
     text-decoration: none; /* Remove sublinhado padrão de links, se aplicável */
 }
@@ -693,6 +753,8 @@ a:hover {
 }
 
 /* -- Ajustes no Player de Áudio -- */
+.audio-player-display {
+    margin-top: 0.5rem !important;
 .audio-player-display {
     margin-top: 0.5rem !important;
     margin-bottom: 0.5rem !important;
@@ -719,6 +781,9 @@ a:hover {
 }
 
 /* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
+}
+
+/* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
 .btn-compact-icon {
     padding: 0.25rem 0.45rem !important; /* Reduz o padding horizontal e vertical */
     line-height: 1 !important;          /* Garante que a altura seja mínima */
@@ -739,6 +804,8 @@ a:hover {
     display: none; /* Por padrão, esconde os ícones */
 }
 .fc-event-display-wrapper .fc-event-title-text {
+}
+.fc-event-display-wrapper .fc-event-title-text {
     display: block; /* Por padrão, mostra o título */
     flex-grow: 1; /* Permite que o título ocupe o espaço */
     text-align: left; /* Alinhamento padrão do título */
@@ -756,6 +823,7 @@ a:hover {
     border: none !important; /* Remove borda para o wrapper dentro do evento */
     padding: 0 !important; /* Remove padding para o wrapper dentro do evento */
     height: auto; /* Altura automática */
+height: auto; /* Altura automática */
     min-height: 20px; /* Garante altura mínima para ícones */
     width: 100%; /* Ocupa largura total */
 }
@@ -784,6 +852,9 @@ a:hover {
         font-size: 0.8em !important;
         padding: 0.2em !important;
     }
+font-size: 0.8em !important;
+        padding: 0.2em !important;
+    }
 
     /* Ajustes gerais para a barra de cabeçalho do calendário */
     .fc-header-toolbar {
@@ -810,6 +881,8 @@ a:hover {
         padding: 0.2em 0.5em !important; 
         font-size: 0.9em !important; /* Aumentado */
     }
+font-size: 0.9em !important; /* Aumentado */
+    }
 
     /* Ajusta o título do calendário (chunk central da toolbar) */
     .fc-toolbar-chunk:nth-child(2) { 
@@ -833,6 +906,8 @@ a:hover {
         display: none !important; /* Esconde o título */
     }
     .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
+}
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
     .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
         display: block !important; /* Mostra o ícone */
         font-size: 1em !important; /* Tamanho do ícone */
@@ -848,6 +923,7 @@ a:hover {
     /* Estilos para truncamento de títulos na visualização de lista em mobile */
     .fc-list-event-title-link { /* Nosso <a> dentro da <td>.fc-list-event-title */
         display: block; /* Essencial para que text-overflow: ellipsis funcione */
+display: block; /* Essencial para que text-overflow: ellipsis funcione */
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -866,6 +942,9 @@ a:hover {
     /* Certifica que o item da lista usa display flex para melhor responsividade */
     .fc-list-item > td {
         white-space: nowrap; /* Para os outros TDs (tempo, dot) */
+    }
+    .fc-list-item {
+white-space: nowrap; /* Para os outros TDs (tempo, dot) */
     }
     .fc-list-item {
         display: flex; /* Transforma a linha da lista em um flex container */
@@ -889,6 +968,10 @@ a:hover {
         font-size: 2.5rem !important; 
         text-align: left;
     }
+
+    /* Título do FullCalendar (ex: "Setembro 2025") */
+    .fc-toolbar-title {
+}
 
     /* Título do FullCalendar (ex: "Setembro 2025") */
     .fc-toolbar-title { 
@@ -915,7 +998,8 @@ a:hover {
         font-size: inherit !important; 
     }
     .fc-toolbar-chunk:nth-child(2) { /* Title (e.g., September 2025) */
-        order: 0 !important; 
+        order: 0 !important;
+order: 0 !important; 
         margin-bottom: 0 !important;
     }
 
@@ -932,6 +1016,8 @@ a:hover {
         width: auto !important; /* Deixa o FullCalendar gerenciar a largura */
         justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
     }
+justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
+    }
     .fc-daygrid-event .fc-event-display-wrapper .fc-event-title-text {
         display: block !important; /* Mostra o título */
         font-size: 0.9em !important; /* Tamanho da fonte para eventos desktop (ajustado para ser legível) */
@@ -947,6 +1033,8 @@ a:hover {
 
     /* Estilos para títulos na visualização de lista em desktop (opcional, mas bom para consistência) */
     .fc-list-event-title-link {
+        color: inherit; /* Herda a cor */
+.fc-list-event-title-link {
         color: inherit; /* Herda a cor */
         text-decoration: none; /* Sem sublinhado */
     }
@@ -971,6 +1059,8 @@ a:hover {
 
     .event-detail-sidebar.open {
         width: 300px; /* Largura aberta do painel lateral */
+.event-detail-sidebar.open {
+        width: 300px; /* Largura aberta do painel lateral */
         min-width: 300px; /* Impede que ele encolha abaixo disso */
         margin-left: 1rem; /* Pequena margem entre calendário e painel */
     }
@@ -994,6 +1084,10 @@ a:hover {
 
     /* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
     .comments-list {
+}
+
+    /* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
+    .comments-list {
         max-height: 250px; /* Altura máxima para a lista de comentários, aumentado um pouco */
         overflow-y: auto; /* Adiciona scroll se houver muitos comentários */
         border: 1px solid #e9ecef;
@@ -1014,4 +1108,24 @@ a:hover {
     .comments-list .comment-item small {
         font-size: 0.75em;
     }
+}
+
+/* Custom CSS para o destaque das sugestões de @menção */
+#mentions-suggestions .list-group-item.active,
+#mentions-suggestions .list-group-item-action:hover,
+#mentions-suggestions .list-group-item-action:focus {
+    color: #fff; /* Cor do texto branco */
+    background-color: #007bff; /* Um azul padrão do Bootstrap */
+    border-color: #007bff; /* Borda azul */
+}
+
+/* Opcional: Ajustar posição se as sugestões estiverem sobrepondo outros elementos */
+#mentions-suggestions {
+    /* z-index: 1050; /* Um pouco mais alto que modais (1040) se necessário */
+}
+
+/* Custom CSS para o destaque de menções nos comentários EXIBIDOS */
+.mention-highlight {
+    color: #007bff; /* Cor azul para o texto mencionado */
+    font-weight: bold; /* Para maior destaque */
 }

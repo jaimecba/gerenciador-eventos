@@ -1,4 +1,4 @@
-# C:\gerenciador-em-python\app.py
+# C:\\\gerenciador-eventos\\\app.py
 
 from dotenv import load_dotenv
 # Carrega variáveis do arquivo .env para desenvolvimento local.
@@ -23,11 +23,14 @@ from flask_admin.contrib.sqla import ModelView
 from flask_login import current_user
 from werkzeug.security import generate_password_hash
 # Importa todos os modelos relevantes para o Flask-Admin
-from models import User, Role, Status, Category, TaskCategory, Group, Event, EventPermission, Attachment
+# IMPORTANTE: Garanta que Notification está aqui
+from models import User, Role, Status, Category, TaskCategory, Group, Event, EventPermission, Attachment, Notification 
 # Importa todos os forms necessários do forms.py
 from forms import UserForm, AdminRoleForm, GroupForm, CategoryForm, TaskCategoryForm, StatusForm, EventForm, AttachmentForm 
 from flask_admin.menu import MenuLink
 # --- Fim Flask-Admin Imports ---
+
+import re # <-- MANTENHA ESTA LINHA: IMPORTADO PARA O FILTRO REGEX PERSONALIZADO
 
 def create_app():
     app = Flask(__name__)
@@ -36,8 +39,7 @@ def create_app():
     # Busca a SECRET_KEY das variáveis de ambiente ou usa um fallback para desenvolvimento.
     # **É CRÍTICO que esta chave seja gerada de forma segura e mantida secreta em produção.**
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_longa_aqui_fallback_dev')
-
-    # --- Configuração do Banco de Dados ---
+# --- Configuração do Banco de Dados ---
     # Busca a URL do banco de dados das variáveis de ambiente (ex: no Render) ou usa um SQLite local.
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///events.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -51,8 +53,7 @@ def create_app():
     app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_USER')
     app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_PASS')
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'seu_email@example.com')
-
-    # --- DEBUG: Verifica se as variáveis de ambiente de email estão sendo lidas ---
+# --- DEBUG: Verifica se as variáveis de ambiente de email estão sendo lidas ---
     print(f"DEBUG MAIL_SERVER: {app.config['MAIL_SERVER']}")
     print(f"DEBUG MAIL_PORT: {app.config['MAIL_PORT']}")
     print(f"DEBUG MAIL_USE_TLS: {app.config['MAIL_USE_TLS']}")
@@ -85,11 +86,30 @@ def create_app():
 
     # Habilita a extensão 'do' do Jinja2 para melhor controle de fluxo em templates.
     app.jinja_env.add_extension('jinja2.ext.do')
+    # COMENTADO/REMOVIDO: Linha que causava o erro ModuleNotFoundError. Usaremos um filtro personalizado abaixo.
+    # app.jinja_env.add_extension('jinja2_regex.Extension')
+
+    # NOVO: Registra um filtro Jinja personalizado para substituição de regex
+    @app.template_filter('regex_replace')
+    def regex_replace_filter(s, pattern, replacement):
+        """
+        Um filtro Jinja personalizado para realizar a substituição de regex.
+        Uso no template: {{ minha_string | regex_replace('padrao', 'substituicao') }}
+        """
+        return re.sub(pattern, replacement, s)
 
     # Context processor para injetar o ano atual em todos os templates
     @app.context_processor
     def inject_current_year():
         return {'current_year': datetime.now().year}
+
+    # Context processor para injetar o número de notificações não lidas
+    @app.context_processor
+    def inject_unread_notifications_count():
+        if current_user.is_authenticated:
+            unread_count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+            return dict(unread_notifications_count=unread_count)
+        return dict(unread_notifications_count=0) # Retorna 0 se o usuário não estiver logado
 
     # Carrega um usuário dado seu ID para o Flask-Login, carregando o objeto Role junto para otimização.
     @login_manager.user_loader
@@ -120,6 +140,8 @@ def create_app():
                 else:
                     flash('Você não tem permissão para acessar o painel de administração.', 'danger')
                     return redirect(url_for('main.home'))
+            # Retorna None ou chama a função super para continuar o processamento da view
+            return super()._handle_view(name, **kwargs) # CORRIGIDO: Passando **kwargs
 
     # View base customizada para modelos do Flask-Admin.
     class MyModelView(ModelView):
@@ -136,6 +158,7 @@ def create_app():
                 else:
                     flash('Você não tem permissão para acessar esta seção do painel de administração.', 'danger')
                     return redirect(url_for('main.home'))
+            return super()._handle_view(name, **kwargs) # CORRIGIDO: Passando **kwargs
 
     # Views específicas para cada modelo no Flask-Admin.
     class UserAdminView(MyModelView):
@@ -246,7 +269,6 @@ def create_app():
             existing_task_category = TaskCategory.query.filter_by(name=form.name.data).first()
             if existing_task_category and existing_task_category.id != model.id:
                 raise ValueError('Este nome de categoria de tarefa já existe. Por favor, escolha outro.')
-
     class StatusAdminView(MyModelView):
         form = StatusForm
         column_list = ('id', 'name', 'type', 'description')
@@ -293,6 +315,7 @@ def create_app():
             if not model.unique_filename:
                 return ''
             # Usa url_for para gerar o URL de download para a rota principal.
+            # CORREÇÃO AQUI: As aspas externas da f-string e as internas do HTML foram corrigidas.
             return f'<a href="{url_for("main.download_attachment", attachment_id=model.id)}" target="_blank">{model.filename}</a>'
         column_formatters = {
             'filename': _attachment_download_link
@@ -542,6 +565,7 @@ def create_app():
                 print("Banco de dados limpo com sucesso!")
                 print("Próximos passos:")
                 print("1. Execute 'flask db upgrade' para recriar todas as tabelas.")
+                # CORREÇÃO AQUI: Adicionado 'print(' que estava faltando.
                 print("2. Execute 'flask create-db' para criar os papéis e o usuário administrador inicial.")
         else:
             print("Operação de reset de banco de dados cancelada.")

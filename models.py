@@ -1,4 +1,4 @@
-# C:\\\\\\\\\\\gerenciador-eventos\\\\\\\\\\\models.py
+# C:\gerenciador-eventos\models.py
 
 from extensions import db, login_manager
 from datetime import datetime, timedelta
@@ -42,9 +42,14 @@ class Role(db.Model):
     can_view_event = db.Column(db.Boolean, default=False, nullable=False)
     can_edit_event = db.Column(db.Boolean, default=False, nullable=False)
     can_manage_permissions = db.Column(db.Boolean, default=False, nullable=False)
+    can_create_event = db.Column(db.Boolean, default=False, nullable=False) # Permissão para criar eventos
 
-    # NOVO: Permissão para criar eventos
-    can_create_event = db.Column(db.Boolean, default=False, nullable=False)
+    # --- NOVAS COLUNAS: Capacidades de permissão de EVENTO (sugeridas) ---
+    can_publish_event = db.Column(db.Boolean, default=False, nullable=False) # NOVO
+    can_cancel_event = db.Column(db.Boolean, default=False, nullable=False)  # NOVO
+    can_duplicate_event = db.Column(db.Boolean, default=False, nullable=False) # NOVO
+    can_view_event_registrations = db.Column(db.Boolean, default=False, nullable=False) # NOVO
+    can_view_event_reports = db.Column(db.Boolean, default=False, nullable=False) # NOVO
 
     # --- NOVAS COLUNAS: Capacidades de permissão de TAREFA granular (ADICIONADAS AQUI) ---
     can_create_task = db.Column(db.Boolean, default=False, nullable=False)
@@ -55,10 +60,9 @@ class Role(db.Model):
     can_upload_task_audio = db.Column(db.Boolean, default=False, nullable=False)
     can_delete_task_audio = db.Column(db.Boolean, default=False, nullable=False)
     can_view_task_history = db.Column(db.Boolean, default=False, nullable=False)
-    # --- NOVO: Permissão para adicionar/gerenciar comentários em tarefas ---
-    can_manage_task_comments = db.Column(db.Boolean, default=False, nullable=False)
+    can_manage_task_comments = db.Column(db.Boolean, default=False, nullable=False) # Permissão para adicionar/gerenciar comentários em tarefas
 
-    # --- NOVO: Permissões para anexos em tarefas (ADICIONADO AQUI) ---
+    # --- Permissões para anexos em tarefas ---
     can_upload_attachments = db.Column(db.Boolean, default=False, nullable=False)
     can_manage_attachments = db.Column(db.Boolean, default=False, nullable=False) # Inclui deletar
     # --- FIM NOVAS COLUNAS ---
@@ -74,7 +78,13 @@ class Role(db.Model):
             'can_view_event': self.can_view_event,
             'can_edit_event': self.can_edit_event,
             'can_manage_permissions': self.can_manage_permissions,
-            'can_create_event': self.can_create_event, # Adicionado
+            'can_create_event': self.can_create_event,
+            # NOVOS: Incluir as novas permissões de evento
+            'can_publish_event': self.can_publish_event,
+            'can_cancel_event': self.can_cancel_event,
+            'can_duplicate_event': self.can_duplicate_event,
+            'can_view_event_registrations': self.can_view_event_registrations,
+            'can_view_event_reports': self.can_view_event_reports,
             # Incluir as novas permissões de tarefa no dicionário
             'can_create_task': self.can_create_task,
             'can_edit_task': self.can_edit_task,
@@ -84,11 +94,10 @@ class Role(db.Model):
             'can_upload_task_audio': self.can_upload_task_audio,
             'can_delete_task_audio': self.can_delete_task_audio,
             'can_view_task_history': self.can_view_task_history,
-            'can_manage_task_comments': self.can_manage_task_comments, # Adicionado
-            # --- NOVO: Adicionar novas permissões de anexo ---
+            'can_manage_task_comments': self.can_manage_task_comments,
+            # Incluir novas permissões de anexo
             'can_upload_attachments': self.can_upload_attachments,
             'can_manage_attachments': self.can_manage_attachments
-            # --- FIM NOVO ---
         }
 
     def __repr__(self):
@@ -124,14 +133,9 @@ class User(db.Model, UserMixin):
 
     completed_tasks = db.relationship('Task', backref='completed_by_user', lazy=True, foreign_keys='Task.completed_by_id')
 
-    # CORRIGIDO: Removida a referência `foreign_keys=[TaskHistory.user_id]`
-    # O SQLAlchemy pode inferir a FK se a relação for clara e back_populates for usado.
     task_history_records = db.relationship('TaskHistory', back_populates='author', lazy=True)
-    # --- NOVO: Relacionamento para comentários feitos pelo usuário ---
-    comments = db.relationship('Comment', back_populates='author', lazy=True, cascade='all, delete-orphan')
-
-    # --- NOVO: Relacionamento para anexos feitos pelo usuário ---
-    uploaded_attachments = db.relationship('Attachment', back_populates='uploader', lazy=True)
+    comments = db.relationship('Comment', back_populates='author', lazy=True, cascade='all, delete-orphan') # Relacionamento para comentários feitos pelo usuário
+    uploaded_attachments = db.relationship('Attachment', back_populates='uploader', lazy=True) # Relacionamento para anexos feitos pelo usuário
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -146,153 +150,157 @@ class User(db.Model, UserMixin):
     @property
     def role(self):
         role_name = self.role_obj.name if self.role_obj else 'unknown'
-        # print(f"DEBUG_USER_ROLE: Para user '{self.username}', propriedade 'role' retornando: '{role_name}' (role_obj presente: {self.role_obj is not None})") # Descomentar para depuração
         return role_name
 
     @property
     def is_admin(self):
-        # CORREÇÃO AQUI: Acessa o nome da role diretamente via role_obj
         is_admin_status = (self.role_obj and self.role_obj.name == 'Admin')
-        # print(f"DEBUG_IS_ADMIN: Para user '{self.username}', is_admin avaliado como: {is_admin_status} (baseado em role_obj.name=='Admin')") # Descomentar para depuração
         return is_admin_status
 
     # --- Permissões de Evento ---
-    # ADIÇÃO: Todas as propriedades de permissão são adicionadas ao modelo User
     @property
     def can_view_event(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_view_event: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_view_event or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_view_event: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_edit_event(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_edit_event: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_edit_event or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_edit_event: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_manage_permissions(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_manage_permissions: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_manage_permissions or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_manage_permissions: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_create_event(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_create_event: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_create_event or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_create_event: {result} (via role_obj)") # Descomentar para depuração
         return result
+
+    # --- NOVAS PROPRIEDADES DE PERMISSÃO DE EVENTO ---
+    @property
+    def can_publish_event(self):
+        if self.is_admin:
+            return True
+        result = self.role_obj and self.role_obj.can_publish_event or False
+        return result
+
+    @property
+    def can_cancel_event(self):
+        if self.is_admin:
+            return True
+        result = self.role_obj and self.role_obj.can_cancel_event or False
+        return result
+
+    @property
+    def can_duplicate_event(self):
+        if self.is_admin:
+            return True
+        result = self.role_obj and self.role_obj.can_duplicate_event or False
+        return result
+
+    @property
+    def can_view_event_registrations(self):
+        if self.is_admin:
+            return True
+        result = self.role_obj and self.role_obj.can_view_event_registrations or False
+        return result
+
+    @property
+    def can_view_event_reports(self):
+        if self.is_admin:
+            return True
+        result = self.role_obj and self.role_obj.can_view_event_reports or False
+        return result
+    # --- FIM NOVAS PROPRIEDADES DE PERMISSÃO DE EVENTO ---
+
 
     # --- Permissões de Tarefa ---
     @property
     def can_create_task(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_create_task: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_create_task or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_create_task: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_edit_task(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_edit_task: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_edit_task or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_edit_task: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_delete_task(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_delete_task: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_delete_task or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_delete_task: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_complete_task(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_complete_task: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_complete_task or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_complete_task: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_uncomplete_task(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_uncomplete_task: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_uncomplete_task or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_uncomplete_task: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_upload_task_audio(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_upload_task_audio: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_upload_task_audio or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_upload_task_audio: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_delete_task_audio(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_delete_task_audio: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_delete_task_audio or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_delete_task_audio: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_view_task_history(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_view_task_history: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_view_task_history or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_view_task_history: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_manage_task_comments(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_manage_task_comments: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_manage_task_comments or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_manage_task_comments: {result} (via role_obj)") # Descomentar para depuração
         return result
 
-    # --- NOVO: Propriedades para permissões de anexo ---
+    # --- Propriedades para permissões de anexo ---
     @property
     def can_upload_attachments(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_upload_attachments: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_upload_attachments or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_upload_attachments: {result} (via role_obj)") # Descomentar para depuração
         return result
 
     @property
     def can_manage_attachments(self):
         if self.is_admin:
-            # print(f"DEBUG_MODEL: '{self.username}' can_manage_attachments: True (is_admin)") # Descomentar para depuração
             return True
         result = self.role_obj and self.role_obj.can_manage_attachments or False
-        # print(f"DEBUG_MODEL: '{self.username}' can_manage_attachments: {result} (via role_obj)") # Descomentar para depuração
         return result
     # --- FIM DA ADIÇÃO DE PROPRIEDADES ---
 
@@ -310,8 +318,7 @@ class User(db.Model, UserMixin):
             return True # Autor e Admin sempre tem permissão total
 
         # 3. Buscar permissões específicas do usuário para este evento
-        # Usamos joinedload para carregar a Role junto e evitar N+1 queries
-        user_event_permission = EventPermission.query.options(joinedload(EventPermission.user)).filter( # Mudei aqui para joinedload(EventPermission.user)
+        user_event_permission = EventPermission.query.options(joinedload(EventPermission.user)).filter(
             EventPermission.user_id == self.id,
             EventPermission.event_id == event_id
         ).first()
@@ -343,6 +350,12 @@ class User(db.Model, UserMixin):
             'can_edit_event': self.can_edit_event,
             'can_manage_permissions': self.can_manage_permissions,
             'can_create_event': self.can_create_event,
+            # NOVOS: Incluir as novas permissões de evento no to_dict
+            'can_publish_event': self.can_publish_event,
+            'can_cancel_event': self.can_cancel_event,
+            'can_duplicate_event': self.can_duplicate_event,
+            'can_view_event_registrations': self.can_view_event_registrations,
+            'can_view_event_reports': self.can_view_event_reports,
             'can_create_task': self.can_create_task,
             'can_edit_task': self.can_edit_task,
             'can_delete_task': self.can_delete_task,
@@ -352,10 +365,9 @@ class User(db.Model, UserMixin):
             'can_delete_task_audio': self.can_delete_task_audio,
             'can_view_task_history': self.can_view_task_history,
             'can_manage_task_comments': self.can_manage_task_comments,
-            # --- NOVO: Incluir permissões de anexo no to_dict ---
+            # Incluir permissões de anexo no to_dict
             'can_upload_attachments': self.can_upload_attachments,
             'can_manage_attachments': self.can_manage_attachments
-            # --- FIM NOVO ---
         }
 
     def __repr__(self):
@@ -434,12 +446,32 @@ class Event(db.Model):
 
     status_id = db.Column(db.Integer, db.ForeignKey('status.id', name='fk_event_status_id'), nullable=True)
 
+    # --- NOVOS CAMPOS PARA O MODELO EVENT ---
+    is_published = db.Column(db.Boolean, default=False, nullable=False) # NOVO: Para controle de publicação
+    is_cancelled = db.Column(db.Boolean, default=False, nullable=False) # NOVO: Para marcar eventos como cancelados
+    # --- FIM NOVOS CAMPOS ---
+
     # Relacionamentos
     category = db.relationship('Category', backref='events', lazy=True)
     status = db.relationship('Status', foreign_keys=[status_id], backref='events', lazy=True)
 
     tasks = db.relationship('Task', backref='event', lazy='selectin', cascade="all, delete-orphan")
     event_permissions = db.relationship('EventPermission', back_populates='event', lazy=True, cascade='all, delete-orphan')
+
+    # ATUALIZAR __init__ para incluir os novos campos, se você estiver usando um __init__ explícito
+    # Se você não tiver um __init__ explícito e confiar no SQLAlchemy, pode ignorar este bloco.
+    def __init__(self, title, description, due_date, author_id, category_id, status_id, end_date=None, location=None, is_published=False, is_cancelled=False):
+        self.title = title
+        self.description = description
+        self.due_date = due_date
+        self.author_id = author_id
+        self.category_id = category_id
+        self.status_id = status_id
+        self.end_date = end_date
+        self.location = location
+        self.is_published = is_published # INCLUÍDO NO __init__
+        self.is_cancelled = is_cancelled # INCLUÍDO NO __init__
+        self.created_at = datetime.utcnow() # Garante que created_at seja definido na criação
 
     def to_dict(self):
         return {
@@ -454,11 +486,13 @@ class Event(db.Model):
             'status_id': self.status_id,
             'status_name': self.status.name if self.status else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'is_published': self.is_published, # INCLUÍDO NO to_dict
+            'is_cancelled': self.is_cancelled  # INCLUÍDO NO to_dict
         }
 
     def __repr__(self):
-        return f"Event('{self.title}', Due: '{self.due_date}', End: '{self.end_date}', Loc: '{self.location}')"
+        return f"Event('{self.title}', Due: '{self.due_date}', End: '{self.end_date}', Loc: '{self.location}', Published: {self.is_published}, Cancelled: {self.is_cancelled})"
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
@@ -498,7 +532,7 @@ class TaskCategory(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
-    def __repr__(self): # CORRIGIDO AQUI: Apenas 'self'
+    def __repr__(self):
         return f"TaskCategory('{self.name}')"
 
 
@@ -531,27 +565,19 @@ class Task(db.Model):
     task_status = db.relationship('Status', foreign_keys=[task_status_id], backref='tasks', lazy=True)
     task_category = db.relationship('TaskCategory', back_populates='tasks', lazy=True)
 
-    # >> REMOVIDO: A relação 'task_assignments' e seu backref 'task_obj' causavam conflito.
-    # >> Assumimos que 'assignees_associations' é a relação principal para atribuições.
-    # task_assignments = db.relationship('TaskAssignment', backref='task_obj', lazy=True, cascade='all, delete-orphan')
-
     # Esta é a relação principal para atribuições de tarefas (Task -> TaskAssignment)
     assignees_associations = db.relationship(
         'TaskAssignment',
         back_populates='task',
         lazy=True,
         cascade='all, delete-orphan'
-        # REMOVIDO: overlaps="task_assignments,task_obj" - não é mais necessário
     )
 
     completed_by = db.relationship('User', foreign_keys=[completed_by_id], overlaps="completed_by_user,completed_tasks")
     history = db.relationship('TaskHistory', backref='task', lazy='dynamic', cascade='all, delete-orphan')
 
-    # --- NOVO: Relacionamento para comentários da tarefa ---
-    comments = db.relationship('Comment', back_populates='task', lazy=True, cascade='all, delete-orphan', order_by="Comment.timestamp.asc()")
-
-    # --- NOVO: Relacionamento para anexos da tarefa (ADICIONADO AQUI) ---
-    attachments = db.relationship('Attachment', back_populates='task', lazy=True, cascade='all, delete-orphan', order_by="Attachment.upload_timestamp.asc()") # CORRIGIDO AQUI: 'uploaded_at' para 'upload_timestamp'
+    comments = db.relationship('Comment', back_populates='task', lazy=True, cascade='all, delete-orphan', order_by="Comment.timestamp.asc()") # Relacionamento para comentários da tarefa
+    attachments = db.relationship('Attachment', back_populates='task', lazy=True, cascade='all, delete-orphan', order_by="Attachment.upload_timestamp.asc()") # Relacionamento para anexos da tarefa
 
     @property
     def assignees(self):
@@ -587,7 +613,7 @@ class Task(db.Model):
             'completed_by_username': self.completed_by_user.username if self.completed_by_user else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'attachments_count': len(self.attachments) # ADICIONADO AQUI: Contagem de anexos
+            'attachments_count': len(self.attachments)
         }
 
     def __repr__(self):
@@ -600,11 +626,9 @@ class TaskAssignment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_task_assignment_user_id'), primary_key=True)
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    # Esta é a relação TaskAssignment -> Task
     task = db.relationship(
         'Task',
         back_populates='assignees_associations'
-        # REMOVIDO: overlaps="task_assignments,task_obj" - não é mais necessário
     )
     user = db.relationship('User', back_populates='assigned_tasks')
 
@@ -722,8 +746,6 @@ class Group(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     users_in_group = db.relationship('UserGroup', back_populates='group', lazy=True, cascade='all, delete-orphan')
-    # --- CORREÇÃO AQUI: A relação 'event_permissions' foi removida da classe Group ---
-    # event_permissions = db.relationship('EventPermission', back_populates='group', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -763,15 +785,11 @@ class EventPermission(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey('event.id', name='fk_event_permission_event_id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_event_permission_user_id', ondelete='CASCADE'), nullable=False) # AGORA nullable=False
 
-    # --- REMOVIDAS: group_id e role_id
-    # role_id foi removida porque a permissão de evento é AGORA APENAS baseada no user_id
-
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     event = db.relationship('Event', back_populates='event_permissions')
     user = db.relationship('User', back_populates='event_permissions')
-    # role = db.relationship('Role') # A relação com Role foi removida de EventPermission
 
     __table_args__ = (
         # A nova UniqueConstraint garante que um usuário só pode ter uma permissão por evento

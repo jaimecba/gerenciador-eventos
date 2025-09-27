@@ -60,11 +60,18 @@
                 </ul>
                 <ul class="navbar-nav ms-auto"> {# ms-auto para alinhar à direita #}
                     {% if current_user.is_authenticated %}
-                        {# NOVO: Link e Ícone de Notificações #}
+                        {# NOVO: Link e Ícone de Notificações - AGORA COM ID PARA O JS E CLASSES DINÂMICAS #}
                         <li class="nav-item position-relative me-3">
-                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.list_notifications') }}" target="_top" title="Notificações">
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}" target="_blank" rel="noopener noreferrer" title="Notificações"> {# ADICIONADO target="_blank" rel="noopener noreferrer" #}
                                 <i class="fas fa-bell"></i>
-                                <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle notification-count" style="font-size: 0.65em; padding: 0.3em 0.5em;">0</span> {# Pequeno e posicionamento #}
+                                {# O badge agora tem um ID para ser manipulado pelo JS #}
+                                <span id="unread-notifications-badge"
+                                      class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle"
+                                      style="font-size: 0.65em; padding: 0.3em 0.5em;"
+                                      {% if unread_notifications_count == 0 %}hidden{% endif %}> {# Esconde se 0 no carregamento inicial #}
+                                    {{ unread_notifications_count }}
+                                    <span class="visually-hidden">notificações não lidas</span>
+                                </span>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -142,33 +149,46 @@
         });
     </script>
     {% block scripts %}
-    {# NOSSO NOVO SCRIPT PARA O CONTADOR DE NOTIFICAÇÕES #}
+    {# SEU SCRIPT PARA O CONTADOR DE NOTIFICAÇÕES (AGORA NO LUGAR CERTO) #}
     <script>
-        $(document).ready(function() {
+        document.addEventListener('DOMContentLoaded', function() {
             function updateUnreadNotificationsCount() {
-                $.ajax({
-                    url: '{{ url_for('main.unread_notifications_count') }}',
-                    method: 'GET',
-                    success: function(data) {
-                        const count = data.unread_count;
-                        const notificationBadge = $('.notification-count');
-                        if (count > 0) {
-                            notificationBadge.text(count).show();
-                        } else {
-                            notificationBadge.text(0).hide(); // Esconde o badge se não houver notificações
+                fetch('{{ url_for('main.unread_notifications_count') }}')
+                    .then(response => {
+                        if (!response.ok) {
+                            // Se a resposta não for OK (ex: 403 Forbidden para não autenticados),
+                            // podemos parar a execução silenciosamente ou logar para depuração.
+                            // Para produção, é melhor não exibir erros no console para o usuário.
+                            // console.error('Erro ao buscar notificações não lidas ou usuário não autenticado:', response.status);
+                            return Promise.reject('Erro ou não autenticado.');
                         }
-                    },
-                    error: function(xhr) {
-                        console.error('Erro ao buscar contador de notificações não lidas:', xhr);
-                        $('.notification-count').text('!').show(); // Exibe um erro visual se a API falhar
-                    }
-                });
+                        return response.json();
+                    })
+                    .then(data => {
+                        const badge = document.getElementById('unread-notifications-badge');
+                        if (badge) {
+                            if (data.unread_count > 0) {
+                                badge.textContent = data.unread_count;
+                                badge.removeAttribute('hidden'); // Remove o atributo hidden
+                            } else {
+                                badge.setAttribute('hidden', ''); // Adiciona o atributo hidden
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        // console.error('Erro ao buscar notificações não lidas:', error); // Opcional para depuração
+                        const badge = document.getElementById('unread-notifications-badge');
+                        if (badge) {
+                            badge.textContent = '!'; // Exibe um erro visual se a API falhar
+                            badge.removeAttribute('hidden');
+                        }
+                    });
             }
 
-            // Chama a função ao carregar a página
+            // Atualiza ao carregar a página
             updateUnreadNotificationsCount();
-            // Atualiza a cada 60 segundos (1 minuto)
-            setInterval(updateUnreadNotificationsCount, 60000); 
+            // Atualiza a cada 30 segundos (opcional, ajuste conforme necessidade)
+            setInterval(updateUnreadNotificationsCount, 30000); 
         });
     </script>
     {% endblock %}

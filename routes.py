@@ -1,5 +1,3 @@
-# C:\\\\\\gerenciador-eventos\\\\\\routes.py
-
 from flask import render_template, url_for, flash, redirect, request, Blueprint, jsonify, current_app, abort, send_from_directory
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
@@ -27,10 +25,9 @@ from sqlalchemy.orm import joinedload, selectinload
 import uuid
 from werkzeug.utils import secure_filename
 import os
-from flask import send_from_directory
-import os
 from utils.changelog_utils import diff_dicts
 from functools import wraps # Importado para o decorator permission_required
+import re # NOVO: Import para expressões regulares para @menções e agora usado para detecção de @menção em api
 
 # <<<--- DEFINIÇÃO DO BLUEPRINT 'MAIN' --->>>
 main = Blueprint('main', __name__)
@@ -57,7 +54,7 @@ def permission_required(permission_name):
 # =========================================================================
 
 # =========================================================================
-# NOVO: Decorator para exigir papel de Admin
+# Decorator para exigir papel de Admin
 # =========================================================================
 def admin_required(f):
     @wraps(f)
@@ -78,7 +75,7 @@ def admin_required(f):
 
 
 # =========================================================================
-# NOVO: Função auxiliar para verificar se um usuário pode visualizar um evento
+# Função auxiliar para verificar se um usuário pode visualizar um evento
 # Esta função encapsula toda a lógica de permissão de visualização para um Evento específico
 # =========================================================================
 def _can_view_event_helper(user, event):
@@ -142,7 +139,7 @@ Se você não solicitou isso, ignore este e-mail e nenhuma alteração será fei
 # --- FIM FUNÇÃO AUXILIAR ---
 
 # =========================================================================
-# NOVO: FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
+# FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
 # =========================================================================
 
 def send_notification_email(recipient_email, subject, body, html_body=None):
@@ -200,17 +197,23 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
         joinedload(Event.tasks).joinedload(Task.assignees_associations) # Eager load task assignees
     )
 
+    # Filtrar por eventos NÃO cancelados
+    base_query = base_query.filter(Event.is_cancelled == False)
+
     if user.is_authenticated:
         if not user.is_admin: # Admins veem tudo, sem precisar de permissões explícitas
             # Para usuários não-admin, eventos só são visíveis se:
             # 1. O usuário é autor do evento.
             # 2. O usuário está atribuído a alguma tarefa naquele evento.
             # 3. Existe uma permissão direta de usuário para o evento.
+            # 4. O evento está publicado (se houver o campo is_published)
             visibility_condition = or_(
                 Event.author_id == user.id,
                 Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == user.id)),
                 Event.event_permissions.any(EventPermission.user_id == user.id)
             )
+            # Adiciona a condição de publicado se não for admin
+            visibility_condition = and_(visibility_condition, Event.is_published == True)
             base_query = base_query.filter(visibility_condition)
 
             active_status_obj = Status.query.filter_by(name='Ativo', type='event').first()
@@ -219,7 +222,7 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
             if event_status_name: # Se um status específico foi solicitado (ex: "Realizado", "Arquivado")
                 status_filter_obj = Status.query.filter_by(name=event_status_name, type='event').first()
                 if status_filter_obj:
-                    base_query = base_query.filter(Event.status == status_filter_obj) # Visibility condition already applied
+                    base_query = base_query.filter(Event.status == active_status_obj) # Visibility condition already applied
                 else:
                     current_app.logger.warning(f"Status de Evento '{event_status_name}' solicitado, mas não encontrado para o tipo 'event' no banco de dados.")
                     flash(f"Status '{event_status_name}' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
@@ -244,6 +247,8 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
                 return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
 
     else: # Se não está autenticado, não deve ver eventos
+        # Se o evento tiver is_published, apenas eventos publicados são visíveis para não autenticados
+        # Por enquanto, não autenticados não veem nada.
         return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
     
     search_query_text = request.args.get('search', '')
@@ -272,6 +277,7 @@ def home():
     events = get_filtered_events(current_user, search_query, page, per_page)
 
     return render_template('home.html', events=events, title='Todos os Eventos Ativos com Minhas Tarefas', search_query=search_query, current_filter='active')
+
 @main.route("/events/active")
 @login_required
 def active_events():
@@ -297,7 +303,6 @@ def completed_events():
     per_page = 5
 
     events = get_filtered_events(current_user, search_query, page, per_page, event_status_name='Realizado')
-
     return render_template('home.html', events=events, title='Eventos Realizados', search_query=search_query, current_filter='completed')
 
 @main.route("/events/archived")
@@ -326,8 +331,6 @@ def register():
 
         if not user_role:
             flash("Erro interno: O papel 'User' não foi encontrado. Contate o administrador.", 'danger')
-            return render_template('register.html', title='Registrar', form=form)
-
         hashed_password = generate_password_hash(form.password.data)
 
         user = User(
@@ -505,6 +508,7 @@ def reset_token(token):
 
 
 # =========================================================================
+# =========================================================================
 # Rotas de Eventos
 # =========================================================================
 @main.route("/event/new", methods=['GET', 'POST'])
@@ -541,14 +545,15 @@ def new_event():
             return render_template('create_edit_event.html', title='Novo Evento', form=form, legend='Novo Evento')
 
 
+        # AQUI - is_published e is_cancelled usarão os defaults definidos no __init__ do modelo Event (False)
         event = Event(title=form.title.data,
                       description=form.description.data,
                       due_date=form.due_date.data,
                       end_date=form.end_date.data,
                       location=form.location.data,
-                      author=current_user,
-                      category=category_obj, # Atribui o objeto Category
-                      status=status_obj)    # Atribui o objeto Status
+                      author_id=current_user.id, # Passar o ID diretamente
+                      category_id=category_obj.id, # Passar o ID
+                      status_id=status_obj.id)    # Passar o ID
         db.session.add(event)
         db.session.commit()
         ChangeLogEntry.log_creation(current_user.id, 'Event', event.id, new_data=event.to_dict(), description=f"Evento '{event.title}' criado.")
@@ -607,23 +612,20 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
     current_date = date.today()
 
     # --- Permissões para controle de botões de EVENTO no template ---
-    # Permissão para Gerenciar Permissões do Evento (AGORA APENAS ADMIN)
-    can_manage_event_permissions = is_admin
+    # Permissão para Gerenciar Permissões do Evento (AGORA APENAS ADMIN ou autor)
+    can_manage_event_permissions = is_admin or is_event_author
     
     # Permissão para Editar/Deletar Evento (Simplificado para autor ou admin)
     can_edit_event = is_admin or is_event_author
 
     # Permissão para Criar Tarefas no Evento (Mantido como estava)
-    # CORREÇÃO AQUI: Removido o espaço após a barra invertida
     can_create_tasks = is_admin or is_event_author or \
                        (current_user.role_obj and current_user.role_obj.can_create_task)
 
     # Permissão para upload de anexo (Mantido como estava)
-    # CORREÇÃO AQUI: Removido o espaço após a barra invertida
     can_upload_attachments = current_user.is_admin or \
                              (current_user.role_obj and current_user.role_obj.can_upload_attachments)
     # Permissão para gerenciar (excluir) anexos (Mantido como estava)
-    # CORREÇÃO AQUI: Removido o espaço após a barra invertida
     can_manage_attachments = current_user.is_admin or \
                              (current_user.role_obj and current_user.role_obj.can_manage_attachments)
 
@@ -646,7 +648,13 @@ def event(event_id): # <-- ESTA É A ROTA PARA event.html
                            can_upload_attachments=can_upload_attachments,
                            can_manage_attachments=can_manage_attachments,
                            attachment_form=attachment_form,
-                           comment_form=comment_form # Passa o formulário de comentário
+                           comment_form=comment_form, # Passa o formulário de comentário
+                           # NOVAS PERMISSÕES PARA O TEMPLATE 'event.html'
+                           can_publish_event=current_user.can_publish_event,
+                           can_cancel_event=current_user.can_cancel_event,
+                           can_duplicate_event=current_user.can_duplicate_event,
+                           can_view_event_registrations=current_user.can_view_event_registrations,
+                           can_view_event_reports=current_user.can_view_event_reports
                            )
 
 
@@ -729,6 +737,126 @@ def delete_event(event_id):
     flash('Seu evento foi deletado!', 'success')
     return redirect(url_for('main.home'))
 
+
+# =========================================================================
+# =========================================================================
+# NOVAS ROTAS DE AÇÕES DE EVENTO (conforme 'event.html')
+# =========================================================================
+
+@main.route("/event/<int:event_id>/registrations")
+@login_required
+def view_event_registrations(event_id):
+    event = Event.query.get_or_404(event_id)
+    if not current_user.can_view_event_registrations: # Nova permissão
+        flash('Você não tem permissão para visualizar os participantes deste evento.', 'danger')
+        abort(403)
+    
+    # Implemente a lógica para buscar os participantes do evento aqui.
+    # Ex: participants = Registration.query.filter_by(event_id=event_id).all()
+    # Por enquanto, é um placeholder.
+    participants = [] 
+
+    return render_template('event_registrations.html', event=event, participants=participants, title=f"Participantes de {event.title}")
+
+@main.route("/event/<int:event_id>/publish", methods=['POST'])
+@login_required
+def publish_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if not current_user.can_publish_event: # Nova permissão
+        flash('Você não tem permissão para publicar este evento.', 'danger')
+        abort(403)
+
+    old_data = event.to_dict()
+    event.is_published = True
+    db.session.commit()
+    ChangeLogEntry.log_update(current_user.id, 'Event', event.id, old_data=old_data, new_data=event.to_dict(), description=f"Evento '{event.title}' publicado.")
+    db.session.commit()
+    flash('Evento publicado com sucesso!', 'success')
+    return redirect(url_for('main.event', event_id=event.id))
+
+@main.route("/event/<int:event_id>/unpublish", methods=['POST'])
+@login_required
+def unpublish_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if not current_user.can_publish_event: # Nova permissão
+        flash('Você não tem permissão para despublicar este evento.', 'danger')
+        abort(403)
+
+    old_data = event.to_dict()
+    event.is_published = False
+    db.session.commit()
+    ChangeLogEntry.log_update(current_user.id, 'Event', event.id, old_data=old_data, new_data=event.to_dict(), description=f"Evento '{event.title}' despublicado.")
+    db.session.commit()
+    flash('Evento despublicado com sucesso!', 'warning')
+    return redirect(url_for('main.event', event_id=event.id))
+
+@main.route("/event/<int:event_id>/duplicate", methods=['POST']) # Mudei para POST
+@login_required
+def duplicate_event(event_id):
+    original_event = Event.query.get_or_404(event_id)
+    if not current_user.can_duplicate_event: # Nova permissão
+        flash('Você não tem permissão para duplicar este evento.', 'danger')
+        abort(403)
+
+    new_event = Event(
+        title=f"Cópia de {original_event.title}",
+        description=original_event.description,
+        due_date=original_event.due_date,
+        end_date=original_event.end_date,
+        location=original_event.location,
+        author_id=current_user.id, # O novo evento é criado pelo usuário logado
+        category_id=original_event.category_id,
+        status_id=original_event.status_id,
+        is_published=False, # Cópia é criada como rascunho por padrão
+        is_cancelled=False # Cópia não é cancelada por padrão
+    )
+    db.session.add(new_event)
+    db.session.commit()
+    ChangeLogEntry.log_creation(current_user.id, 'Event', new_event.id, new_data=new_event.to_dict(), description=f"Evento '{original_event.title}' duplicado para '{new_event.title}'.")
+    db.session.commit()
+    flash(f'Evento "{new_event.title}" duplicado com sucesso! Edite-o agora.', 'success')
+    return redirect(url_for('main.update_event', event_id=new_event.id))
+
+@main.route("/event/<int:event_id>/reports")
+@login_required
+def event_reports(event_id):
+    event = Event.query.get_or_404(event_id)
+    if not current_user.can_view_event_reports: # Nova permissão
+        flash('Você não tem permissão para visualizar relatórios deste evento.', 'danger')
+        abort(403)
+    
+    # Implemente a lógica para gerar relatórios aqui.
+    # Por enquanto, é um placeholder.
+    report_data = {'event_title': event.title, 'some_metric': 123, 'another_metric': 45.6}
+
+    return render_template('event_reports.html', event=event, report_data=report_data, title=f"Relatórios de {event.title}")
+
+@main.route("/event/<int:event_id>/cancel", methods=['POST'])
+@login_required
+def cancel_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if not current_user.can_cancel_event: # Nova permissão
+        flash('Você não tem permissão para cancelar este evento.', 'danger')
+        abort(403)
+
+    old_data = event.to_dict()
+    event.is_cancelled = True
+    # Opcional: Se desejar, defina um status específico para 'Cancelado' aqui
+    # cancelled_status = Status.query.filter_by(name='Cancelado', type='event').first()
+    # if cancelled_status:
+    #     event.status = cancelled_status
+    db.session.commit()
+    ChangeLogEntry.log_update(current_user.id, 'Event', event.id, old_data=old_data, new_data=event.to_dict(), description=f"Evento '{event.title}' cancelado.")
+    db.session.commit()
+    flash(f'Evento "{event.title}" foi cancelado.', 'warning')
+    return redirect(url_for('main.event', event_id=event.id))
+
+# =========================================================================
+# =========================================================================
+# FIM NOVAS ROTAS DE AÇÕES DE EVENTO
+# =========================================================================
+
+
 @main.route("/search")
 @login_required
 def search():
@@ -761,15 +889,21 @@ def search():
             visibility_condition = or_(
                 Event.author_id == current_user.id,
                 Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == current_user.id)),
-                Event.event_permissions.any(EventPermission.user_id == current_user.id) # Check for direct EventPermission
+                Event.event_permissions.any(EventPermission.user_id == current_user.id)
             )
+
+            # Apenas eventos publicados e não cancelados são visíveis para não-admins
+            visibility_condition = and_(visibility_condition, Event.is_published == True, Event.is_cancelled == False)
 
             if active_status_obj:
                 events_query = events_query.filter(and_(visibility_condition, Event.status == active_status_obj))
             else: # Fallback if 'Ativo' status is not found
                 events_query = events_query.filter(visibility_condition)
                 flash("Status 'Ativo' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
-        
+        else:
+            # Admins veem tudo, mas ainda filtramos por não cancelados para buscas gerais
+            events_query = events_query.filter(Event.is_cancelled == False)
+
         viewable_events = events_query.all()
 
         for event_obj in viewable_events:
@@ -878,6 +1012,7 @@ def new_status():
 def list_statuses():
     statuses = Status.query.order_by(Status.type, Status.name).all()
     return render_template('list_statuses.html', statuses=statuses, title='Status (Eventos e Tarefas)')
+
 @main.route("/status/<int:status_id>/update", methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -897,7 +1032,6 @@ def update_status(status_id):
     elif request.method == 'GET':
         pass
     return render_template('create_edit_status.html', title='Atualizar Status', form=form, legend='Atualizar Status')
-
 @main.route("/status/<int:status_id>/delete", methods=['POST'])
 @login_required
 @admin_required
@@ -1017,7 +1151,6 @@ def new_task(event_id):
             # Busca os objetos completos TaskCategory e Status usando os IDs do formulário
             selected_task_category_id = form.task_category.data
             task_category_obj = TaskCategory.query.get(selected_task_category_id) if selected_task_category_id != 0 else None
-
             selected_task_status_id = form.status.data
             task_status_obj = Status.query.get(selected_task_status_id)
 
@@ -1030,9 +1163,9 @@ def new_task(event_id):
                 description=form.description.data,
                 due_date=form.due_date.data,
                 original_due_date=form.due_date.data,
-                event=event_obj,
-                task_category=task_category_obj, # Atribui o objeto TaskCategory
-                task_status=task_status_obj,     # Atribui o objeto Status
+                event_id=event_obj.id, # Passar ID
+                task_category_id=task_category_obj.id if task_category_obj else None, # Passar ID
+                task_status_id=task_status_obj.id,     # Passar ID
                 notes=form.notes.data,
                 cloud_storage_link=form.cloud_storage_link.data,
                 link_notes=form.link_notes.data
@@ -1045,7 +1178,6 @@ def new_task(event_id):
 
             selected_assignee_ids = form.assignees.data
             print(f"--- DEBUG: new_task - Usuários selecionados no formulário (IDs): {selected_assignee_ids} ---")
-
             if not selected_assignee_ids:
                  print("--- DEBUG: new_task - Nenhum usuário selecionado para atribuição. ---")
 
@@ -1217,10 +1349,11 @@ def task_detail(task_id):
 @main.route("/uploads/audio/<path:filename>")
 @login_required
 def serve_audio_file(filename):
-    """Serve arquivos de áudio uploaded."""
+    """Serve arquivos de audio uploaded."""
     return send_from_directory(current_app.config['UPLOAD_FOLDER_AUDIO'], filename)
 
 
+# =========================================================================
 # =========================================================================
 # ATUALIZADO: Rota API para buscar E ADICIONAR comentários de uma tarefa
 # =========================================================================
@@ -1228,7 +1361,7 @@ def serve_audio_file(filename):
 @login_required
 def get_or_add_task_comments_api(task_id):
     task = Task.query.options(joinedload(Task.assignees_associations).joinedload(TaskAssignment.user), joinedload(Task.event).joinedload(Event.author)).get_or_404(task_id)
-# --- Verificação de permissão geral para comentários (GET e POST) ---
+    # --- Verificação de permissão geral para comentários (GET e POST) ---
     can_manage_or_view_comments = (
         current_user.is_admin or
         task.event.author_id == current_user.id or
@@ -1278,7 +1411,7 @@ def get_or_add_task_comments_api(task_id):
                 timestamp=datetime.utcnow()
             )
             db.session.add(new_comment)
-            db.session.commit()
+            db.session.commit() # Commit inicial para ter o new_comment.id
 
             # Log no ChangeLogEntry
             ChangeLogEntry.log_creation(
@@ -1290,37 +1423,58 @@ def get_or_add_task_comments_api(task_id):
             )
             
             # =====================================================================
-            # NOVO: LÓGICA DE NOTIFICAÇÕES (APÓS COMENTÁRIO ADICIONADO COM SUCESSO)
+            # ATUALIZADO: LÓGICA DE NOTIFICAÇÕES (APÓS COMENTÁRIO ADICIONADO COM SUCESSO)
+            # Desativação de e-mails gerais e adição de @menções
             # =====================================================================
-            notification_message_template = f"'{current_user.username}' comentou na tarefa '{task.title}'."
             notification_link = url_for('main.task_detail', task_id=task.id, _external=True)
-
-            recipients_to_notify = set() # Usar set para evitar duplicidade de usuários
             
-            # 1. Notificar todos os atribuídos à tarefa (exceto o próprio autor do comentário)
+            # Conjunto de usuários que já receberam alguma notificação (para evitar duplicidade)
+            notified_users_ids = {current_user.id} # O autor do comentário não precisa ser notificado sobre o próprio comentário
+
+            # 1. Notificar atribuídos à tarefa e autor do evento (APENAS IN-APP, SEM E-MAIL GERAL)
+            general_recipients = set()
             for assignee in task.assignees:
-                if assignee.id != current_user.id:
-                    recipients_to_notify.add(assignee)
+                if assignee.id not in notified_users_ids:
+                    general_recipients.add(assignee)
+                    notified_users_ids.add(assignee.id)
             
-            # 2. Notificar o autor do evento (se não for o autor do comentário e não estiver já na lista de atribuídos)
-            if task.event.author_id != current_user.id and task.event.author not in recipients_to_notify:
-                recipients_to_notify.add(task.event.author)
-
-            for recipient in recipients_to_notify:
-                # Cria notificação in-app
+            if task.event.author_id not in notified_users_ids:
+                if task.event.author: # Verifica se o autor do evento existe
+                    general_recipients.add(task.event.author)
+                    notified_users_ids.add(task.event.author.id)
+            
+            for recipient in general_recipients:
                 create_in_app_notification(
                     user_id=recipient.id,
-                    message=notification_message_template,
+                    message=f"'{current_user.username}' comentou na tarefa '{task.title}'.",
                     link_url=notification_link,
                     related_object_type='Task',
                     related_object_id=task.id
                 )
-                
-                # Envia email (opcional)
-                email_subject = f"[Gerenciador de Eventos] Novo Comentário na Tarefa: {task.title}"
-                email_body = f"Olá {recipient.username},\n\n{current_user.username} comentou na tarefa '{task.title}' do evento '{task.event.title}'.\n\nComentário: {comment_text}\n\nPara ver o comentário e a tarefa, clique aqui: {notification_link}\n\nAtenciosamente,\nSua Equipe de Gerenciamento de Eventos"
-                send_notification_email(recipient.email, email_subject, email_body)
             
+            # 2. Processar @menções (ENVIA E-MAIL E NOTIFICAÇÃO IN-APP ESPECÍFICA)
+            mentioned_usernames = re.findall(r'@(\w+)', comment_text)
+            for username in set(mentioned_usernames): # Usar set para evitar menções duplicadas no mesmo comentário
+                mentioned_user = User.query.filter_by(username=username).first()
+                if mentioned_user and mentioned_user.id not in notified_users_ids:
+                    mention_message = f"Você foi mencionado por '{current_user.username}' no comentário da tarefa '{task.title}'."
+                    
+                    # Notificação In-App para menção
+                    create_in_app_notification(
+                        user_id=mentioned_user.id,
+                        message=mention_message,
+                        link_url=notification_link,
+                        related_object_type='Task',
+                        related_object_id=task.id
+                    )
+                    
+                    # E-mail para menção
+                    email_subject = f"[Gerenciador de Eventos] Você foi Mencionado em um Comentário"
+                    email_body = f"Olá {mentioned_user.username},\n\n{current_user.username} mencionou você no comentário da tarefa '{task.title}' do evento '{task.event.title}'.\n\nComentário: {comment_text}\n\nPara ver o comentário e a tarefa, clique aqui: {notification_link}\n\nAtenciosamente,\nSua Equipe de Gerenciamento de Eventos"
+                    send_notification_email(mentioned_user.email, email_subject, email_body)
+                    
+                    notified_users_ids.add(mentioned_user.id) # Marca como notificado
+
             db.session.commit() # Commit das notificações in-app e do ChangeLog (se não houver um commit anterior para o ChangeLog)
             # =====================================================================
             # FIM: LÓGICA DE NOTIFICAÇÕES
@@ -1341,6 +1495,7 @@ def get_or_add_task_comments_api(task_id):
             current_app.logger.error(f"Erro ao adicionar comentário à tarefa {task_id}: {e}", exc_info=True)
             return jsonify({'message': f'Erro interno do servidor ao adicionar comentário: {str(e)}'}), 500
 
+# =========================================================================
 # =========================================================================
 # FIM DA ROTA API DE COMENTÁRIOS ATUALIZADA
 # =========================================================================
@@ -1470,7 +1625,6 @@ def update_task(task_id):
             # === FIM DA CORREÇÃO ===
 
             print("--- DEBUG: update_task - Transação principal de dados processada. Preparando para histórico e commit final. ---")
-
             new_task_data_for_changelog = task_obj.to_dict()
 
             new_task_data_for_history = {
@@ -1487,7 +1641,6 @@ def update_task(task_id):
             new_status_name = task_obj.task_status.name if task_obj.task_status else 'N/A'
             new_category_name = task_obj.task_category.name if task_obj.task_category else 'N/A'
             new_assignee_names = sorted([u.username for u in task_obj.assignees]) if task_obj.assignees else []
-
             changes_logged_in_history = False
 
             if old_task_data_for_history['title'] != new_task_data_for_history['title']:
@@ -1605,7 +1758,7 @@ def update_task(task_id):
                     old_value=json.dumps({'assignees': old_assignee_names}),
                     new_value=json.dumps({'assignees': new_assignee_names}),
                     user_id=current_user.id,
-                    comment=f"Responsáveis alterados de '{', '.join(old_assignee_names) or 'Nenhum'}' para '{', '. join(new_assignee_names) or 'Nenhum'}'"
+                    comment=f"Responsáveis alterados de '{', '.join(old_assignee_names) or 'Nenhum'}' para '{', '.join(new_assignee_names) or 'Nenhum'}'"
                 )
                 db.session.add(history_entry)
                 changes_logged_in_history = True
@@ -1968,24 +2121,38 @@ def manage_group_members(group_id):
 # =========================================================================
 @main.route("/event/<int:event_id>/permissions", methods=['GET', 'POST'])
 @login_required
-@admin_required # APENAS ADMIN PODE ACESSAR ESTA ROTA
+# @admin_required # APENAS ADMIN PODE ACESSAR ESTA ROTA
+# Alterado para usar can_manage_permissions
 def manage_event_permissions(event_id):
     event = Event.query.get_or_404(event_id)
 
-    # APENAS O EventPermissionForm (usuário-apenas)
+    # Verificação de permissão
+    if not current_user.can_manage_permissions:
+        flash('Você não tem permissão para gerenciar permissões de eventos.', 'danger')
+        abort(403)
+
     permission_form = EventPermissionForm()
     permission_form.event.data = event.id # Passa o event_id para validação no form
 
     if permission_form.validate_on_submit():
         user_id = permission_form.user.data
         
+        # Verificar se a permissão já existe para evitar duplicatas
+        existing_permission = EventPermission.query.filter_by(event_id=event.id, user_id=user_id).first()
+        if existing_permission:
+            flash('Este usuário já possui permissão para este evento.', 'info')
+            return redirect(url_for('main.manage_event_permissions', event_id=event.id))
+
         new_permission = EventPermission(event_id=event.id, user_id=user_id)
         db.session.add(new_permission)
+        db.session.commit()
+        # Log da criação
+        ChangeLogEntry.log_creation(current_user.id, 'EventPermission', new_permission.id, new_data=new_permission.to_dict(), description=f"Permissão de acesso ao evento '{event.title}' concedida ao usuário ID {user_id}.")
         db.session.commit()
         flash('Permissão de usuário adicionada com sucesso!', 'success')
         return redirect(url_for('main.manage_event_permissions', event_id=event.id))
     elif request.method == 'POST':
-        # Se a validação falhou, as mensagens de erro já são configuradas pelo formulário
+        # Se a validação do formulário falhou (ex: usuário inválido)
         flash('Erro ao adicionar permissão. Verifique os campos.', 'danger')
 
     permissions = EventPermission.query.filter_by(event_id=event.id).options(joinedload(EventPermission.user)).all()
@@ -1998,15 +2165,22 @@ def manage_event_permissions(event_id):
 
 @main.route("/event_permission/<int:permission_id>/delete", methods=['POST'])
 @login_required
-@admin_required # APENAS ADMIN PODE EXCLUIR PERMISSÕES
+# @admin_required # APENAS ADMIN PODE EXCLUIR PERMISSÕES
+# Alterado para usar can_manage_permissions
 def delete_event_permission(permission_id):
     permission = EventPermission.query.get_or_404(permission_id)
     event_id = permission.event.id # Pega o event_id antes de deletar
     
-    # Adicionar verificação de autorização extra se necessário (ex: admin pode remover qqr um, autor só os seus?)
-    # Por enquanto, @admin_required já cobre o requisito.
+    # Verificação de permissão
+    if not current_user.can_manage_permissions:
+        flash('Você não tem permissão para remover permissões de eventos.', 'danger')
+        abort(403)
 
+    old_data = permission.to_dict()
     db.session.delete(permission)
+    db.session.commit()
+    # Log da exclusão
+    ChangeLogEntry.log_deletion(current_user.id, 'EventPermission', permission_id, old_data=old_data, description=f"Permissão de acesso ao evento ID {event_id} removida do usuário ID {old_data.get('user_id')}.")
     db.session.commit()
     flash('Permissão removida com sucesso!', 'success')
     return redirect(url_for('main.manage_event_permissions', event_id=event_id))
@@ -2210,7 +2384,7 @@ def teste2():
 def upload_task_audio(task_id):
     task_obj = Task.query.get_or_404(task_id)
 
-    # Autorização para upload de áudio
+    # Autorização para upload de audio
     can_upload_task_audio_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
@@ -2219,7 +2393,7 @@ def upload_task_audio(task_id):
     )
 
     if not can_upload_task_audio_permission:
-        return jsonify({'message': 'Você não tem permissão para adicionar áudio a esta tarefa.'}), 403
+        return jsonify({'message': 'Você não tem permissão para adicionar audio a esta tarefa.'}), 403
 
     if 'audio_file' not in request.files:
         return jsonify({'message': 'Nenhum arquivo de audio fornecido.'}), 400
@@ -2283,8 +2457,8 @@ def upload_task_audio(task_id):
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Erro ao salvar áudio da tarefa {task_id}: {e}", exc_info=True)
-            return jsonify({'message': f'Erro ao salvar áudio: {str(e)}'}), 500
+            current_app.logger.error(f"Erro ao salvar audio da tarefa {task_id}: {e}", exc_info=True)
+            return jsonify({'message': f'Erro ao salvar audio: {str(e)}'}), 500
 
     return jsonify({'message': 'Requisição inválida.'}), 400
 
@@ -2293,7 +2467,7 @@ def upload_task_audio(task_id):
 def delete_task_audio(task_id):
     task_obj = Task.query.get_or_404(task_id)
 
-    # Autorização para deletar áudio
+    # Autorização para deletar audio
     can_delete_task_audio_permission = (
         current_user.is_admin or
         task_obj.event.author_id == current_user.id or # Comparação por ID
@@ -2302,11 +2476,11 @@ def delete_task_audio(task_id):
     )
 
     if not can_delete_task_audio_permission:
-        flash('Você não tem permissão para remover áudio desta tarefa.', 'danger')
-        return jsonify({'message': 'Você não tem permissão para remover áudio desta tarefa.'}), 403
+        flash('Você não tem permissão para remover audio desta tarefa.', 'danger')
+        return jsonify({'message': 'Você não tem permissão para remover audio desta tarefa.'}), 403
 
     if not task_obj.audio_path:
-        return jsonify({'message': 'Nenhum áudio para remover nesta tarefa.'}), 404
+        return jsonify({'message': 'Nenhum audio para remover nesta tarefa.'}), 404
 
     audio_filepath = os.path.join(current_app.config['UPLOAD_FOLDER_AUDIO'], task_obj.audio_path)
 
@@ -2327,6 +2501,7 @@ def delete_task_audio(task_id):
             comment=f"Áudio '{task_obj.audio_path}' excluído da tarefa."
         )
         db.session.add(history_entry)
+        db.session.commit()
 
         task_obj.audio_path = None
         task_obj.audio_duration_seconds = None
@@ -2347,8 +2522,8 @@ def delete_task_audio(task_id):
         return jsonify({'message': 'Áudio removido com sucesso!'}), 200
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro ao deletar áudio da tarefa {task_id}: {e}", exc_info=True)
-        return jsonify({'message': f'Erro ao deletar áudio: {str(e)}'}), 500
+        current_app.logger.error(f"Erro ao deletar audio da tarefa {task_id}: {e}", exc_info=True)
+        return jsonify({'message': f'Erro ao deletar audio: {str(e)}'}), 500
 
 
 # =========================================================================
@@ -2377,7 +2552,6 @@ def upload_attachment(task_id):
         
         file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
         unique_filename = str(uuid.uuid4()) + ('.' + file_extension if file_extension else '')
-        
         upload_folder_path = current_app.config['UPLOAD_FOLDER_ATTACHMENTS']
         os.makedirs(upload_folder_path, exist_ok=True) # Garante que a pasta exista
         upload_path = os.path.join(upload_folder_path, unique_filename)
@@ -2567,13 +2741,18 @@ def calendar_events_feed():
         joinedload(Event.tasks).joinedload(Task.assignees_associations).joinedload(TaskAssignment.user)
     )
 
+    # Filtrar por eventos NÃO cancelados
+    events_query = events_query.filter(Event.is_cancelled == False)
+
     if not current_user.is_admin:
         event_conditions = [
             Event.author_id == current_user.id,
             Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == current_user.id)),
             Event.event_permissions.any(EventPermission.user_id == current_user.id)
         ]
-        events_query = events_query.filter(or_(*event_conditions))
+        # Para não-admins, eventos devem estar publicados
+        events_query = events_query.filter(and_(or_(*event_conditions), Event.is_published == True))
+    # else: Admin vê todos os eventos não cancelados
 
     # Filtrar por data (due_date ou end_date devem estar dentro do range do calendário)
     if start and end:
@@ -2595,12 +2774,14 @@ def calendar_events_feed():
     for event_obj in all_visible_events:
         # Cores para Eventos
         event_color = "#3788d8" # Azul padrão
-        if event_obj.status and event_obj.status.name == 'Realizado':
+        if event_obj.is_cancelled:
+            event_color = "#6c757d" # Cinza para cancelado (mesmo que arquivado, pode ser diferente se quiser)
+        elif event_obj.status and event_obj.status.name == 'Realizado':
             event_color = "#28a745" # Verde para realizado
         elif event_obj.status and event_obj.status.name == 'Arquivado':
             event_color = "#6c757d" # Cinza para arquivado
-        elif event_obj.due_date and event_obj.due_date < datetime.utcnow() and not event_obj.is_completed:
-            event_color = "#dc3545" # Vermelho para atrasado (se due_date passou e não está completo)
+        elif event_obj.due_date and event_obj.due_date < datetime.utcnow() and not (event_obj.status and event_obj.status.name == 'Realizado'):
+            event_color = "#dc3545" # Vermelho para atrasado (se due_date passou e não está completo/realizado)
 
         events_for_calendar.append({
             'id': f"event-{event_obj.id}",
@@ -2626,7 +2807,11 @@ def calendar_events_feed():
     )
 
     if not current_user.is_admin:
+        # Apenas tarefas de eventos publicados e não cancelados são visíveis para não-admins
+        tasks_query = tasks_query.join(Event).filter(Event.is_published == True, Event.is_cancelled == False)
+        # E o usuário deve ser atribuído à tarefa
         tasks_query = tasks_query.filter(Task.assignees_associations.any(TaskAssignment.user_id == current_user.id))
+    # else: Admin vê todas as tarefas de eventos não cancelados
 
     if start and end:
         tasks_query = tasks_query.filter(
@@ -2663,10 +2848,12 @@ def calendar_events_feed():
 # =========================================================================
 # NOVAS ROTAS DE NOTIFICAÇÕES
 # =========================================================================
-@main.route("/notifications")
+@main.route("/notifications") 
 @login_required
-def list_notifications():
+def notifications(): 
+    # Obtém todas as notificações do usuário logado, ordenadas da mais recente para a mais antiga
     notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.timestamp.desc()).all()
+    
     # Marcar todas as notificações como lidas ao serem visualizadas
     for notification in notifications:
         if not notification.is_read:
@@ -2685,7 +2872,7 @@ def mark_notification_as_read(notification_id):
     notification.is_read = True
     db.session.commit()
     flash('Notificação marcada como lida.', 'success')
-    return redirect(url_for('main.list_notifications'))
+    return redirect(url_for('main.notifications')) # Redireciona para a nova rota de notificações
 
 @main.route("/api/notifications/unread_count")
 @login_required
@@ -2694,4 +2881,36 @@ def unread_notifications_count():
     return jsonify({'unread_count': count})
 # =========================================================================
 # FIM: NOVAS ROTAS DE NOTIFICAÇÕES
+# =========================================================================
+
+
+# =========================================================================
+# NOVO: API para busca de usuários para @menções
+# =========================================================================
+@main.route("/api/users/search", methods=['GET'])
+@login_required
+def search_users_api():
+    query = request.args.get('q', '').strip() # Obtém a query de busca (ex: "fulano")
+    if not query:
+        return jsonify([]) # Retorna lista vazia se não houver query
+
+    # Busca usuários pelo username que começa com ou contém a query E/OU pelo email
+    # Exclui o próprio usuário logado da lista de sugestões, caso ele busque a si mesmo
+    # Limita a 10 resultados para evitar sobrecarga e manter a relevância
+    users = User.query.filter(
+        User.id != current_user.id,
+        or_(
+            User.username.ilike(f'%{query}%'), # Busca que contenha a query
+            User.email.ilike(f'%{query}%') # Ou e-mail que contenha a query
+        )
+    ).limit(10).all()
+
+    results = []
+    for user in users:
+        results.append({'id': user.id, 'username': user.username})
+    
+    return jsonify(results)
+
+# =========================================================================
+# FIM: API para busca de usuários
 # =========================================================================

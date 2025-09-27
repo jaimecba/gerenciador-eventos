@@ -1,0 +1,44 @@
+{# templates/event_registrations.html #}
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.event', event_id=event.id) }}">Evento: {{ event.title }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Participantes</li>
+            </ol>
+        </nav>
+        <h2 class="mb-4">{{ title }}</h2>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                Detalhes do Evento
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ event.title }}</h5>
+                <p class="card-text"><strong>Descrição:</strong> {{ event.description }}</p>
+                <p class="card-text"><strong>Prazo:</strong> {{ event.due_date.strftime('%d/%m/%Y %H:%M') }}</p>
+                {% if event.location %}
+                    <p class="card-text"><strong>Local:</strong> {{ event.location }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <h3 class="mt-4">Lista de Participantes (Em Desenvolvimento)</h3>
+        {% if participants %}
+            <ul class="list-group">
+                {% for participant in participants %}
+                    <li class="list-group-item">{{ participant.name }} - {{ participant.email }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                Nenhum participante encontrado para este evento. Esta funcionalidade ainda será desenvolvida.
+            </div>
+        {% endif %}
+
+        <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-secondary mt-3">Voltar ao Evento</a>
+    </div>
+{% endblock content %}

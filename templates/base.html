@@ -19,7 +19,10 @@
     {# FullCalendar CSS #}
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
     {# SEU CSS PERSONALIZADO (style.css) - AGORA COM CACHE-BUSTER E CARREGADO POR ÚLTIMO #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20240428v21') }}"> {# AQUI MUDOU O V #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20240928v01') }}"> {# ATENÇÃO: AQUI MUDOU O V #}
+
+    {# NOVO: Link para o Manifest da PWA - ADICIONADO AQUI #}
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
@@ -62,7 +65,7 @@
                     {% if current_user.is_authenticated %}
                         {# NOVO: Link e Ícone de Notificações - AGORA COM ID PARA O JS E CLASSES DINÂMICAS #}
                         <li class="nav-item position-relative me-3">
-                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}" target="_blank" rel="noopener noreferrer" title="Notificações"> {# ADICIONADO target="_blank" rel="noopener noreferrer" #}
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}"  rel="noopener noreferrer" title="Notificações"> {# ADICIONADO  rel="noopener noreferrer" #}
                                 <i class="fas fa-bell"></i>
                                 {# O badge agora tem um ID para ser manipulado pelo JS #}
                                 <span id="unread-notifications-badge"
@@ -190,6 +193,22 @@
             // Atualiza a cada 30 segundos (opcional, ajuste conforme necessidade)
             setInterval(updateUnreadNotificationsCount, 30000); 
         });
+    </script>
+
+    {# NOVO: Registro do Service Worker - ADICIONADO AQUI #}
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(function(registration) {
+                        // Registration was successful
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, function(err) {
+                        // registration failed :(
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
     </script>
     {% endblock %}
 </body>

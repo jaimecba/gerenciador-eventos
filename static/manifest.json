@@ -1,6 +1,6 @@
 {
   "name": "Gerenciador de Eventos e Tarefas",
-  "short_name": "Gerenciador GT",
+  "short_name": "Gestor G&T",
   "description": "Aplicativo para gerenciar eventos e tarefas com notificações.",
   "start_url": "/",
   "display": "standalone",

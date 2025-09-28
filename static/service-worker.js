@@ -1,7 +1,8 @@
 // service-worker.js
 
 // Nome do cache para armazenar os assets. É uma boa prática versionar o cache.
-const CACHE_NAME = 'gerenciador-eventos-cache-v1.0';
+// *** MUITO IMPORTANTE: ALTERE ESTE NÚMERO OU STRING QUANDO HOUVER GRANDES MUDANÇAS E VOCÊ QUISER FORÇAR A ATUALIZAÇÃO DO CACHE DE ASSETS! ***
+const CACHE_NAME = 'gerenciador-eventos-cache-v1.1'; // Incrementado para forçar a atualização do cache
 
 // Lista de URLs para pré-cache. Estes arquivos serão baixados e armazenados
 // no cache durante a instalação do Service Worker.
@@ -41,6 +42,9 @@ self.addEventListener('install', (event) => {
       })
       .catch((error) => {
         console.error('[Service Worker] Falha ao pré-cachear:', error);
+      }).then(() => {
+          // NOVO: Força o Service Worker a ativar-se imediatamente após a instalação.
+          return self.skipWaiting();
       })
   );
 });
@@ -62,8 +66,7 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
-        // Força o Service Worker a assumir o controle imediatamente
-        // para que a página aberta possa usar o novo Service Worker.
+        // Garante que o novo Service Worker assume o controle de todas as páginas imediatamente.
         return self.clients.claim();
     })
   );
@@ -93,8 +96,7 @@ self.addEventListener('fetch', (event) => {
 
         console.log('[Service Worker] Buscando da rede e armazenando em cache:', event.request.url);
         return fetch(event.request).then((response) => {
-          // Garante que só cacheamos respostas válidas (status 200) e que não são para requisições de tipo 'basic'
-          // 'basic' significa requisições que não são de origem cruzada.
+          // Garante que só cacheamos respostas válidas (status 200) e que não são de origem cruzada.
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }

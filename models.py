@@ -136,6 +136,9 @@ class User(db.Model, UserMixin):
     task_history_records = db.relationship('TaskHistory', back_populates='author', lazy=True)
     comments = db.relationship('Comment', back_populates='author', lazy=True, cascade='all, delete-orphan') # Relacionamento para comentários feitos pelo usuário
     uploaded_attachments = db.relationship('Attachment', back_populates='uploader', lazy=True) # Relacionamento para anexos feitos pelo usuário
+    # --- NOVO: Relacionamento para as inscrições de notificações push ---
+    push_subscriptions = db.relationship('PushSubscription', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    # --- FIM NOVO ---
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -457,8 +460,7 @@ class Event(db.Model):
 
     tasks = db.relationship('Task', backref='event', lazy='selectin', cascade="all, delete-orphan")
     event_permissions = db.relationship('EventPermission', back_populates='event', lazy=True, cascade='all, delete-orphan')
-
-    # ATUALIZAR __init__ para incluir os novos campos, se você estiver usando um __init__ explícito
+# ATUALIZAR __init__ para incluir os novos campos, se você estiver usando um __init__ explícito
     # Se você não tiver um __init__ explícito e confiar no SQLAlchemy, pode ignorar este bloco.
     def __init__(self, title, description, due_date, author_id, category_id, status_id, end_date=None, location=None, is_published=False, is_cancelled=False):
         self.title = title
@@ -553,7 +555,6 @@ class Task(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     event_id = db.Column(db.Integer, db.ForeignKey('event.id', name='fk_task_event_id'), nullable=False)
-
     task_status_id = db.Column(db.Integer, db.ForeignKey('status.id', name='fk_task_status_id'), nullable=False)
     task_category_id = db.Column(db.Integer, db.ForeignKey('task_category.id', name='fk_task_task_category_id'), nullable=True)
 
@@ -913,4 +914,38 @@ class Notification(db.Model):
         }
 # =========================================================================
 # FIM NOVO MODELO: Notification
+# =========================================================================
+
+# =========================================================================
+# NOVO MODELO: PushSubscription (PARA NOTIFICAÇÕES PUSH)
+# =========================================================================
+class PushSubscription(db.Model):
+    __tablename__ = 'push_subscription' # Nome da tabela no banco de dados
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    endpoint = db.Column(db.String(512), unique=True, nullable=False) # URL única do serviço push
+    p256dh = db.Column(db.String(255), nullable=False) # Chave pública para criptografia do payload
+    auth = db.Column(db.String(255), nullable=False) # Chave de autenticação
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow) # Data de criação da subscription
+
+    # O relacionamento 'user' é estabelecido pelo backref no modelo User
+
+    def __repr__(self):
+        return f'<PushSubscription {self.endpoint} for User {self.user_id}>'
+
+    def to_dict(self):
+        """
+        Converte o objeto PushSubscription em um dicionário compatível
+        com a biblioteca pywebpush para envio de notificações.
+        """
+        return {
+            'endpoint': self.endpoint,
+            'keys': {
+                'p256dh': self.p256dh,
+                'auth': self.auth
+            }
+        }
+# =========================================================================
+# FIM NOVO MODELO: PushSubscription
 # =========================================================================

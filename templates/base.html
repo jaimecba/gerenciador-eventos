@@ -19,7 +19,7 @@
     {# FullCalendar CSS #}
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
     {# SEU CSS PERSONALIZADO (style.css) - AGORA COM CACHE-BUSTER E CARREGADO POR ÚLTIMO #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20240928v01') }}"> {# ATENÇÃO: AQUI MUDOU O V #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20240928v01') }}">
 
     {# NOVO: Link para o Manifest da PWA - ADICIONADO AQUI #}
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
@@ -65,13 +65,13 @@
                     {% if current_user.is_authenticated %}
                         {# NOVO: Link e Ícone de Notificações - AGORA COM ID PARA O JS E CLASSES DINÂMICAS #}
                         <li class="nav-item position-relative me-3">
-                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}"  rel="noopener noreferrer" title="Notificações"> {# ADICIONADO  rel="noopener noreferrer" #}
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}"  rel="noopener noreferrer" title="Notificações">
                                 <i class="fas fa-bell"></i>
                                 {# O badge agora tem um ID para ser manipulado pelo JS #}
                                 <span id="unread-notifications-badge"
                                       class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle"
                                       style="font-size: 0.65em; padding: 0.3em 0.5em;"
-                                      {% if unread_notifications_count == 0 %}hidden{% endif %}> {# Esconde se 0 no carregamento inicial #}
+                                      {% if unread_notifications_count == 0 %}hidden{% endif %}>
                                     {{ unread_notifications_count }}
                                     <span class="visually-hidden">notificações não lidas</span>
                                 </span>
@@ -152,17 +152,13 @@
         });
     </script>
     {% block scripts %}
-    {# SEU SCRIPT PARA O CONTADOR DE NOTIFICAÇÕES (AGORA NO LUGAR CERTO) #}
+    {# SEU SCRIPT PARA O CONTADOR DE NOTIFICAÇÕES #}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             function updateUnreadNotificationsCount() {
                 fetch('{{ url_for('main.unread_notifications_count') }}')
                     .then(response => {
                         if (!response.ok) {
-                            // Se a resposta não for OK (ex: 403 Forbidden para não autenticados),
-                            // podemos parar a execução silenciosamente ou logar para depuração.
-                            // Para produção, é melhor não exibir erros no console para o usuário.
-                            // console.error('Erro ao buscar notificações não lidas ou usuário não autenticado:', response.status);
                             return Promise.reject('Erro ou não autenticado.');
                         }
                         return response.json();
@@ -172,44 +168,56 @@
                         if (badge) {
                             if (data.unread_count > 0) {
                                 badge.textContent = data.unread_count;
-                                badge.removeAttribute('hidden'); // Remove o atributo hidden
+                                badge.removeAttribute('hidden');
                             } else {
-                                badge.setAttribute('hidden', ''); // Adiciona o atributo hidden
+                                badge.setAttribute('hidden', '');
                             }
                         }
                     })
                     .catch(error => {
-                        // console.error('Erro ao buscar notificações não lidas:', error); // Opcional para depuração
                         const badge = document.getElementById('unread-notifications-badge');
                         if (badge) {
-                            badge.textContent = '!'; // Exibe um erro visual se a API falhar
-                            badge.removeAttribute('hidden');
+                            // Em caso de erro, talvez esconda o badge ou mostre um indicador de erro
+                            badge.setAttribute('hidden', '');
+                            // Ou badge.textContent = '!'; para indicar um problema
                         }
                     });
             }
 
-            // Atualiza ao carregar a página
             updateUnreadNotificationsCount();
-            // Atualiza a cada 30 segundos (opcional, ajuste conforme necessidade)
             setInterval(updateUnreadNotificationsCount, 30000); 
         });
     </script>
 
-    {# NOVO: Registro do Service Worker - ADICIONADO AQUI #}
+    {# NOVO: Registro do Service Worker - MODIFICADO O CAMINHO E AGORA COM O ESCOPO RAÍZ '/' #}
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/static/service-worker.js')
+                // AGORA COM O ESCOPO RAÍZ '/' PARA COBRIR TODO O SITE
+                // <--- ALTERAÇÃO FEITA AQUI ---
+                navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
                     .then(function(registration) {
-                        // Registration was successful
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        // O escopo agora deve ser '/'
                     }, function(err) {
-                        // registration failed :(
                         console.log('ServiceWorker registration failed: ', err);
                     });
             });
         }
     </script>
+
+    {# NOVO: Inclusão e chamada do script de notificações PUSH #}
+    <script src="{{ url_for('static', filename='js/push_notifications.js') }}"></script>
+    <script>
+        // Esta chamada vai tentar registrar o usuário para notificações Push
+        // Você pode envolver isso em um botão "Ativar Notificações" na UI,
+        // ou, para testes iniciais, chamar diretamente no carregamento.
+        // Remova este bloco se preferir que o usuário ative manualmente.
+        window.addEventListener('load', () => {
+            subscribeUserToPush();
+        });
+    </script>
+
     {% endblock %}
 </body>
 </html>

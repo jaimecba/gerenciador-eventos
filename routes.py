@@ -15,9 +15,11 @@ from forms import (RegistrationForm, LoginForm, EventForm, CategoryForm, StatusF
 from forms import get_users, get_task_categories, get_task_statuses, get_roles, AdminRoleForm
 
 # IMPORTAÇÕES DE MODELS ATUALIZADAS
+# IMPORTAÇÕES DE MODELS ATUALIZADAS
 from models import (User, Role, Event, Task, TaskAssignment, ChangeLogEntry, Status,
                     Category, PasswordResetToken, TaskHistory, Group,
-                    UserGroup, EventPermission, Comment, TaskCategory, Attachment, Notification)
+                    UserGroup, EventPermission, Comment, TaskCategory, Attachment, Notification,
+                    PushSubscription)
 from sqlalchemy import func, or_, distinct, false, and_
 from datetime import datetime, date, timedelta
 import json
@@ -27,11 +29,19 @@ from werkzeug.utils import secure_filename
 import os
 from utils.changelog_utils import diff_dicts
 from functools import wraps # Importado para o decorator permission_required
-import re # NOVO: Import para expressões regulares para @menções e agora usado para detecção de @menção em api
+import re # Import para expressões regulares para @menções e agora usado para detecção de @menção em api
+
+# --- CORREÇÃO APLICADA AQUI: Importar a função de envio de notificações push ---
+from utils.push_notification_sender import send_push_to_user
+# --- Fim Importar ---
+from utils.push_notification_sender import send_push_to_user
+# --- Fim Importar ---
+
 
 # <<<--- DEFINIÇÃO DO BLUEPRINT 'MAIN' --->>>
-main = Blueprint('main', __name__)
+main = Blueprint('main', __name__, static_folder='static') # <<< ALTERADO: Adicionado static_folder para o Blueprint >>>
 
+# =========================================================================
 # =========================================================================
 # Decorator de Permissão Genérico (Original, pode ser ajustado se necessário)
 # =========================================================================
@@ -101,6 +111,7 @@ def _can_view_event_helper(user, event):
     return False
 # =========================================================================
 # FIM: Função auxiliar _can_view_event_helper
+# =========================================================================
 # =========================================================================
 
 
@@ -222,7 +233,7 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
             if event_status_name: # Se um status específico foi solicitado (ex: "Realizado", "Arquivado")
                 status_filter_obj = Status.query.filter_by(name=event_status_name, type='event').first()
                 if status_filter_obj:
-                    base_query = base_query.filter(Event.status == active_status_obj) # Visibility condition already applied
+                    base_query = base_query.filter(Event.status == status_filter_obj) # Visibility condition already applied
                 else:
                     current_app.logger.warning(f"Status de Evento '{event_status_name}' solicitado, mas não encontrado para o tipo 'event' no banco de dados.")
                     flash(f"Status '{event_status_name}' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
@@ -264,6 +275,17 @@ def get_filtered_events(user, search_query, page, per_page, event_status_name=No
     base_query = base_query.order_by(Event.due_date.asc())
 
     return base_query.paginate(page=page, per_page=per_page, error_out=False)
+
+# Nova rota para fornecer a chave pública VAPID ao frontend
+@main.route('/api/vapid-public-key', methods=['GET'])
+def get_vapid_public_key():
+    """Retorna a chave pública VAPID para o frontend."""
+    vapid_public_key = current_app.config.get('VAPID_PUBLIC_KEY')
+    if not vapid_public_key:
+        # Se a chave não estiver configurada no Flask, retorne um erro
+        current_app.logger.error("VAPID_PUBLIC_KEY não configurada no aplicativo.")
+        return jsonify({'error': 'VAPID Public Key not configured'}), 500
+    return jsonify({'vapid_public_key': vapid_public_key})
 
 
 @main.route("/")
@@ -504,8 +526,6 @@ def reset_token(token):
             flash('Ocorreu um erro inesperado. Por favor, tente novamente.', 'danger')
             return redirect(url_for('main.reset_request'))
 
-    return render_template('reset_token.html', title='Redefinir Senha', form=form)
-
 
 # =========================================================================
 # =========================================================================
@@ -742,6 +762,8 @@ def delete_event(event_id):
 # =========================================================================
 # NOVAS ROTAS DE AÇÕES DE EVENTO (conforme 'event.html')
 # =========================================================================
+# =========================================================================
+# =========================================================================
 
 @main.route("/event/<int:event_id>/registrations")
 @login_required
@@ -972,6 +994,7 @@ def update_category(category_id):
     elif request.method == 'GET':
         pass
     return render_template('create_edit_category.html', title='Atualizar Categoria', form=form, legend='Atualizar Categoria')
+
 @main.route("/category/<int:category_id>/delete", methods=['POST'])
 @login_required
 def delete_category(category_id):
@@ -1032,6 +1055,7 @@ def update_status(status_id):
     elif request.method == 'GET':
         pass
     return render_template('create_edit_status.html', title='Atualizar Status', form=form, legend='Atualizar Status')
+
 @main.route("/status/<int:status_id>/delete", methods=['POST'])
 @login_required
 @admin_required
@@ -1355,6 +1379,8 @@ def serve_audio_file(filename):
 
 # =========================================================================
 # =========================================================================
+# =========================================================================
+# =========================================================================
 # ATUALIZADO: Rota API para buscar E ADICIONAR comentários de uma tarefa
 # =========================================================================
 @main.route('/api/comments/task/<int:task_id>', methods=['GET', 'POST'])
@@ -1424,14 +1450,13 @@ def get_or_add_task_comments_api(task_id):
             
             # =====================================================================
             # ATUALIZADO: LÓGICA DE NOTIFICAÇÕES (APÓS COMENTÁRIO ADICIONADO COM SUCESSO)
-            # Desativação de e-mails gerais e adição de @menções
             # =====================================================================
             notification_link = url_for('main.task_detail', task_id=task.id, _external=True)
             
             # Conjunto de usuários que já receberam alguma notificação (para evitar duplicidade)
             notified_users_ids = {current_user.id} # O autor do comentário não precisa ser notificado sobre o próprio comentário
 
-            # 1. Notificar atribuídos à tarefa e autor do evento (APENAS IN-APP, SEM E-MAIL GERAL)
+            # 1. Notificar atribuídos à tarefa e autor do evento (IN-APP E PUSH, SEM E-MAIL GERAL)
             general_recipients = set()
             for assignee in task.assignees:
                 if assignee.id not in notified_users_ids:
@@ -1443,17 +1468,30 @@ def get_or_add_task_comments_api(task_id):
                     general_recipients.add(task.event.author)
                     notified_users_ids.add(task.event.author.id)
             
+            comment_notification_message = f"'{current_user.username}' comentou na tarefa '{task.title}'."
             for recipient in general_recipients:
                 create_in_app_notification(
                     user_id=recipient.id,
-                    message=f"'{current_user.username}' comentou na tarefa '{task.title}'.",
+                    message=comment_notification_message,
                     link_url=notification_link,
                     related_object_type='Task',
                     related_object_id=task.id
                 )
+                # --- NOVO: ENVIAR NOTIFICAÇÃO PUSH ---
+                push_payload = {
+                    'body': comment_notification_message,
+                    'title': f'Novo Comentário na Tarefa: {task.title}',
+                    'url': notification_link,
+                    'type': 'new_comment',
+                    'task_id': task.id,
+                    'event_id': task.event.id
+                }
+                send_push_to_user(recipient.id, push_payload)
+                # --- FIM NOVO ---
             
-            # 2. Processar @menções (ENVIA E-MAIL E NOTIFICAÇÃO IN-APP ESPECÍFICA)
-            mentioned_usernames = re.findall(r'@(\w+)', comment_text)
+            # 2. Processar @menções (ENVIA E-MAIL, NOTIFICAÇÃO IN-APP E PUSH ESPECÍFICA)
+            # A regex foi ajustada para um único escape \w
+            mentioned_usernames = re.findall(r'@(\w+)', comment_text) 
             for username in set(mentioned_usernames): # Usar set para evitar menções duplicadas no mesmo comentário
                 mentioned_user = User.query.filter_by(username=username).first()
                 if mentioned_user and mentioned_user.id not in notified_users_ids:
@@ -1470,8 +1508,21 @@ def get_or_add_task_comments_api(task_id):
                     
                     # E-mail para menção
                     email_subject = f"[Gerenciador de Eventos] Você foi Mencionado em um Comentário"
+                    # O email_body foi ajustado para usar escapes de newline corretos (\n)
                     email_body = f"Olá {mentioned_user.username},\n\n{current_user.username} mencionou você no comentário da tarefa '{task.title}' do evento '{task.event.title}'.\n\nComentário: {comment_text}\n\nPara ver o comentário e a tarefa, clique aqui: {notification_link}\n\nAtenciosamente,\nSua Equipe de Gerenciamento de Eventos"
                     send_notification_email(mentioned_user.email, email_subject, email_body)
+
+                    # --- NOVO: ENVIAR NOTIFICAÇÃO PUSH PARA MENCIONADOS ---
+                    push_payload = {
+                        'body': mention_message,
+                        'title': f'Você foi Mencionado na Tarefa: {task.title}',
+                        'url': notification_link,
+                        'type': 'task_mention',
+                        'task_id': task.id,
+                        'event_id': task.event.id
+                    }
+                    send_push_to_user(mentioned_user.id, push_payload)
+                    # --- FIM NOVO ---
                     
                     notified_users_ids.add(mentioned_user.id) # Marca como notificado
 
@@ -1495,7 +1546,6 @@ def get_or_add_task_comments_api(task_id):
             current_app.logger.error(f"Erro ao adicionar comentário à tarefa {task_id}: {e}", exc_info=True)
             return jsonify({'message': f'Erro interno do servidor ao adicionar comentário: {str(e)}'}), 500
 
-# =========================================================================
 # =========================================================================
 # FIM DA ROTA API DE COMENTÁRIOS ATUALIZADA
 # =========================================================================
@@ -1784,6 +1834,7 @@ def update_task(task_id):
     else:
         print(f"--- DEBUG: update_task - Validação do formulário FALHOU. Erros: {form.errors} ---")
     return render_template('create_edit_task.html', title='Atualizar Tarefa', form=form, legend='Atualizar Tarefa', task=task_obj, event=event_obj)
+
 @main.route("/task/<int:task_id>/delete", methods=['POST'])
 @login_required
 def delete_task(task_id):
@@ -2024,6 +2075,7 @@ def new_group():
         flash('Grupo criado com sucesso!', 'success')
         return redirect(url_for('main.list_groups'))
     return render_template('create_edit_group.html', title='Novo Grupo', form=form, legend='Novo Grupo')
+
 @main.route("/groups")
 @login_required
 @admin_required
@@ -2914,3 +2966,72 @@ def search_users_api():
 # =========================================================================
 # FIM: API para busca de usuários
 # =========================================================================
+
+
+# =========================================================================
+# NOVA ROTA: /api/subscribe (para lidar com as inscrições de notificações push)
+# =========================================================================
+@main.route('/api/subscribe', methods=['POST'])
+@login_required # Garante que apenas usuários autenticados possam se inscrever para notificações
+def subscribe():
+    # Verifica se o tipo de conteúdo da requisição é JSON
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+
+    data = request.get_json()
+    endpoint = data.get('endpoint')
+    keys = data.get('keys') # Dicionário contendo 'p256dh' e 'auth'
+
+    # Verifica se os dados essenciais estão presentes
+    if not all([endpoint, keys, keys.get('p256dh'), keys.get('auth')]):
+        return jsonify({"error": "Missing subscription data"}), 400
+
+    p256dh = keys.get('p256dh')
+    auth = keys.get('auth')
+
+    # Procura por uma subscription existente para este usuário e endpoint
+    existing_subscription = PushSubscription.query.filter_by(
+        user_id=current_user.id,
+        endpoint=endpoint
+    ).first()
+
+    if existing_subscription:
+        # Se a subscription já existe, atualiza as chaves se necessário
+        # (embora as chaves p256dh e auth raramente mudem para um endpoint existente)
+        if existing_subscription.p256dh != p256dh or existing_subscription.auth != auth:
+            existing_subscription.p256dh = p256dh
+            existing_subscription.auth = auth
+            db.session.commit()
+            print(f"[API] Subscription atualizada para {current_user.username}")
+            return jsonify({"message": "Subscription updated."}), 200
+        else:
+            # Se não houve mudança, apenas informa que já existe
+            print(f"[API] Subscription já existe e está atualizada para {current_user.username}")
+            return jsonify({"message": "Subscription already exists and is up to date."}), 200
+    else:
+        # Cria uma nova entrada no banco de dados para a subscription
+        new_subscription = PushSubscription(
+            user_id=current_user.id,
+            endpoint=endpoint,
+            p256dh=p256dh,
+            auth=auth
+        )
+        db.session.add(new_subscription)
+        db.session.commit()
+        print(f"[API] Nova subscription adicionada para {current_user.username}")
+        return jsonify({"message": "Subscription added successfully."}), 201
+
+# =========================================================================
+# =========================================================================
+# FIM DA NOVA ROTA: /api/subscribe
+# =========================================================================
+
+
+# <<< ADICIONADO AQUI: Rota para servir o Service Worker na raiz >>>
+@main.route('/service-worker.js')
+def serve_service_worker():
+    # Isso serve o arquivo service-worker.js que está dentro da pasta static/
+    # diretamente na raiz do seu site (http://127.0.0.1:5000/service-worker.js)
+    # O Service Worker precisa estar na raiz para ter o scope '/'
+    return send_from_directory(main.static_folder, 'service-worker.js', mimetype='application/javascript')
+# <<< FIM DA ROTA ADICIONADA >>>

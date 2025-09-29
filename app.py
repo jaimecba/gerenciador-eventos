@@ -1,4 +1,4 @@
-# C:\\\gerenciador-eventos\\\app.py
+# C:\gerenciador-eventos\app.py
 
 from dotenv import load_dotenv
 # Carrega variáveis do arquivo .env para desenvolvimento local.
@@ -39,8 +39,35 @@ def create_app():
     # Busca a SECRET_KEY das variáveis de ambiente ou usa um fallback para desenvolvimento.
     # **É CRÍTICO que esta chave seja gerada de forma segura e mantida secreta em produção.**
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_longa_aqui_fallback_dev')
-# --- Configuração do Banco de Dados ---
-    # Busca a URL do banco de dados das variáveis de ambiente (ex: no Render) ou usa um SQLite local.
+
+    # --- NOVAS LINHAS ADICIONADAS AQUI PARA AS CHAVES VAPID ---
+    # As chaves VAPID devem ser geradas uma vez e mantidas seguras.
+    # O VAPID_PUBLIC_KEY é usado no frontend.
+    # O VAPID_PRIVATE_KEY é usado no backend para assinar as requisições push.
+    # O VAPID_CLAIMS contém informações sobre o remetente (geralmente um email).
+    app.config['VAPID_PUBLIC_KEY'] = os.environ.get('VAPID_PUBLIC_KEY')
+    app.config['VAPID_PRIVATE_KEY'] = os.environ.get('VAPID_PRIVATE_KEY')
+    # VAPID_CLAIMS é um dicionário, então precisamos de um fallback que seja um dicionário vazio
+    # ou o valor padrão. Se estiver vindo de uma variável de ambiente, pode ser uma string JSON ou
+    # uma string representando um literal Python dict. ast.literal_eval é mais robusto.
+    vapid_claims_str = os.environ.get('VAPID_CLAIMS', "{'sub': 'mailto:seu_email@exemplo.com'}")
+    try:
+        app.config['VAPID_CLAIMS'] = ast.literal_eval(vapid_claims_str)
+        if not isinstance(app.config['VAPID_CLAIMS'], dict):
+            raise ValueError("VAPID_CLAIMS must be a dictionary literal.")
+    except (ValueError, SyntaxError):
+        # Fallback se a string não puder ser avaliada como um dicionário
+        # current_app.logger não está disponível aqui, então use print ou logging.getLogger
+        print(f"ERRO: Não foi possível analisar VAPID_CLAIMS: {vapid_claims_str}. Usando valor padrão.")
+        app.config['VAPID_CLAIMS'] = {'sub': 'mailto:seu_email@exemplo.com'} # Fallback padrão
+
+    # --- DEBUG: Verifica se as chaves VAPID estão sendo lidas ---
+    print(f"DEBUG VAPID_PUBLIC_KEY: {app.config['VAPID_PUBLIC_KEY'][:10] if app.config['VAPID_PUBLIC_KEY'] else 'N/A'}")
+    print(f"DEBUG VAPID_PRIVATE_KEY: {app.config['VAPID_PRIVATE_KEY'][:10] if app.config['VAPID_PRIVATE_KEY'] else 'N/A'}")
+    print(f"DEBUG VAPID_CLAIMS: {app.config['VAPID_CLAIMS']}")
+    # --- FIM DAS NOVAS LINHAS ADICIONADAS ---
+
+    # --- Configuração do Banco de Dados ---
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///events.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -316,7 +343,7 @@ def create_app():
                 return ''
             # Usa url_for para gerar o URL de download para a rota principal.
             # CORREÇÃO AQUI: As aspas externas da f-string e as internas do HTML foram corrigidas.
-            return f'<a href="{url_for("main.download_attachment", attachment_id=model.id)}" target="_blank">{model.filename}</a>'
+            return f'<a href="{url_for("main.download_attachment", attachment_id=model.id)}" >{model.filename}</a>'
         column_formatters = {
             'filename': _attachment_download_link
         }

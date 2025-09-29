@@ -2,7 +2,7 @@
 
 // Nome do cache para armazenar os assets. É uma boa prática versionar o cache.
 // *** MUITO IMPORTANTE: ALTERE ESTE NÚMERO OU STRING QUANDO HOUVER GRANDES MUDANÇAS E VOCÊ QUISER FORÇAR A ATUALIZAÇÃO DO CACHE DE ASSETS! ***
-const CACHE_NAME = 'gerenciador-eventos-cache-v1.1'; // Incrementado para forçar a atualização do cache
+const CACHE_NAME = 'gerenciador-eventos-cache-v1.2'; // Alterado para forçar a atualização do cache
 
 // Lista de URLs para pré-cache. Estes arquivos serão baixados e armazenados
 // no cache durante a instalação do Service Worker.
@@ -10,7 +10,7 @@ const CACHE_NAME = 'gerenciador-eventos-cache-v1.1'; // Incrementado para força
 const urlsToCache = [
   '/', // Página inicial
   '/static/manifest.json',
-  '/static/css/style.css',
+  '/static/css/style.css?v=20240928v01',
   '/static/images/icon-192x192.png',
   '/static/images/icon-512x512.png',
 
@@ -43,7 +43,7 @@ self.addEventListener('install', (event) => {
       .catch((error) => {
         console.error('[Service Worker] Falha ao pré-cachear:', error);
       }).then(() => {
-          // NOVO: Força o Service Worker a ativar-se imediatamente após a instalação.
+          // Força o Service Worker a ativar-se imediatamente após a instalação.
           return self.skipWaiting();
       })
   );
@@ -78,60 +78,103 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Verifique se a requisição é do mesmo domínio e para um recurso estático ou página principal
-  // Estratégia: Cache First, Network Second, e então Atualiza Cache
+  // 1. Estratégia para requisições de NAVEGAÇÃO (carregamento de páginas HTML)
+  // Cache First, com fallback para rede, e um fallback explícito para página offline
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match(event.request)
+        .then((cachedResponse) => {
+          if (cachedResponse) {
+            console.log('[Service Worker] Servindo navegação do cache (Cache First):', event.request.url);
+            return cachedResponse;
+          }
+          console.log('[Service Worker] Navegação não no cache, tentando rede:', event.request.url);
+          // Tentar rede. Se falhar (offline), o .catch() será ativado.
+          return fetch(event.request);
+        })
+        .catch((error) => { // Captura erros tanto de caches.match quanto de fetch
+          console.warn('[Service Worker] Falha ao servir navegação (offline ou erro):', event.request.url, error);
+          // Se a rede falhar e o cache não tiver a página, tente servir a página inicial '/' como fallback.
+          // Isso é útil se o Service Worker não conseguir pegar a URL exata da navegação do cache
+          // mas a homepage estiver lá.
+          return caches.match('/'); // Tentar servir a homepage pré-cacheada
+        })
+    );
+    return; // Processamento finalizado para requisições de navegação
+  }
+
+  // 2. Estratégia para recursos estáticos do mesmo domínio (Cache First, Network Second, Update Cache)
   if (requestUrl.origin === location.origin && (
-      requestUrl.pathname === '/' || // Home page
-      requestUrl.pathname.startsWith('/static/') || // Conteúdo estático
+      requestUrl.pathname.startsWith('/static/') ||
       requestUrl.pathname.endsWith('.js') ||
       requestUrl.pathname.endsWith('.css') ||
-      requestUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/) // Imagens e fontes
+      requestUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/) ||
+      requestUrl.pathname === '/static/manifest.json' // Garante que o manifest também é coberto
      )) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {
-          console.log('[Service Worker] Servindo do cache:', event.request.url);
+          console.log('[Service Worker] Servindo recurso estático/mesma origem do cache (Cache First):', event.request.url);
           return cachedResponse;
         }
 
-        console.log('[Service Worker] Buscando da rede e armazenando em cache:', event.request.url);
+        console.log('[Service Worker] Recurso estático/mesma origem não no cache, buscando da rede e armazenando:', event.request.url);
         return fetch(event.request).then((response) => {
-          // Garante que só cacheamos respostas válidas (status 200) e que não são de origem cruzada.
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
-
-          // Clona a resposta para que ela possa ser consumida tanto pelo cache quanto pelo navegador.
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
           return response;
         }).catch((error) => {
-          console.error('[Service Worker] Falha ao buscar e cachear:', event.request.url, error);
-          // Se falhar a rede e não houver cache, pode retornar uma página offline.
-          // Por enquanto, apenas falha.
+          console.error('[Service Worker] Falha ao buscar e cachear recurso estático/mesma origem:', event.request.url, error);
+          // Opcionalmente, pode-se retornar um placeholder ou um Response de erro aqui
         });
       })
     );
-  } else if (event.request.mode === 'navigate') {
-    // Para todas as requisições de navegação (carregar uma nova página HTML),
-    // tente a rede primeiro para garantir conteúdo mais fresco.
-    // Se a rede falhar, tente o cache.
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        console.log('[Service Worker] Rede offline para navegação, tentando cache:', event.request.url);
-        return caches.match(event.request);
-      })
-    );
+    return; // Processamento finalizado para recursos estáticos/mesma origem
   }
-  // Para outras requisições (como API, etc.) que não correspondem aos padrões acima,
-  // elas não são interceptadas e vão diretamente para a rede (comportamento padrão).
-  // Você pode adicionar mais lógica aqui se precisar cachear API responses ou ter
-  // uma estratégia offline mais complexa para dados dinâmicos.
+
+  // 3. Estratégia para CDNs pré-cacheadas (Cache First, Network Second)
+  // Isso cobre as CDNs listadas em urlsToCache que não são do mesmo origin.
+  // Certifique-se que o .catch() lida com falhas da rede em offline.
+  if (urlsToCache.includes(event.request.url)) {
+      event.respondWith(
+          caches.match(event.request).then((cachedResponse) => {
+              if (cachedResponse) {
+                  console.log('[Service Worker] Servindo CDN pré-cacheada do cache (Cache First):', event.request.url);
+                  return cachedResponse;
+              }
+              console.log('[Service Worker] CDN não no cache, tentando rede:', event.request.url);
+              return fetch(event.request).then((response) => {
+                  if (!response || response.status !== 200) { // Cross-origin responses might not have type 'basic'
+                      return response;
+                  }
+                  const responseToCache = response.clone();
+                  caches.open(CACHE_NAME).then((cache) => {
+                      cache.put(event.request, responseToCache);
+                  });
+                  return response;
+              }).catch((error) => {
+                  console.error('[Service Worker] Falha ao buscar CDN pré-cacheada (offline?):', event.request.url, error);
+                  // Em caso de falha para CDNs pré-cacheadas, se não estiver no cache, não há muito a fazer.
+                  // Uma Response vazia ou um erro pode ser retornado.
+              });
+          })
+      );
+      return;
+  }
+
+  // 4. Default: Para quaisquer outras requisições não tratadas acima, passe-as para a rede.
+  // (e.g., APIs dinâmicas que não devem ser cacheadas, ou requisições de outros origins não precacheadas)
+  // Se estiver offline, estas requisições falharão.
+  console.log('[Service Worker] Requisição não explicitamente cacheada, indo para rede:', event.request.url);
+  // Não é necessário chamar event.respondWith(fetch(event.request)); aqui, pois é o comportamento padrão.
 });
 
-// Evento 'push': (PARA FUTURA IMPLEMENTAÇÃO DE NOTIFICAÇÕES PUSH)
+// Evento 'push':
 // Disparado quando uma notificação push é recebida.
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
@@ -148,7 +191,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Evento 'notificationclick': (PARA FUTURA IMPLEMENTAÇÃO DE NOTIFICAÇÕES PUSH)
+// Evento 'notificationclick':
 // Disparado quando o usuário clica em uma notificação.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close(); // Fecha a notificação

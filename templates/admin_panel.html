@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Painel Administrativo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4 text-center" style="font-size: 20px; font-weight: bold;">Painel Administrativo</h1>
+        <p class="lead text-center">Central de gerenciamento para administradores.</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    {# Card de Gerenciamento de Usuários #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-primary text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-users me-2"></i> Gerenciar Usuários</h5>
+                <p class="card-text" style="font-size: 11px;">Visualize, edite e remova usuários do sistema, e gerencie seus papéis (roles).</p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('main.list_users') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-users"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# NOVO CARD: Gerenciamento de Papéis (Roles) #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-secondary text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-user-tag me-2"></i> Gerenciar Papéis</h5>
+                <p class="card-text" style="font-size: 11px;">Defina e configure os papéis de acesso e suas permissões no sistema.</p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('main.list_roles') }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user-tag"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Card de Gerenciamento de Categorias (Eventos) #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-success text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-tags me-2"></i> Gerenciar Categorias</h5>
+                <p class="card-text" style="font-size: 11px;">Crie, edite e exclua categorias para eventos.</p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('main.list_categories') }}" class="btn btn-success btn-sm"> {# Ajustado para main.list_categories #}
+                        <i class="fas fa-tags"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# NOVO CARD: Gerenciamento de Categorias de Tarefas #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-success text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-list-alt me-2"></i> Gerenciar Categorias de Tarefas</h5>
+                <p class="card-text" style="font-size: 11px;">Defina e organize categorias específicas para as tarefas.</p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('main.list_task_categories') }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-list-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Card de Gerenciamento de Status de Eventos e Tarefas (Consolidado) #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-info text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-hourglass-half me-2"></i> Gerenciar Status</h5>
+                <p class="card-text" style="font-size: 11px;">Defina e organize os diferentes status para eventos e tarefas.</p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('main.list_statuses') }}" class="btn btn-info btn-sm text-white">
+                        <i class="fas fa-hourglass-half"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Card de Gerenciamento de Grupos #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-warning text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-layer-group me-2"></i> Gerenciar Grupos</h5>
+                <p class="card-text" style="font-size: 11px;">Crie e administre grupos de usuários para facilitar as permissões.</p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('main.list_groups') }}" class="btn btn-warning btn-sm text-white">
+                        <i class="fas fa-layer-group"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Card de Histórico de Atividades #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-danger text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-history me-2"></i> Histórico de Atividades</h5>
+                <p class="card-text" style="font-size: 11px;">Visualize todas as operações de criação, edição e exclusão no sistema.</p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('main.changelog') }}" class="btn btn-danger btn-sm">
+                        <i class="fas fa-history"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Card para futuras "Outras Configurações" #}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title text-secondary text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-cogs me-2"></i> Outras Configurações</h5>
+                <p class="card-text" style="font-size: 11px;">Área para futuras funcionalidades administrativas ou relatórios.</p>
+                <div class="mt-auto">
+                    <button class="btn btn-secondary btn-sm" disabled>
+                        <i class="fas fa-wrench"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

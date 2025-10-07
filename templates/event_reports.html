@@ -1,0 +1,46 @@
+{# templates/event_reports.html #}
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.event', event_id=event.id) }}">Evento: {{ event.title }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Relatórios</li>
+            </ol>
+        </nav>
+        <h2 class="mb-4">{{ title }}</h2>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                Detalhes do Evento
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ event.title }}</h5>
+                <p class="card-text"><strong>Descrição:</strong> {{ event.description }}</p>
+                <p class="card-text"><strong>Prazo:</strong> {{ event.due_date.strftime('%d/%m/%Y %H:%M') }}</p>
+            </div>
+        </div>
+
+        <h3 class="mt-4">Relatórios e Estatísticas (Em Desenvolvimento)</h3>
+        <div class="alert alert-info" role="alert">
+            Esta área será dedicada a gráficos e estatísticas sobre o evento.
+        </div>
+        
+        {% if report_data %}
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Dados de Exemplo</h5>
+                    <ul>
+                        {% for key, value in report_data.items() %}
+                            <li><strong>{{ key }}:</strong> {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
+        <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-secondary mt-3">Voltar ao Evento</a>
+    </div>
+{% endblock content %}

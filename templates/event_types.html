@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Gerenciar Tipos de Evento</h2>
+                <a href="{{ url_for('main.new_event_type') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Novo Tipo de Evento
+                </a>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if categories %}
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            {% for event_type in event_types %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-1">{{ event_type.name }}</h5>
+                                        <small class="text-muted">{{ event_type.description }}</small>
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('main.update_event_type', event_type_id=event_type.id) }}" class="btn btn-secondary btn-sm me-2">
+                                            <i class="bi bi-pencil-square"></i> Editar
+                                        </a>
+                                        <form action="{{ url_for('main.delete_event_type', event_type_id=event_type.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este Tipo de Evento?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="bi bi-trash"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center" role="alert">
+                    Nenhuma categoria cadastrada ainda.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

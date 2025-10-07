@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Minhas Notificações</h2>
+
+    {% if notifications %}
+        <div class="list-group">
+            {% for notification in notifications %}
+                <a href="{{ notification.link_url if notification.link_url else '#' }}" 
+                   class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-info{% endif %}" 
+                   aria-current="true"
+                   target="_blank" {# ABRE O LINK DA NOTIFICAÇÃO EM UMA NOVA ABA #}
+                   rel="noopener noreferrer">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ notification.message }}</h5>
+                        <small>{{ notification.timestamp.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                    {% if not notification.is_read %}
+                        <small class="text-primary">Não lida</small>
+                    {% else %}
+                        <small class="text-muted">Lida</small>
+                    {% endif %}
+                </a>
+            {% endfor %}
+        </div>
+        {# A rota /notifications já marca todas como lidas, então um botão adicional "marcar todas" não é estritamente necessário aqui,
+           a menos que você queira que o usuário as marque manualmente em outro momento. #}
+
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            Você não tem nenhuma notificação.
+        </div>
+    {% endif %}
+</div>
+{% endblock content %}

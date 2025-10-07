@@ -1,0 +1,563 @@
+{# C:\gerenciador-eventos\templates\event.html #}
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+        <div class="row">
+            {# Coluna principal centralizada para o Evento e suas Ações #}
+            <div class="col-md-8 mx-auto">
+                {# Card de Detalhes do Evento #}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {# Título do Evento #}
+                        <h1 class="mb-3 fs-4 fw-bold text-uppercase">{{ event.title }}</h1>
+                        {# Detalhes do Evento #}
+                        <p class="text-muted small lh-sm mb-1">Criado em: {{ event.created_at.strftime('%d/%m/%Y às %H:%M') }}</p>
+                        <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Descrição:</span> {{ event.description }}</p>
+                        <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Prazo:</span> {{ event.due_date.strftime('%d/%m/%Y') }}</p>
+                        {% if event.end_date %}
+                            <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Conclusão:</span> {{ event.end_date.strftime('%d/%m/%Y') }}</p>
+                        {% endif %}
+                        {% if event.location %}
+                            <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Local:</span> {{ event.location }}</p>
+                        {% endif %}
+                        {% if event.category %}
+                            <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Categoria:</span> {{ event.category.name }}</p>
+                        {% endif %}
+                        <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Status do Evento:</span> {{ event.status.name if event.status else 'N/A' }}</p>
+{# Botões de Evento - REMOVIDOS E MOVIDOS PARA O CARD DE AÇÕES DO EVENTO ABAIXO #}
+                    </div>
+                </div>
+
+                {# Card de Ações do Evento (AGORA CONTÉM TODAS AS AÇÕES) #}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Ações do Evento</h5> {# Usando h5 para título dentro do card-header #}
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {# Ações ESSENCIAIS que já tem funcionalidade (movidas para cá) #}
+                        {% if current_user.is_authenticated and can_manage_event_permissions %}
+                            <a href="{{ url_for('main.manage_event_permissions', event_id=event.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                Gerenciar Permissões
+                                <i class="fas fa-user-shield fa-fw"></i> {# Ícone mais adequado para permissões #}
+                            </a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and can_edit_event %}
+                            <a href="{{ url_for('main.update_event', event_id=event.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                Editar Detalhes do Evento
+                                <i class="fas fa-edit fa-fw"></i>
+                            </a>
+                        {% endif %}
+
+                        {# --- NOVAS AÇÕES SUGERIDAS (PRECISAM DE IMPLEMENTAÇÃO NO BACKEND) --- #}
+
+                        {# Ação: Visualizar Inscrições/Participantes #}
+                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT EM SEU main.py OU ROTAS #}
+                        {# e talvez uma permissão como current_user.can_view_event_registrations #}
+                        {# Por enquanto, usando is_authenticated. Altere para uma permissão específica se houver. #}
+                        {% if current_user.is_authenticated and current_user.can_view_event_registrations %}
+                            {# O endpoint 'main.view_event_registrations' ainda precisa ser criado no seu main.py #}
+                            <a href="{{ url_for('main.view_event_registrations', event_id=event.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                Visualizar Participantes
+                                <i class="fas fa-users fa-fw"></i>
+                            </a>
+                        {% endif %}
+
+                        {# Ação: Publicar / Despublicar Evento #}
+                        {# ESTA AÇÃO PRECISA DE LÓGICA NO MODELO EVENTO (ex: is_published) E NOVOS ENDPOINTS #}
+                        {# e permissões como current_user.can_publish_event ou current_user.is_admin #}
+                        {# Por enquanto, usando is_admin como placeholder. #}
+                        {% if current_user.is_authenticated and current_user.can_publish_event %}
+                            {% if event.is_published %} {# Supondo que 'event' tem um atributo 'is_published' (True/False) #}
+                                {# O endpoint 'main.unpublish_event' ainda precisa ser criado no seu main.py #}
+                                <form action="{{ url_for('main.unpublish_event', event_id=event.id) }}" method="POST" style="display: inline; width: 100%;">
+                                    <button type="submit" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-warning w-100">
+                                        Despublicar Evento
+                                        <i class="fas fa-cloud-slash fa-fw"></i>
+                                    </button>
+                                </form>
+                            {% else %}
+                                {# O endpoint 'main.publish_event' ainda precisa ser criado no seu main.py #}
+                                <form action="{{ url_for('main.publish_event', event_id=event.id) }}" method="POST" style="display: inline; width: 100%;">
+                                    <button type="submit" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-success w-100">
+                                        Publicar Evento
+                                        <i class="fas fa-cloud-upload-alt fa-fw"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+
+                        {# Ação: Duplicar Evento #}
+                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT EM SEU main.py OU ROTAS #}
+                        {% if current_user.is_authenticated and current_user.can_duplicate_event %} {# Usando a permissão mais específica #}
+                            <form action="{{ url_for('main.duplicate_event', event_id=event.id) }}" method="POST" style="display: inline; width: 100%;">
+                                <button type="submit" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center w-100">
+                                    Duplicar Evento
+                                    <i class="fas fa-copy fa-fw"></i>
+                                </button>
+                            </form>
+                        {% endif %}
+
+                        {# Ação: Relatórios e Estatísticas #}
+                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT E LÓGICA DE RELATÓRIOS NO BACKEND #}
+                        {# Por enquanto, usando is_admin como placeholder. #}
+                        {% if current_user.is_authenticated and current_user.can_view_event_reports %}
+                            {# O endpoint 'main.event_reports' ainda precisa ser criado no seu main.py #}
+                            <a href="{{ url_for('main.event_reports', event_id=event.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                Relatórios e Estatísticas
+                                <i class="fas fa-chart-bar fa-fw"></i>
+                            </a>
+                        {% endif %}
+
+                        {# Ação: Cancelar Evento (com modal de confirmação) #}
+                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT E LÓGICA DE STATUS NO MODELO EVENTO #}
+                        {# Por enquanto, usando is_admin como placeholder. #}
+                        {% if current_user.is_authenticated and current_user.can_cancel_event %}
+                            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-warning" data-bs-toggle="modal" data-bs-target="#cancelEventModal">
+                                Cancelar Evento
+                                <i class="fas fa-ban fa-fw"></i>
+                            </button>
+                        {% endif %}
+
+                        {# Excluir Evento (o mesmo modal de exclusão existente, mas movido para cá) #}
+                        {% if current_user.is_authenticated and can_edit_event %} {# Presumindo que can_edit_event implica permissão para excluir #}
+                            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-danger" data-bs-toggle="modal" data-bs-target="#deleteEventModal">
+                                Excluir Evento
+                                <i class="fas fa-trash-alt fa-fw"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Seção de Tarefas #}
+        <div class="row">
+            <div class="col-12">
+                <hr class="mt-4 mb-4">
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    {# TÍTULO DA SEÇÃO DE TAREFAS #}
+                    <h4 class="mb-3 text-secondary task-section-title"><strong>Tarefas do Evento</strong></h4>
+                    {# Botão "Adicionar Tarefa" #}
+                    {% if current_user.is_authenticated and current_user.can_create_task %}
+                        <a href="{{ url_for('main.new_task', event_id=event.id) }}" class="btn btn-success btn-sm">Adicionar Tarefa</a>
+                    {% endif %}
+                </div>
+
+                {# Legenda para as cores dos cards de tarefas #}
+                <div class="alert alert-info small py-2 mb-4" role="alert">
+                    <strong>Legenda de Cores dos Cartões de Tarefas:</strong><br>
+                    <span class="badge" style="background-color: #dc3545; color: white;">Vencida</span>
+                    <span class="badge" style="background-color: #28a745; color: white;">Prazo Longo (>10 dias)</span>
+                    <span class="badge" style="background-color: #ffc107; color: black;">Alerta de Prazo (6-10 dias)</span>
+                    <span class="badge" style="background-color: #fd7e14; color: white;">Urgência de Prazo (<=5 dias)</span>
+                </div>
+
+                {# Seção de Tarefas ATIVAS #}
+                <h5 class="mb-3 text-secondary">Tarefas Ativas ({{ active_tasks|length }})</h5>
+                {% if active_tasks %}
+                    <div class="row g-4">
+                        {% for task in active_tasks %}
+                            {% set days_left = (task.due_date.date() - current_date).days %}
+
+                            {# Define a classe de borda de status e a classe de cor de texto para o prazo #}
+                            {% set status_border_class = '' %}
+                            {% set due_date_text_color_class = '' %}
+                            {% if task.due_date.date() < current_date %}
+                                {% set status_border_class = 'status-border-overdue' %}
+                                {% set due_date_text_color_class = 'text-overdue-red' %}
+                            {% elif days_left <= 5 %}
+                                {% set status_border_class = 'status-border-urgent' %}
+                                {% set due_date_text_color_class = 'text-urgent-orange' %}
+                            {% elif days_left <= 10 %}
+                                {% set status_border_class = 'status-border-alert' %}
+                                {% set due_date_text_color_class = 'text-alert-yellow' %}
+                            {% else %}
+                                {% set status_border_class = 'status-border-long-term' %}
+                                {% set due_date_text_color_class = 'text-long-term-green' %}
+                            {% endif %}
+
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                {# Card com fundo branco e borda de status #}
+                                <div class="card task-card h-100 {{ status_border_class }}">
+                                    <div class="card-body d-flex flex-column">
+                                        {# Título da tarefa #}
+                                        <h6 class="card-title mb-2 fs-6 fw-bold text-truncate"><strong>{{ task.title }}</strong></h6>
+
+                                        {# Prazo #}
+                                        <p class="task-due-date mb-1 text-size-12px"><span class="text-muted">Prazo:</span> <span class="{{ due_date_text_color_class }}" >{{ task.due_date.strftime('%d/%m/%Y %H:%M') }}</span></p>
+
+                                        {# INÍCIO DA CORREÇÃO: Atribuído a #}
+                                        {% if task.assignees %}
+                                            <p class="task-assignees mb-1 text-size-12px">
+                                                <span class="text-muted">Atribuído a:</span> 
+                                                {% for assignee in task.assignees %}
+                                                    <span class="assignee-name">{{ assignee.username }}</span>{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </p>
+                                        {% else %}
+                                            <p class="task-assignees mb-1 text-size-12px"><span class="text-muted">Atribuído a:</span> Nenhum</p>
+                                        {% endif %}
+                                        {# FIM DA CORREÇÃO: Atribuído a #}
+
+                                        {# Descrição #}
+                                        {% if task.description %}
+                                            <div class="task-text-truncate mb-1 text-size-12px"><span class="text-muted">Descrição:</span> <span>{{ task.description }}</span></div>
+                                        {% endif %}
+
+                                        {# Notas #}
+                                        {% if task.notes %}
+                                            <div class="task-text-truncate mb-1 text-size-12px"><span class="text-muted">Notas:</span> <span>{{ task.notes }}</span></div>
+                                        {% endif %}
+
+                                        {# Link #}
+                                        {% if task.cloud_storage_link %}
+                                            <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
+                                        {% endif %}
+                                        {# Obs. do Link #}
+                                        {% if task.link_notes %}
+                                            <div class="task-text-truncate mb-1 text-size-12px"><span class="text-muted">Obs. do Link:</span> <span>{{ task.link_notes }}</span></div>
+                                        {% endif %}
+
+                                        {# ATUALIZADO: Instruções de Áudio (agora apenas com ícone e classe compacta) #}
+                                        <div class="audio-section mt-1">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0">Áudio</h6>
+                                                {% if task.audio_path %}
+                                                    {# Adicionado a classe btn-compact-icon #}
+                                                    <a href="{{ url_for('main.task_detail', task_id=task.id) }}" class="btn btn-outline-info btn-sm btn-compact-icon" title="Ouvir Áudio"><i class="fas fa-headphones"></i></a>
+                                                {% else %}
+                                                    <span class="text-muted small">Nenhuma gravação</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        {# ATUALIZADO: Seção de Anexos Resumida para Tarefas Ativas #}
+                                        <div class="attachments-section mt-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0">Anexos</h6>
+                                                {% if task.attachments|length > 0 %}
+                                                    <a href="{{ url_for('main.task_detail', task_id=task.id) }}" class="btn btn-outline-primary btn-sm">
+                                                        <i class="fas fa-paperclip"></i> {{ task.attachments|length }} anexo{{ 's' if task.attachments|length != 1 else '' }}
+                                                    </a>
+                                                {% else %}
+                                                    <span class="text-muted small">Nenhum anexo</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {# FIM: Seção de Anexos Resumida para Tarefas Ativas #}
+
+                                        {# Grupo de Botões de Ação #}
+                                        <div class="d-flex justify-content-end align-items-center pt-2 mt-auto task-action-buttons">
+                                            {# Botão "Concluir" #}
+                                            {% if current_user.is_authenticated and current_user.can_complete_task %}
+                                                <button type="button" class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#completeTaskModal" data-task-id="{{ task.id }}" data-task-title="{{ task.title }}" title="Concluir Tarefa"><i class="fas fa-check fa-xs"></i></button>
+                                            {% endif %}
+                                            {# Botão "Detalhes" (ícone) #}
+                                            <a href="{{ url_for('main.task_detail', task_id=task.id) }}" class="btn btn-outline-info btn-sm me-2" title="Ver Detalhes"><i class="fas fa-info-circle fa-xs"></i></a>
+                                            {# NOVO: Botão "Histórico" #}
+                                            {% if current_user.is_authenticated and current_user.can_view_task_history %}
+                                                <a href="{{ url_for('main.task_history_view', task_id=task.id) }}" class="btn btn-outline-secondary btn-sm me-2" title="Ver Histórico"><i class="fas fa-history fa-xs"></i></a>
+                                            {% endif %}
+                                            {# Botão Editar (ícone) #}
+                                            {% if current_user.is_authenticated and current_user.can_edit_task %}
+                                                <a href="{{ url_for('main.update_task', task_id=task.id) }}" class="btn btn-outline-primary btn-sm me-2" title="Editar Tarefa"><i class="fas fa-edit fa-xs"></i></a>
+                                            {% endif %}
+                                            {# Botão Excluir (ícone) - dispara modal #}
+                                            {% if current_user.is_authenticated and current_user.can_delete_task %}
+                                                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteTaskModal" data-task-id="{{ task.id }}" title="Excluir Tarefa"><i class="fas fa-trash-alt fa-xs"></i></button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="card-footer bg-white border-top-0 pt-0 pb-1">
+                                        <p class="text-muted text-size-12px mb-0">Criado em: {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>Nenhuma tarefa ativa para este evento.</p>
+                {% endif %}
+
+                {# Seção de Tarefas FINALIZADAS #}
+                <h5 class="mb-3 mt-5 text-secondary">Tarefas Finalizadas ({{ completed_tasks|length }})
+                    <button class="btn btn-link btn-sm p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#completedTasksCollapse" aria-expanded="true" aria-controls="completedTasksCollapse" title="Mostrar/Esconder Tarefas Finalizadas"><i class="fas fa-chevron-down fa-xs"></i></button>
+                </h5>
+                <div class="collapse show" id="completedTasksCollapse">
+                    {% if completed_tasks %}
+                        <div class="row g-4">
+                            {% for task in completed_tasks %}
+                                {# Card para Tarefas Finalizadas: estilo mais suave, sem bordas de status de prazo #}
+                                <div class="col-lg-4 col-md-6 mb-4">
+                                    <div class="card task-card h-100 text-muted opacity-75">
+                                        <div class="card-body d-flex flex-column">
+                                            {# Título da tarefa #}
+                                            <h6 class="card-title mb-2 fs-6 fw-bold text-truncate"><strong>{{ task.title }}</strong></h6>
+                                            {# Data de Conclusão e por quem #}
+                                            <p class="task-due-date mb-1 text-size-12px"><span class="text-muted">Concluída em:</span> <span>{{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</span> {% if task.completed_by_user %}<br><small>Por: {{ task.completed_by_user.username }}</small>{% endif %}</p>
+                                            
+                                            {# INÍCIO DA CORREÇÃO: Atribuído a #}
+                                            {% if task.assignees %}
+                                                <p class="task-assignees mb-1 text-size-12px">
+                                                    <span class="text-muted">Atribuído a:</span> 
+                                                    {% for assignee in task.assignees %}
+                                                        <span class="assignee-name">{{ assignee.username }}</span>{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                                </p>
+                                            {% else %}
+                                                <p class="task-assignees mb-1 text-size-12px"><span class="text-muted">Atribuído a:</span> Nenhum</p>
+                                            {% endif %}
+                                            {# FIM DA CORREÇÃO: Atribuído a #}
+
+                                            {# Descrição (truncada) #}
+                                            {% if task.description %}
+                                                <div class="task-text-truncate mb-1 text-size-12px"><span class="text-muted">Descrição:</span> <span>{{ task.description }}</span></div>
+                                            {% endif %}
+                                            {# Notas (truncadas) #}
+                                            {% if task.notes %}
+                                                <div class="task-text-truncate mb-1 text-size-12px"><span class="text-muted">Notas:</span> <span>{{ task.notes }}</span></div>
+                                            {% endif %}
+
+                                            {# Link de Armazenamento #}
+                                            {% if task.cloud_storage_link %}
+                                                <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
+                                            {% endif %}
+                                            {# Obs. do Link #}
+                                            {% if task.link_notes %}
+                                                <div class="task-text-truncate mb-1 text-size-12px"><span class="text-muted">Obs. do Link:</span> <span>{{ task.link_notes }}</span></div>
+                                            {% endif %}
+
+                                            {# ATUALIZADO: Instruções de Áudio (agora apenas com ícone e classe compacta) #}
+                                            <div class="audio-section mt-1">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <h6 class="mb-0">Áudio</h6>
+                                                    {% if task.audio_path %}
+                                                        {# Adicionado a classe btn-compact-icon #}
+                                                        <a href="{{ url_for('main.task_detail', task_id=task.id) }}" class="btn btn-outline-info btn-sm btn-compact-icon" title="Ouvir Áudio"><i class="fas fa-headphones"></i></a>
+                                                    {% else %}
+                                                        <span class="text-muted small">Nenhuma gravação</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+
+                                            {# ATUALIZADO: Seção de Anexos Resumida para Tarefas Finalizadas #}
+                                            <div class="attachments-section mt-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <h6 class="mb-0">Anexos</h6>
+                                                    {% if task.attachments|length > 0 %}
+                                                        <a href="{{ url_for('main.task_detail', task_id=task.id) }}" class="btn btn-outline-primary btn-sm">
+                                                            <i class="fas fa-paperclip"></i> {{ task.attachments|length }} anexo{{ 's' if task.attachments|length != 1 else '' }}
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="text-muted small">Nenhum anexo</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {# FIM: Seção de Anexos Resumida para Tarefas Ativas #}
+
+
+                                            {# Grupo de Botões de Ação (apenas Ver Detalhes) #}
+                                            <div class="d-flex justify-content-end align-items-center pt-2 mt-auto task-action-buttons">
+                                                {# Botão "Detalhes" (ícone) #}
+                                                <a href="{{ url_for('main.task_detail', task_id=task.id) }}" class="btn btn-outline-info btn-sm me-2" title="Ver Detalhes"><i class="fas fa-info-circle fa-xs"></i></a>
+                                                {# NOVO: Botão "Histórico" para tarefas concluídas #}
+                                                {% if current_user.is_authenticated and current_user.can_view_task_history %}
+                                                    <a href="{{ url_for('main.task_history_view', task_id=task.id) }}" class="btn btn-outline-secondary btn-sm me-2" title="Ver Histórico"><i class="fas fa-history fa-xs"></i></a>
+                                                {% endif %}
+                                                {# Você pode adicionar um botão para reabrir a tarefa aqui futuramente #}
+                                                {% if current_user.is_authenticated and current_user.can_uncomplete_task %}
+                                                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#uncompleteTaskModal" data-task-id="{{ task.id }}" data-task-title="{{ task.title }}" title="Desfazer Conclusão"><i class="fas fa-undo fa-xs"></i></button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="card-footer bg-white border-top-0 pt-0 pb-1">
+                                            <p class="text-muted text-size-12px mb-0">Concluída em: {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>Nenhuma tarefa finalizada para este evento.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <!-- Modal de Confirmação de Exclusão do Evento -->
+        <div class="modal fade" id="deleteEventModal" tabindex="-1" aria-labelledby="deleteEventModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteEventModalLabel">Confirmar Exclusão do Evento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Tem certeza que deseja excluir o evento "{{ event.title }}"? Esta ação excluirá também todas as tarefas associadas e não pode ser desfeita.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form action="{{ url_for('main.delete_event', event_id=event.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-danger">Excluir</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NOVO MODAL: Modal de Confirmação de Cancelamento do Evento -->
+        <div class="modal fade" id="cancelEventModal" tabindex="-1" aria-labelledby="cancelEventModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cancelEventModalLabel">Confirmar Cancelamento do Evento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Tem certeza que deseja cancelar o evento "{{ event.title }}"? Ele não estará mais disponível para novas ações e não pode ser desfeito sem edição manual.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não, Manter Evento</button>
+                        {# O endpoint 'main.cancel_event' ainda precisa ser criado no seu main.py #}
+                        <form id="cancelEventForm" method="POST" action="{{ url_for('main.cancel_event', event_id=event.id) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-warning">Sim, Cancelar Evento</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação de Exclusão de Tarefa -->
+        <div class="modal fade" id="deleteTaskModal" tabindex="-1" aria-labelledby="deleteTaskModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteTaskModalLabel">Confirmar Exclusão da Tarefa</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form id="deleteTaskForm" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-danger">Excluir</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de Conclusão da Tarefa -->
+        <div class="modal fade" id="completeTaskModal" tabindex="-1" aria-labelledby="completeTaskModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="completeTaskModalLabel">Concluir Tarefa: <span id="modalCompleteTaskTitle"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form id="completeTaskForm" method="POST">
+                        <div class="modal-body">
+                            <p>Tem certeza que deseja marcar esta tarefa como concluída?</p>
+                            <div class="mb-3">
+                                <label for="completionComment" class="form-label text-size-12px">Comentários/Observações (Opcional):</label>
+                                <textarea class="form-control text-size-12px" id="completionComment" name="completion_comment" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-success">Concluir Tarefa</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Desfazer Conclusão da Tarefa -->
+        <div class="modal fade" id="uncompleteTaskModal" tabindex="-1" aria-labelledby="uncompleteTaskModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="uncompleteTaskModalLabel">Desfazer Conclusão: <span id="modalUncompleteTaskTitle"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form id="uncompleteTaskForm" method="POST">
+                        <div class="modal-body">
+                            <p>Tem certeza que deseja marcar esta tarefa como **não concluída**?</p>
+                            <p class="text-muted small">Esta ação irá reverter o status da tarefa para pendente e removerá o registro de conclusão.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-warning">Desfazer Conclusão</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const currentEventId = {{ event.id | tojson }};
+
+                // Script para o modal de exclusão de tarefa
+                var deleteTaskModal = document.getElementById('deleteTaskModal');
+                if (deleteTaskModal) {
+                    deleteTaskModal.addEventListener('show.bs.modal', function (event) {
+                        var button = event.relatedTarget;
+                        var taskId = button.getAttribute('data-task-id');
+                        var form = deleteTaskModal.querySelector('#deleteTaskForm');
+                        form.action = "{{ url_for('main.delete_task', task_id=0) }}".replace('0', taskId);
+                    });
+                }
+
+                // SCRIPT para o Modal de Conclusão da Tarefa
+                var completeTaskModal = document.getElementById('completeTaskModal');
+                if (completeTaskModal) {
+                    completeTaskModal.addEventListener('show.bs.modal', function (event) {
+                        var button = event.relatedTarget;
+                        var taskId = button.getAttribute('data-task-id');
+                        var taskTitle = button.getAttribute('data-task-title');
+
+                        var modalTitleSpan = completeTaskModal.querySelector('#modalCompleteTaskTitle');
+                        var completeTaskForm = completeTaskModal.querySelector('#completeTaskForm');
+
+                        modalTitleSpan.textContent = taskTitle;
+                        completeTaskForm.action = "{{ url_for('main.complete_task', task_id=0) }}".replace('0', taskId);
+                    });
+                }
+
+                // SCRIPT para o Modal de Desfazer Conclusão da Tarefa
+                var uncompleteTaskModal = document.getElementById('uncompleteTaskModal');
+                if (uncompleteTaskModal) {
+                    uncompleteTaskModal.addEventListener('show.bs.modal', function (event) {
+                        var button = event.relatedTarget;
+                        var taskId = button.getAttribute('data-task-id');
+                        var taskTitle = button.getAttribute('data-task-title');
+
+                        var modalTitleSpan = uncompleteTaskModal.querySelector('#modalUncompleteTaskTitle');
+                        var uncompleteTaskForm = uncompleteTaskModal.querySelector('#uncompleteTaskForm');
+
+                        modalTitleSpan.textContent = taskTitle;
+                        uncompleteTaskForm.action = "{{ url_for('main.uncomplete_task', task_id=0) }}".replace('0', taskId);
+                    });
+                }
+            });
+
+            // Função auxiliar para exibir mensagens flash (mantida)
+            function flashMessage(message, category) {
+                var alertHtml = `<div class="alert alert-${category} alert-dismissible fade show" role="alert">
+                                    ${message}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                 </div>`;
+                $('.container').prepend(alertHtml);
+                setTimeout(function() {
+                    $('.alert').alert('close');
+                }, 5000);
+            }
+
+            // REMOVIDO: Lógica para o formulário de upload de anexo rápido (substituída por redirecionamento)
+        </script>
+{% endblock content %}

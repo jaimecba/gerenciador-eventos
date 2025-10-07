@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Editar Usuário{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h1 class="mb-4 text-center">Editar Usuário: {{ user.username }}</h1>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="POST" action="">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-control form-control-lg", pattern="[a-z]+", title="Apenas letras minúsculas são permitidas.") }}
+                        {% if form.username.errors %}
+                            <div class="text-danger">
+                                {% for error in form.username.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control") }}
+                        {% if form.email.errors %}
+                            <div class="text-danger">
+                                {% for error in form.email.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.role.label(class="form-label") }}
+                        {{ form.role(class="form-select") }}
+                        {% if form.role.errors %}
+                            <div class="text-danger">
+                                {% for error in form.role.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control") }}
+                        {% if form.password.errors %}
+                            <div class="text-danger">
+                                {% for error in form.password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Deixe este campo em branco para não alterar a senha.</small>
+                    </div>
+                    <div class="mb-3">
+                        {{ form.confirm_password.label(class="form-label") }}
+                        {{ form.confirm_password(class="form-control") }}
+                        {% if form.confirm_password.errors %}
+                            <div class="text-danger">
+                                {% for error in form.confirm_password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,1173 @@
+/* Estilos globais para o Gerenciador de Eventos */
+
+/* Reset básico para consistência */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4; /* Mantido seu fundo de corpo existente */
+    color: #333;
+    line-height: 1.6;
+}
+/* ------------------------------------------------------------- */
+/* Ajustes para o Wrapper do Conteúdo Principal */
+/* Controla a largura máxima e centraliza o conteúdo em todas as páginas */
+/* ------------------------------------------------------------- */
+.main-content-wrapper {
+    max-width: 1200px; /* Ajustado para 1200px para um visual mais elegante e legível */
+    margin-left: auto; /* Centraliza o wrapper horizontalmente */
+    margin-right: auto; /* Centraliza o wrapper horizontalmente */
+    padding-left: 1.5rem; /* Espaçamento interno nas laterais para evitar que o conteúdo "cole" nas bordas */
+padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
+}
+/* Ajustes de responsividade para o wrapper em telas menores */
+@media (max-width: 767.98px) { /* Para telas menores que 768px (sm e xs) */
+    .main-content-wrapper {
+        padding-left: 1rem; /* Reduz o padding em telas menores */
+        padding-right: 1rem; /* Reduz o padding em telas menores */
+    }
+}
+
+/* IMPORTANTE: Esta regra .container existente tem um max-width de 800px e outros estilos.
+   Ela provavelmente é usada para elementos específicos (como formulários de login/registro)
+   e NÃO interfere com o novo layout da página principal (que usa .main-content-wrapper).
+   Não a removemos, pois ela tem uma função específica no seu projeto. */
+.container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #007bff;
+}
+
+/* Mantido o estilo genérico de form, mas os estilos mais específicos abaixo sobrepõem onde aplicável */
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input, textarea {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button {
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* -- Estilos de Formulário Elegantes e Modernos -- */
+/* -- Estilos de Formulário Elegantes e Modernos -- */
+
+/* Container principal do formulário - content-section */
+.content-section {
+/* Container principal do formulário - content-section */
+.content-section {
+    background: #ffffff; /* Fundo branco para o "cartão" do formulário */
+    padding: 2.5rem; /* Espaçamento interno generoso para respiro */
+    border: 1px solid #dee2e6; /* Borda sutil */
+    border-radius: 0.75rem; /* Bordas arredondadas para um visual mais suave */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05); /* Sombra suave para destacar o cartão */
+    margin-bottom: 2rem; /* Espaço abaixo do formulário */
+}
+/* Título/Legenda do formulário */
+legend.border-bottom {
+    font-size: 2rem; /* Tamanho da fonte maior para o título */
+    font-weight: 600; /* Um pouco mais encorpado */
+    color: #343a40; /* Cor de texto principal */
+    border-bottom: 2px solid #dee2e6; /* Linha divisória um pouco mais pronunciada */
+    padding-bottom: 1rem; /* Espaço entre o título e a linha */
+    margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
+margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
+    text-align: center; /* Centraliza o título */
+}
+/* Rótulos dos campos específicos de formulário */
+.form-control-label {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-weight: 500; /* Seminegrito para destaque */
+    color: #343a40; /* Cor de texto principal */
+    margin-bottom: 0.5rem; /* Espaço abaixo do rótulo */
+    display: block; /* Garante que o rótulo ocupe sua própria linha */
+}
+/* Mensagens de erro */
+.text-danger {
+    font-size: 0.875rem; /* Tamanho de fonte padrão para mensagens pequenas */
+    color: #dc3545; /* Cor vermelha para erros */
+    margin-top: 0.5rem; /* Espaço acima da mensagem de erro */
+    display: block; /* Garante que o erro esteja em sua própria linha */
+    background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
+background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
+    padding: 0.4rem 0.75rem; /* Preenchimento interno */
+    border-radius: 0.25rem; /* Bordas levemente arredondadas */
+    border: 1px solid rgba(220, 53, 69, 0.2); /* Borda sutil de erro */
+}
+/* Campos de texto (inputs) com a classe form-control */
+.form-control {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-size: 1.1rem; /* Um pouco maior para melhor legibilidade */
+    padding: 0.75rem 1rem; /* Preenchimento interno adequado */
+    border: 1px solid #ced4da; /* Borda padrão */
+    border-radius: 0.5rem; /* Bordas arredondadas */
+    transition: all 0.2s ease-in-out; /* Transição suave para estados de foco */
+}
+
+/* Campos de texto em foco */
+.form-control:focus {
+    border-color: #17a2b8; /* Borda na cor de acento */
+.form-control:focus {
+    border-color: #17a2b8; /* Borda na cor de acento */
+    box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); /* Sombra de foco na cor de acento */
+    outline: none; /* Remove o outline padrão do navegador */
+}
+/* Botão de submit com a classe btn-outline-info */
+.btn-outline-info {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-weight: 600; /* Mais encorpado */
+    font-size: 1.1rem; /* Um pouco maior */
+    padding: 0.75rem 1.5rem; /* Preenchimento adequado */
+    border-radius: 0.5rem; /* Bordas arredondadas */
+    transition: all 0.2s ease-in-out; /* Transição suave para hover */
+    margin-top: 1.5rem; /* Espaço acima do botão */
+    width: 100%; /* Botão com largura total, para melhor UX em mobile */
+}
+
+/* Botão de submit em hover/focus */
+.btn-outline-info:hover,
+.btn-outline-info:focus {
+}
+/* Botão de submit em hover/focus */
+.btn-outline-info:hover,
+.btn-outline-info:focus {
+}
+
+/* Botão de submit em hover/focus */
+.btn-outline-info:hover,
+.btn-outline-info:focus {
+    background-color: #17a2b8; /* Fundo preenchido com a cor de acento */
+    color: #ffffff; /* Texto branco */
+    border-color: #17a2b8; /* Borda também na cor de acento */
+    box-shadow: 0 0.2rem 0.5rem rgba(0, 0, 0, 0.2); /* Sombra sutil ao passar o mouse */
+    outline: none; /* Garante que não haja outline duplicado */
+}
+@media (max-width: 767.98px) { /* Para telas menores que 768px (sm e xs) */
+    .content-section {
+        padding: 1.5rem; /* Reduz o padding em telas menores */
+        border-radius: 0.5rem; /* Bordas um pouco menos arredondadas */
+    }
+    legend.border-bottom {
+        font-size: 1.5rem; /* Reduz o tamanho do título */
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .btn-outline-info {
+        font-size: 1rem; /* Ajusta o tamanho do botão para mobile */
+        padding: 0.6rem 1.2rem;
+    }
+}
+padding: 0.6rem 1.2rem;
+    }
+}
+
+ul {
+    list-style-type: none;
+}
+
+li {
+    background: #f9f9f9;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+a {
+    color: #007bff;
+    text-decoration: none;
+    padding: 5px;
+    transition: background-color 0.3s ease;
+}
+
+a:hover {
+    background-color: #0056b3;
+}
+a:hover {
+    background-color: #0056b3;
+}
+
+/* Classes para mensagens de erro/sucesso (Bootstrap alert classes são usadas no base.html) */
+.flash-message {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+.flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+/* Efeitos visuais sutis para o Painel de Eventos (Adicionado para melhorias de UX) */
+/* Efeitos visuais sutis para o Painel de Eventos (Adicionado para melhorias de UX) */
+
+/* Efeito de hover para cards */
+.custom-card-hover {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.custom-card-hover:hover {
+    transform: translateY(-5px); /* Levanta o card ligeiramente */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important; /* Sombra mais pronunciada */
+}
+/* Efeito de hover para botões primários (como "Novo Evento") */
+.custom-btn-hover {
+    transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.custom-btn-hover:hover {
+    transform: translateY(-2px); /* Levanta o botão ligeiramente */
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1) !important; /* Sombra sutil */
+}
+
+/* Opções de customização para diferentes estados dos elementos */
+.btn-outline-primary:focus,
+.btn-outline-secondary:focus,
+.btn-outline-danger:focus,
+.btn-outline-primary:focus,
+.btn-outline-secondary:focus,
+.btn-outline-danger:focus,
+.btn-outline-info:focus { /* Adicionado btn-outline-info aqui também */
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+}
+
+/* Para garantir que a cor do texto do badge info seja visível no modo escuro também */
+.badge.bg-info {
+    color: white; /* Garante texto branco */
+}
+/* Estilos de cores para as legendas (agora como classes com as cores exatas) */
+.bg-pure-red { background-color: #FF0000 !important; }
+.bg-pure-green { background-color: #008000 !important; }
+.bg-urgency-orange { background-color: #FF4500 !important; }
+.bg-warning { background-color: #FFD700 !important; }
+
+/* NOVAS CLASSES DE COR PARA O TEXTO DO PRAZO (adicionadas por solicitação) */
+.text-overdue-red { color: #FF0000 !important; }
+.text-long-term-green { color: #008000 !important; }
+.text-urgent-orange { color: #FF4500 !important; }
+.text-alert-yellow { color: #FFD700 !important; }
+.text-alert-yellow { color: #FFD700 !important; }
+
+/* NOVA CLASSE PARA PADRONIZAR FONTES EM 12px (para textos de detalhes do evento em /home E tarefas em /event) */
+.text-size-12px {
+    font-size: 12px !important;
+}
+
+/* Ajuste para garantir que ícones fa-xs no Bootstrap sejam 12px */
+.fa-xs {
+    font-size: 12px !important; /* Garante 12px para ícones Font Awesome extra small */
+}
+/* NOVO: Estilos para os cards de tarefas para torná-los compactos */
+.task-card {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: all 0.2s ease-in-out;
+    height: 100%; 
+}
+.task-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-3px);
+}
+
+.task-card .card-body {
+    padding: 1rem; /* Reduz o padding interno do card para torná-lo mais compacto */
+    height: 100%; 
+}
+
+.task-card .card-title {
+    margin-bottom: 0.25rem;
+}
+height: 100%; 
+}
+
+.task-card .card-title {
+    margin-bottom: 0.25rem;
+}
+
+.task-card .card-text {
+    margin-bottom: 0.25rem;
+}
+
+/* Ajustado para garantir que os badges dos cards de tarefas também sejam 12px */
+.task-card .badge {
+    padding: 0.3em 0.5em;
+    font-size: 12px !important; /* Garante 12px para badges dentro dos cards de tarefa */
+}
+
+.task-card .badge.bg-info {
+    margin-right: 0.2rem;
+    margin-bottom: 0.2rem;
+}
+.task-card .badge.bg-info {
+    margin-right: 0.2rem;
+    margin-bottom: 0.2rem;
+}
+
+/* NOVOS ESTILOS DE BORDA PARA INDICAÇÃO DE STATUS */
+.task-card.status-border-overdue {
+    border-left: 5px solid #FF0000;
+}
+.task-card.status-border-long-term {
+    border-left: 5px solid #008000;
+}
+.task-card.status-border-urgent {
+    border-left: 5px solid #FF4500;
+}
+.task-card.status-border-alert {
+    border-left: 5px solid #FFD700;
+}
+
+/* ========================================================== */
+/* NOVOS ESTILOS PARA A PÁGINA DE CHANGELOG (COM MODAL) - AJUSTADO */
+/* NOVOS ESTILOS PARA A PÁGINA DE CHANGELOG (COM MODAL) - AJUSTADO */
+/* ========================================================== */
+.table-responsive .changelog-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.table-responsive .changelog-table th {
+    font-size: 0.8em;
+    vertical-align: middle;
+    padding: 0.5rem;
+    white-space: nowrap;
+}
+.table-responsive .changelog-table td {
+    font-size: 0.75em;
+    vertical-align: middle;
+    padding: 0.5rem;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+.table-responsive .changelog-table th:nth-child(1),
+.table-responsive .changelog-table td:nth-child(1) {
+    width: 130px;
+    min-width: 130px;
+    white-space: nowrap;
+}
+
+.table-responsive .changelog-table th:nth-child(2),
+.table-responsive .changelog-table td:nth-child(2) {
+    width: 100px;
+    min-width: 100px;
+}
+
+.table-responsive .changelog-table th:nth-child(3),
+.table-responsive .changelog-table td:nth-child(3) {
+.table-responsive .changelog-table td:nth-child(3) {
+    width: 80px;
+    min-width: 80px;
+}
+
+.table-responsive .changelog-table th:nth-child(4),
+.table-responsive .changelog-table td:nth-child(4) {
+    width: 110px;
+    min-width: 110px;
+}
+.table-responsive .changelog-table th:nth-child(5),
+.table-responsive .changelog-table td:nth-child(5) {
+    width: 60px;
+    min-width: 60px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.table-responsive .changelog-table th:nth-child(6),
+.table-responsive .changelog-table td:nth-child(6) {
+    width: auto;
+    min-width: 200px;
+    max-width: 350px;
+}
+
+.table-responsive .changelog-table th:nth-child(7),
+.table-responsive .changelog-table td:nth-child(7) {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+}
+@media (max-width: 768px) {
+    .table-responsive .changelog-table td,
+    .table-responsive .changelog-table th {
+        font-size: 0.7em;
+        padding: 0.3rem;
+    }
+font-size: 0.7em;
+        padding: 0.3rem;
+    }
+    .table-responsive .changelog-table th:nth-child(1), .table-responsive .changelog-table td:nth-child(1),
+    .table-responsive .changelog-table th:nth-child(2), .table-responsive .changelog-table td:nth-child(2),
+    .table-responsive .changelog-table th:nth-child(3), .table-responsive .changelog-table td:nth-child(3),
+    .table-responsive .changelog-table th:nth-child(4), .table-responsive .changelog-table td:nth-child(4),
+    .table-responsive .changelog-table th:nth-child(5), .table-responsive .changelog-table td:nth-child(5),
+    .table-responsive .changelog-table th:nth-child(7), .table-responsive .changelog-table td:nth-child(7) {
+        white-space: normal;
+        width: auto;
+        min-width: auto;
+    }
+white-space: normal;
+        width: auto;
+        min-width: auto;
+    }
+    .table-responsive .changelog-table td:nth-child(6) {
+        max-width: none;
+    }
+}
+.modal-body pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+}
+
+.modal-body pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background-color: #e9ecef;
+    padding: 10px;
+    border-radius: 5px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#logDetailsModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+#logDetailsModal pre {
+    background-color: #f4f4f4;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow: auto;
+    font-size: 0.8em;
+}
+
+#logDetailsModal h6 {
+    margin-top: 15px;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+/* ------------------------------------------- */
+/* Otimização de Tabela para Gerenciar Usuários - AJUSTADO */
+/* ------------------------------------------- */
+
+.user-data-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.user-data-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.user-data-table th,
+.user-data-table td {
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85em;
+    vertical-align: middle;
+padding: 0.5rem 0.75rem;
+    font-size: 0.85em;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.user-data-table th:nth-child(1),
+.user-data-table th:nth-child(7) {
+    text-align: center;
+}
+
+.user-data-table th:nth-child(1),
+.user-data-table td:nth-child(1) {
+    width: 50px;
+    min-width: 50px;
+    text-align: center;
+}
+
+.user-data-table th:nth-child(2),
+.user-data-table td:nth-child(2) {
+    width: 15%;
+    min-width: 120px;
+}
+
+.user-data-table th:nth-child(3),
+.user-data-table td:nth-child(3) {
+    width: 30%;
+    min-width: 200px;
+}
+
+.user-data-table th:nth-child(4),
+.user-data-table td:nth-child(4) {
+    width: 120px;
+    min-width: 120px;
+}
+
+.user-data-table th:nth-child(5),
+.user-data-table td:nth-child(5) {
+    width: 140px;
+    min-width: 140px;
+}
+.user-data-table th:nth-child(6),
+.user-data-table td:nth-child(6) {
+    width: 140px;
+    min-width: 140px;
+}
+
+.user-data-table th:nth-child(7),
+width: 140px;
+    min-width: 140px;
+}
+
+.user-data-table th:nth-child(7),
+.user-data-table td:nth-child(7) {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+}
+
+.user-data-table .badge {
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .user-data-table th,
+    .user-data-table td {
+        font-size: 0.75em;
+        white-space: normal;
+        word-wrap: break-word;
+        width: auto !important;
+        min-width: auto !important;
+    }
+}
+
+/* NOVOS ESTILOS PARA AJUSTAR O TAMANHO DOS BOTÕES DE VOLTAR E SALVAR TAREFA */
+.btn-custom-small {
+    padding: calc(0.25rem * 0.8) calc(0.5rem * 0.8);
+    font-size: calc(0.875rem * 0.8);
+    line-height: 1;
+    display: inline-flex; 
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+/* ========================================================== */
+/* NOVOS ESTILOS PARA A BARRA DE NAVEGAÇÃO (NAVBAR) - AJUSTADO */
+/* NOVOS ESTILOS PARA A BARRA DE NAVEGAÇÃO (NAVBAR) - AJUSTADO */
+/* ========================================================== */
+
+/* Estilo para garantir que o espaçamento entre os itens seja consistente */
+.navbar-nav .nav-item {
+    /* Removido margin-right: 15px; para evitar overflow prematuro. */
+    /* O espaçamento será agora gerenciado principalmente pelo padding dos .nav-link e as classes de espaçamento do Bootstrap (e.g., me-auto, ms-auto) */
+}
+
+/* Ajuste fino para os links da navbar, incluindo ícones */
+.navbar-nav .nav-link {
+    display: flex;
+    align-items: center; /* Alinha verticalmente ícone e texto */
+    white-space: nowrap; /* Impede a quebra de linha DENTRO do link, permitindo que a navbar colapse */
+}
+/* Alinha ícone e texto na mesma linha para brand e dropdown items */
+.navbar-brand,
+.dropdown-item {
+    display: flex;
+    align-items: center; /* Alinha verticalmente ícone e texto */
+display: flex;
+    align-items: center; /* Alinha verticalmente ícone e texto */
+    white-space: nowrap; /* Impede que o texto quebre para a linha de baixo */
+}
+
+/* Ajuste específico para o padding do texto "Olá, usuário!" e do botão "Sair" */
+.navbar-nav.ms-auto .nav-item .nav-link {
+    padding-right: 0.5rem; /* Ajuste para ter um pouco menos de padding à direita */
+    padding-left: 0.5rem; /* Garante padding consistente com outros nav-links */
+}
+
+/* Ajuste para o botão "Sair" em telas menores */
+.navbar-nav.ms-auto .nav-item .btn {
+    /* Mantém o padding e font-size padrão para botões do Bootstrap */
+    padding: 0.375rem 0.75rem; 
+    font-size: 1rem; 
+    white-space: nowrap; /* Garante que não quebre a linha */
+}
+/* No breakpoint 'lg' (991.98px) e abaixo, remove o margin-left extra do botão Sair para comprimir */
+@media (max-width: 991.98px) {
+    .navbar-nav.ms-auto .nav-item .btn {
+@media (max-width: 991.98px) {
+    .navbar-nav.ms-auto .nav-item .btn {
+        margin-left: 0 !important; /* Sobrescreve ms-lg-2 do Bootstrap para telas menores */
+    }
+}
+
+/* -- Ajustes Gerais de Labels e Títulos -- */
+/* Ajuste de fonte para labels em cards (e.g., detalhes do evento) */
+.card-body p.small span.text-muted.fw-bold {
+    font-size: 0.85em; /* Torna as labels ligeiramente menores que o 'small' padrão */
+    /* Remover margem inferior padrão dos parágrafos com mb-1 no HTML, para compactar */
+}
+
+/* Título da Seção de Tarefas */
+.task-section-title {
+    font-size: 1.3em !important; /* Ligeiramente menor que h4 padrão, se necessário ajuste */
+    font-weight: bold !important;
+}
+/* -- Estilos para os Cards de Tarefas (Task Cards) -- */
+/* Já tem o height: 100% definido acima, que é o que precisamos */
+/* .task-card .card-body já tem height: 100% definido acima */
+
+.task-card .card-title {
+/* .task-card .card-body já tem height: 100% definido acima */
+
+.task-card .card-title {
+    margin-bottom: 0.5rem !important; /* Reduz o espaço após o título */
+    /* Removido font-size: 1.1em; para deixar o fs-6 do HTML controlar (16px) */
+}
+
+/* Reduz as margens inferiores de todos os parágrafos e divs dentro dos cards de tarefas */
+.task-card p, .task-card div:not(.d-flex):not(.audio-player-display) {
+    margin-bottom: 0.25rem !important;
+}
+.task-card label {
+    margin-bottom: 0.15rem !important; /* Ainda mais justo para labels */
+}
+/* Estilo para Prazo (destaque) */
+.task-due-date {
+    /* Remover font-size: 0.9em; pois agora text-size-12px no HTML controla */
+    color: #495057; /* Cor mais escura para prominence */
+}
+.task-due-date .fw-bold {
+    /* Removido o estilo 'color' daqui para que as novas classes possam controlá-lo */
+}
+
+/* -- Estilo para Truncamento de Descrição e Notas -- */
+.task-text-truncate {
+}
+/* -- Estilo para Truncamento de Descrição e Notas -- */
+.task-text-truncate {
+    white-space: nowrap; /* Impede a quebra de linha */
+    overflow: hidden; /* Esconde o conteúdo que excede a largura */
+    text-overflow: ellipsis; /* Adiciona reticências ao final */
+    cursor: pointer; /* Indica que é clicável */
+    line-height: 1.2; /* Garante altura de linha única */
+    position: relative; /* Para posicionar o ícone de reticências */
+    padding-right: 18px; /* Espaço para o ícone de reticências */
+}
+/* Estilo para o ícone de reticências */
+.task-text-truncate .fas.fa-ellipsis-h {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    /* Remover font-size: 0.8em; pois agora fa-xs no HTML controla (12px) */
+    color: var(--bs-primary); /* Cor primária do Bootstrap para destaque */
+}
+/* Removido .task-text-truncate small { display: inline; } pois agora usamos spans ou divs diretamente */
+/* -- Estilo para Botão de Link de Armazenamento -- */
+/* -- Estilo para Botão de Link de Armazenamento -- */
+.task-card .btn.btn-outline-secondary.btn-sm {
+    padding: .25rem .5rem; /* Ajuste se preferir mais preenchimento para o ícone */
+}
+/* -- ESTILOS ATUALIZADOS para Botões de Ação da Tarefa (Detalhes, Editar, Excluir) -- */
+.task-action-buttons .btn-sm {
+    width: 36px; /* Largura fixa */
+    height: 36px; /* Altura fixa */
+    display: inline-flex; 
+    align-items: center; /* Centraliza verticalmente o ícone dentro do botão */
+    justify-content: center; /* Centraliza horizontalmente o ícone dentro do botão */
+    padding: 0; /* Remove padding interno padrão */
+    border-radius: 0.25rem; /* Mantém o border-radius padrão do Bootstrap */
+    flex-shrink: 0; /* Impede que os botões encolham em telas pequenas */
+    vertical-align: middle; /* Alinha o elemento ao meio da linha */
+    line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
+line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
+    box-sizing: border-box; /* Assegura que padding e border sejam incluídos na largura/altura */
+    text-decoration: none; /* Remove sublinhado padrão de links, se aplicável */
+}
+/* Garante que o ícone em si também não tenha comportamentos de alinhamento indesejados */
+.task-action-buttons .btn-sm i {
+    line-height: 1; /* Zera a altura de linha do ícone */
+    margin: 0; /* Zera margens do ícone */
+    padding: 0; /* Zera padding do ícone */
+    /* Remover font-size: 1em; pois agora fa-xs no HTML controla (12px) */
+    vertical-align: middle; /* Reafirma o alinhamento vertical para o próprio ícone */
+}
+
+/* Pequeno efeito de escala ao passar o mouse */
+.task-action-buttons .btn-sm:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease-in-out;
+}
+/* -- Ajustes no Player de Áudio -- */
+.audio-player-display {
+    margin-top: 0.5rem !important;
+.audio-player-display {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+.audio-player-display label {
+    /* Remover font-size: 0.85em; pois agora text-size-12px no HTML controla */
+    margin-bottom: 0.1rem !important; /* Ajuste de margem */
+}
+.audio-player-display audio {
+    width: 100%;
+    height: 30px; /* Torna o player de áudio mais compacto */
+    margin-top: 0.25rem;
+}
+/* Removido .audio-player-display p.small para deixar o text-size-12px controlar */
+
+/* Ajuste para o badge de 'Atribuída a' */
+.task-card .card-text .badge {
+    /* Já ajustado para 12px acima */
+    padding: 0.2em 0.5em;
+    margin-right: 0.2em; /* Espaço entre os badges */
+    margin-bottom: 0.2em; /* Se eles quebrarem linha, para espaçamento vertical */
+    display: inline-flex; /* Permite alinhamento vertical e horizontal de ícones/texto */
+    align-items: center;
+}
+/* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
+}
+
+/* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
+.btn-compact-icon {
+    padding: 0.25rem 0.45rem !important; /* Reduz o padding horizontal e vertical */
+    line-height: 1 !important;          /* Garante que a altura seja mínima */
+    font-size: 0.75rem !important;      /* Força o tamanho da fonte do ícone */
+}
+
+/* --- Responsividade do FullCalendar --- */
+/* Estilos de Eventos: Mostra Ícone no Mobile, Título no Desktop */
+.fc-event-display-wrapper {
+    display: flex;
+    align-items: center; /* Alinha verticalmente ícone e texto */
+    justify-content: center; /* Centraliza horizontalmente (útil para ícone-only) */
+    width: 100%; /* Ocupa a largura total para ajudar na centralização */
+}
+.fc-event-display-wrapper .fc-event-task-icon,
+.fc-event-display-wrapper .fc-event-event-icon {
+    display: none; /* Por padrão, esconde os ícones */
+}
+.fc-event-display-wrapper .fc-event-title-text {
+}
+.fc-event-display-wrapper .fc-event-title-text {
+    display: block; /* Por padrão, mostra o título */
+    flex-grow: 1; /* Permite que o título ocupe o espaço */
+    text-align: left; /* Alinhamento padrão do título */
+    white-space: nowrap; /* Tenta manter o título em uma linha */
+    overflow: hidden; /* Esconde overflow */
+    text-overflow: ellipsis; /* Adiciona elipses */
+    font-size: 0.85em; /* Tamanho da fonte padrão para eventos */
+font-size: 0.85em; /* Tamanho da fonte padrão para eventos */
+    line-height: 1.2; /* Altura da linha padrão */
+    color: inherit; /* Herda a cor do texto do evento */
+}
+/* Estilos específicos para eventos no dayGridMonth/dayGridWeek */
+.fc-daygrid-event .fc-event-display-wrapper {
+    background: transparent !important; /* Fundo transparente para o wrapper dentro do evento */
+    border: none !important; /* Remove borda para o wrapper dentro do evento */
+    padding: 0 !important; /* Remove padding para o wrapper dentro do evento */
+    height: auto; /* Altura automática */
+height: auto; /* Altura automática */
+    min-height: 20px; /* Garante altura mínima para ícones */
+    width: 100%; /* Ocupa largura total */
+}
+
+/* ========================================================== */
+/* ESTILOS PARA MOBILE (max-width: 991.98px) - ATUALIZADO */
+/* ========================================================== */
+@media (max-width: 991.98px) { 
+    /* Título principal da página do calendário */
+    .calendar-page-title { 
+        font-size: 20px !important; 
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+/* Título do FullCalendar (ex: "Setembro 2025") */
+    .fc-toolbar-title { 
+        font-size: 0.9em !important; /* Ajustado para um pouco maior */
+        text-align: center;
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    /* Nomes dos dias da semana (Dom, Seg, Ter...) */
+    .fc-col-header-cell-cushion { 
+        font-size: 0.8em !important;
+        padding: 0.2em !important;
+    }
+font-size: 0.8em !important;
+        padding: 0.2em !important;
+    }
+
+    /* Ajustes gerais para a barra de cabeçalho do calendário */
+    .fc-header-toolbar {
+        flex-direction: column !important; 
+        align-items: flex-start !important; 
+        padding: 0.5rem !important;
+    }
+
+    .fc-toolbar-chunk {
+        width: 100% !important; 
+        margin-bottom: 0.5rem !important; 
+        display: flex !important; 
+        align-items: center !important;
+    }
+/* Botões 'Anterior, Próximo, Voltar' */
+    .fc-header-toolbar .fc-toolbar-chunk:first-child { 
+        justify-content: space-around !important; 
+        order: 2 !important; /* Move para baixo no mobile */
+        font-size: 0.8em !important; /* Aumentado */
+        padding: 0.5rem 0 !important;
+    }
+    .fc-header-toolbar .fc-button { 
+        padding: 0.2em 0.5em !important; 
+        font-size: 0.9em !important; /* Aumentado */
+    }
+font-size: 0.9em !important; /* Aumentado */
+    }
+
+    /* Ajusta o título do calendário (chunk central da toolbar) */
+    .fc-toolbar-chunk:nth-child(2) { 
+        order: 1 !important; /* Move para cima no mobile */
+        margin-bottom: 1rem !important; 
+        justify-content: center !important; 
+    }
+/* Eventos/Tarefas em Mobile (dayGridMonth/dayGridWeek) - Mostra SÓ Ícone */
+    .fc-daygrid-event .fc-event-display-wrapper {
+        padding: 0 !important; 
+        min-height: 20px !important; 
+        background: transparent !important; 
+        border: none !important; 
+        display: flex !important; 
+        justify-content: center !important; 
+        align-items: center !important; 
+        width: 100% !important; 
+    }
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-title-text {
+        display: none !important; /* Esconde o título */
+    }
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
+}
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
+        display: block !important; /* Mostra o ícone */
+        font-size: 1em !important; /* Tamanho do ícone */
+    }
+    .fc-event-task-icon { color: #ffc107 !important; } /* Cor amarela para tarefa */
+}
+    .fc-event-task-icon { color: #ffc107 !important; } /* Cor amarela para tarefa */
+    .fc-event-event-icon { color: #007bff !important; } /* Cor azul para evento */
+    
+    /* Número do dia na célula do calendário */
+    .fc-daygrid-day-number { font-size: 0.8em !important; }
+    .fc-daygrid-event-harness { height: auto !important; min-height: 20px !important; }
+    .fc-daygrid-day-events { padding-top: 0 !important; padding-bottom: 0 !important; }
+/* Estilos para truncamento de títulos na visualização de lista em mobile */
+    .fc-list-event-title-link { /* Nosso <a> dentro da <td>.fc-list-event-title */
+        display: block; /* Essencial para que text-overflow: ellipsis funcione */
+display: block; /* Essencial para que text-overflow: ellipsis funcione */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%; /* Garante que respeite a largura do pai */
+        color: inherit; /* Herda a cor do texto do evento */
+        text-decoration: none; /* Remove sublinhado padrão do link */
+    }
+    .fc-list-event-title-link:hover {
+        text-decoration: underline; /* Adiciona sublinhado ao passar o mouse */
+    }
+    /* Estilos para o container do título na lista, para garantir flexibilidade em mobile */
+    .fc-list-event-title {
+        min-width: 0; /* Permite que a célula encolha se necessário */
+        flex-grow: 1; /* Permite que ela ocupe o espaço restante */
+flex-grow: 1; /* Permite que ela ocupe o espaço restante */
+    }
+    /* Certifica que o item da lista usa display flex para melhor responsividade */
+    .fc-list-item > td {
+        white-space: nowrap; /* Para os outros TDs (tempo, dot) */
+    }
+    .fc-list-item {
+white-space: nowrap; /* Para os outros TDs (tempo, dot) */
+    }
+    .fc-list-item {
+        display: flex; /* Transforma a linha da lista em um flex container */
+        align-items: center; /* Alinha os itens verticalmente */
+    }
+    .fc-list-event-time, .fc-list-event-marker {
+        flex-shrink: 0; /* Impede que o tempo e o marcador encolham */
+    }
+    /* Esconde o painel lateral no mobile */
+    .event-detail-sidebar {
+        display: none !important;
+    }
+}
+/* ========================================================== */
+/* ESTILOS PARA DESKTOP (min-width: 992px) - ATUALIZADO */
+/* ========================================================== */
+@media (min-width: 992px) {
+    /* Título principal da página do calendário */
+    .calendar-page-title {
+        font-size: 2.5rem !important; 
+        text-align: left;
+    }
+
+    /* Título do FullCalendar (ex: "Setembro 2025") */
+    .fc-toolbar-title {
+}
+
+    /* Título do FullCalendar (ex: "Setembro 2025") */
+    .fc-toolbar-title { 
+        font-size: 2em !important; /* Aumentado para desktop */
+    }
+    /* Nomes dos dias da semana (Dom, Seg, Ter...) */
+    .fc-col-header-cell-cushion { 
+        font-size: 1.1em !important; /* Ligeiramente maior para desktop */
+    }
+    /* Número do dia na célula do calendário */
+    .fc-daygrid-day-number { 
+        font-size: 1em !important; 
+    }
+/* Layout da barra de ferramentas do FullCalendar para desktop */
+    .fc-header-toolbar {
+        flex-direction: row !important;
+        align-items: center !important;
+        padding: 0 !important;
+    }
+    .fc-toolbar-chunk:first-child { /* prev, next, today buttons */
+        order: 0 !important; 
+        justify-content: flex-start !important;
+        font-size: inherit !important; 
+    }
+    .fc-toolbar-chunk:nth-child(2) { /* Title (e.g., September 2025) */
+        order: 0 !important;
+order: 0 !important; 
+        margin-bottom: 0 !important;
+    }
+/* Eventos/Tarefas em Desktop (dayGridMonth/dayGridWeek) - Mostra SÓ Título */
+    .fc-daygrid-event .fc-event-display-wrapper {
+        /* Restaura estilos padrão do FullCalendar para eventos */
+        background-color: var(--fc-event-bg-color, #3788d8) !important;
+        border-color: var(--fc-event-border-color, #3788d8) !important;
+        color: var(--fc-event-text-color, #fff) !important;
+        border-radius: var(--fc-event-border-radius, 3px) !important;
+        padding: var(--fc-event-padding, 1px 3px) !important;
+        display: block !important; /* Volta para o display block padrão do FC */
+        text-align: left !important; /* Garante que o texto esteja à esquerda */
+        width: auto !important; /* Deixa o FullCalendar gerenciar a largura */
+        justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
+    }
+justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
+    }
+}
+justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
+    }
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-title-text {
+        display: block !important; /* Mostra o título */
+        font-size: 0.9em !important; /* Tamanho da fonte para eventos desktop (ajustado para ser legível) */
+        line-height: 1.2 !important;
+        white-space: normal !important; /* Permite quebra de linha se necessário */
+        text-overflow: ellipsis; /* Mantém elipses para overflow */
+        overflow: hidden; /* Esconde overflow */
+    }
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
+    .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
+        display: none !important; /* Esconde o ícone */
+    }
+/* Estilos para títulos na visualização de lista em desktop (opcional, mas bom para consistência) */
+    .fc-list-event-title-link {
+        color: inherit; /* Herda a cor */
+.fc-list-event-title-link {
+        color: inherit; /* Herda a cor */
+        text-decoration: none; /* Sem sublinhado */
+    }
+    .fc-list-event-title-link:hover {
+        text-decoration: underline; /* Sublinhado ao passar o mouse */
+    }
+
+    /* Estilos do Painel Lateral para Detalhes (apenas desktop) */
+    .event-detail-sidebar {
+        position: relative; /* Ajuste para o flex container */
+        width: 0; /* Começa fechado */
+        min-width: 0;
+        background-color: #fff;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        overflow-x: hidden;
+        overflow-y: auto;
+        transition: all 0.3s ease-in-out;
+        flex-shrink: 0; /* Não permite que o sidebar encolha */
+        margin-left: 0; /* Sem margem inicial */
+        border-left: 1px solid #dee2e6; /* Borda sutil */
+    }
+.event-detail-sidebar.open {
+        width: 300px; /* Largura aberta do painel lateral */
+.event-detail-sidebar.open {
+        width: 300px; /* Largura aberta do painel lateral */
+        min-width: 300px; /* Impede que ele encolha abaixo disso */
+        margin-left: 1rem; /* Pequena margem entre calendário e painel */
+    }
+
+    /* Contêiner principal do calendário e sidebar */
+    #calendar-container-wrapper {
+        width: 100%;
+        margin-top: 1rem; /* Espaço após o dropdown */
+        align-items: flex-start; /* Alinha o calendário e a sidebar no topo */
+    }
+
+    #calendar-container-wrapper.sidebar-open #calendar {
+        flex-grow: 1; /* Permite que o calendário ocupe o espaço restante */
+        max-width: calc(100% - 300px - 1rem); /* 100% - largura da sidebar - margem */
+    }
+    #calendar {
+        flex-grow: 1;
+        max-width: 100%; /* Largura total quando sidebar está fechada */
+        transition: max-width 0.3s ease-in-out;
+    }
+/* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
+    .comments-list {
+}
+
+    /* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
+    .comments-list {
+        max-height: 250px; /* Altura máxima para a lista de comentários, aumentado um pouco */
+        overflow-y: auto; /* Adiciona scroll se houver muitos comentários */
+        border: 1px solid #e9ecef;
+        border-radius: 5px;
+        padding: 0.5rem;
+        background-color: #f8f9fa;
+    }
+    .comments-list .comment-item {
+        background-color: #fff;
+        border-color: #ced4da !important;
+    }
+    .comments-list .comment-item:not(:last-child) {
+        margin-bottom: 0.5rem; /* Espaço entre os comentários */
+    }
+    .comments-list .comment-item p {
+        font-size: 0.9em;
+    }
+    .comments-list .comment-item small {
+        font-size: 0.75em;
+    }
+}
+/* Custom CSS para o destaque das sugestões de @menção */
+#mentions-suggestions .list-group-item.active,
+#mentions-suggestions .list-group-item-action:hover,
+#mentions-suggestions .list-group-item-action:focus {
+    color: #fff; /* Cor do texto branco */
+    background-color: #007bff; /* Um azul padrão do Bootstrap */
+    border-color: #007bff; /* Borda azul */
+}
+
+/* Opcional: Ajustar posição se as sugestões estiverem sobrepondo outros elementos */
+#mentions-suggestions {
+    /* z-index: 1050; /* Um pouco mais alto que modais (1040) se necessário */
+}
+
+/* Custom CSS para o destaque de menções nos comentários EXIBIDOS */
+.mention-highlight {
+    color: #007bff; /* Cor azul para o texto mencionado */
+    font-weight: bold; /* Para maior destaque */
+}
+
+/* -------------------------------------------------------------------------- */
+/* NOVOS ESTILOS PARA COMPACTAÇÃO E MAIÚSCULAS NA TELA HOME (HOME.HTML) */
+/* -------------------------------------------------------------------------- */
+
+/* Para a label do filtro de publicação */
+.form-label.compact-text {
+    font-size: 11px;
+    white-space: nowrap; /* Garante que a label não quebre linha */
+    text-transform: uppercase; /* Converte a visualização para maiúsculas */
+    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Para o dropdown do filtro de publicação */
+.form-select.compact-input {
+    font-size: 11px;
+    height: calc(1.5em + .5rem + 2px); /* Ajusta a altura para ser mais compacta, Bootstrap padrão form-select-sm tem 1.5em + .5rem + 2px */
+    padding: .25rem .5rem; /* Reduz o padding interno */
+    text-transform: uppercase; /* Converte a visualização para maiúsculas */
+    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Para os textos da tabela (nome do evento, data, local, status) */
+/* Usar !important para garantir a sobrescrita de outras classes como 'small' */
+.table-compact-text {
+    font-size: 11px !important; 
+    text-transform: uppercase; /* Converte a visualização para maiúsculas */
+    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    white-space: nowrap; /* Previne quebra de linha */
+    overflow: hidden;    /* Esconde o texto que excede */
+    text-overflow: ellipsis; /* Adiciona '...' ao texto truncado */
+    max-width: 100%; /* Garante que o overflow/ellipsis funcione */
+}
+
+/* Para os botões de ação na tabela */
+.btn-action-compact {
+    font-size: 11px; /* Tamanho da fonte dos ícones e textos dentro do botão, se houver */
+    padding: .15rem .3rem; /* Padding muito pequeno para botões muito compactos */
+    text-transform: uppercase; /* Converte a visualização para maiúsculas */
+    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Para o badge de status de publicação na tabela (se admin) */
+.badge.compact-text {
+    font-size: 10px; /* Um pouco menor para badges */
+    padding: .2em .4em; /* Ajusta o padding para o tamanho menor da fonte */
+    text-transform: uppercase; /* Converte a visualização para maiúsculas */
+    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}

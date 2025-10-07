@@ -1,0 +1,356 @@
+{# C:\\\gerenciador-eventos\\\templates\\\create_edit_task.html #}
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Eventos</a></li>
+            {% if event %}
+                <li class="breadcrumb-item"><a href="{{ url_for('main.event', event_id=event.id) }}">{{ event.title }}</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active" aria-current="page">{{ legend }}</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">{{ legend }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control form-control-sm") }}
+                            {% if form.title.errors %}
+                                {% for error in form.title.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control form-control-sm", rows="3") }}
+                            {% if form.description.errors %}
+                                {% for error in form.description.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.notes.label(class="form-label") }}
+                            {{ form.notes(class="form-control form-control-sm", rows="3") }}
+                            {% if form.notes.errors %}
+                                {% for error in form.notes.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.due_date.label(class="form-label") }}
+                            {{ form.due_date(class="form-control form-control-sm") }}
+                            {% if form.due_date.errors %}
+                                {% for error in form.due_date.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.task_category.label(class="form-label") }}
+                            {{ form.task_category(class="form-select form-select-sm") }}
+                            {% if form.task_category.errors %}
+                                {% for error in form.task_category.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.status.label(class="form-label") }}
+                            {{ form.status(class="form-select form-select-sm") }}
+                            {% if form.status.errors %}
+                                {% for error in form.status.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.assignees.label(class="form-label") }}
+                            {{ form.assignees(class="form-select form-select-sm", multiple="multiple") }}
+                            {% if form.assignees.errors %}
+                                {% for error in form.assignees.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.cloud_storage_link.label(class="form-label") }}
+                            {{ form.cloud_storage_link(class="form-control form-control-sm") }}
+                            {% if form.cloud_storage_link.errors %}
+                                {% for error in form.cloud_storage_link.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.link_notes.label(class="form-label") }}
+                            {{ form.link_notes(class="form-control form-control-sm", rows="2") }}
+                            {% if form.link_notes.errors %}
+                                {% for error in form.link_notes.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        {# Seção de Áudio #}
+                        <div class="mb-3 border rounded p-3 bg-light">
+                            <h6>Instruções de Áudio</h6>
+                            {% if task and task.audio_path %}
+                                <div id="audio-player-container" class="mb-3">
+                                    <audio controls style="width: 100%;">
+                                        <source src="{{ url_for('main.serve_audio_file', filename=task.audio_path) }}" type="audio/webm">
+                                        Seu navegador não suporta o elemento de áudio.
+                                    </audio>
+                                    <p class="text-muted small mb-0">Duração: <span id="existing-audio-duration">{{ task.audio_duration_seconds // 60 }}:{{ '%02d' % (task.audio_duration_seconds % 60) }}</span></p>
+                                    <button type="button" id="delete-audio-btn" class="btn btn-danger btn-sm mt-2"><i class="fas fa-trash-alt"></i> Excluir Áudio Existente</button>
+                                </div>
+                            {% else %}
+                                <p id="no-audio-message" class="text-muted small">Nenhum áudio gravado para esta tarefa.</p>
+                            {% endif %}
+                            
+                            <hr>
+                            <p class="small mb-1">Grave uma nova instrução de áudio:</p>
+                            <button type="button" id="start-record-btn" class="btn btn-success btn-sm me-2"><i class="fas fa-microphone"></i> Gravar</button>
+                            <button type="button" id="stop-record-btn" class="btn btn-danger btn-sm" disabled><i class="fas fa-stop"></i> Parar</button>
+                            <span id="recording-status" class="ms-2 text-muted small"></span>
+                            <div id="recorded-audio-container" class="mt-3" style="display:none;">
+                                <audio id="recorded-audio" controls style="width: 100%;"></audio>
+                                <button type="button" id="upload-audio-btn" class="btn btn-primary btn-sm mt-2"><i class="fas fa-upload"></i> Salvar Áudio</button>
+                                <button type="button" id="discard-audio-btn" class="btn btn-secondary btn-sm mt-2 ms-2"><i class="fas fa-times"></i> Descartar</button>
+                            </div>
+                        </div>
+                        {# Fim Seção de Áudio #}
+
+                        {# ATUALIZADO: Adicionado btn-sm ao submit e ao botão Voltar (e também o estilo outline) #}
+                        {{ form.submit(class="btn btn-primary btn-sm") }}
+                        {% if event %}
+                            <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-outline-secondary btn-sm mt-3 ms-2"><i class="fas fa-arrow-left"></i> Voltar para o Evento</a> {# ALTERADO AQUI #}
+                        {% else %}
+                            {# Fallback caso o evento não esteja definido (ex: nova tarefa sem evento pai) #}
+                            <a href="{{ url_for('main.home') }}" class="btn btn-outline-secondary btn-sm mt-3 ms-2"><i class="fas fa-arrow-left"></i> Voltar</a> {# ALTERADO AQUI #}
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Inicializa o Select2 para o campo de atribuídos
+        $('#assignees').select2({
+            placeholder: "Selecione os usuários atribuídos",
+            allowClear: true,
+            theme: "bootstrap-5"
+        });
+
+        // Inicializa o Select2 para o campo de categoria de tarefa
+        $('#task_category').select2({
+            placeholder: "Selecione uma categoria (opcional)",
+            allowClear: true,
+            theme: "bootstrap-5"
+        });
+
+        // Inicializa o Select2 para o campo de status
+        $('#status').select2({
+            placeholder: "Selecione um status",
+            allowClear: true,
+            theme: "bootstrap-5"
+        });
+
+        // =========================================================================================
+        // Lógica de Gravação de Áudio
+        // =========================================================================================
+        const startRecordBtn = $('#start-record-btn');
+        const stopRecordBtn = $('#stop-record-btn');
+        const recordingStatus = $('#recording-status');
+        const recordedAudioContainer = $('#recorded-audio-container');
+        const recordedAudio = $('#recorded-audio')[0]; // Pega o elemento DOM nativo
+        const uploadAudioBtn = $('#upload-audio-btn');
+        const discardAudioBtn = $('#discard-audio-btn');
+        const audioPlayerContainer = $('#audio-player-container');
+        const deleteAudioBtn = $('#delete-audio-btn');
+        const noAudioMessage = $('#no-audio-message');
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+        let audioDurationSeconds = 0;
+        let recordingStartTime;
+
+        // Função auxiliar para exibir mensagens flash
+        function flashMessage(message, category) {
+            var alertHtml = `<div class="alert alert-${category} alert-dismissible fade show" role="alert">
+                                ${message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                             </div>`;
+            $('.container').prepend(alertHtml); // Adiciona a mensagem no topo do container
+            setTimeout(function() {
+                $('.alert').alert('close'); // Fecha automaticamente após 5 segundos
+            }, 5000);
+        }
+
+        startRecordBtn.on('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+                audioDurationSeconds = 0;
+                recordingStartTime = Date.now();
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    recordedAudio.src = audioUrl;
+                    recordedAudioContainer.show();
+                    recordingStatus.text('Gravação finalizada.');
+                    stream.getTracks().forEach(track => track.stop()); // Para o microfone
+                };
+
+                mediaRecorder.start();
+                recordingStatus.text('Gravando...');
+                startRecordBtn.prop('disabled', true);
+                stopRecordBtn.prop('disabled', false);
+                recordedAudioContainer.hide(); // Esconde player anterior se houver
+                if (audioPlayerContainer.length) audioPlayerContainer.hide(); // Esconde player de áudio existente
+                if (noAudioMessage.length) noAudioMessage.hide(); // Esconde mensagem de "nenhum áudio"
+            } catch (err) {
+                console.error('Erro ao acessar o microfone:', err);
+                recordingStatus.text('Erro ao acessar o microfone.');
+                flashMessage('Erro ao acessar o microfone. Verifique as permissões do navegador.', 'danger');
+            }
+        });
+
+        stopRecordBtn.on('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                audioDurationSeconds = Math.round((Date.now() - recordingStartTime) / 1000); // Duração em segundos
+                startRecordBtn.prop('disabled', false);
+                stopRecordBtn.prop('disabled', true);
+                flashMessage('Gravação concluída. Clique em Salvar Áudio para anexar.', 'info');
+            }
+        });
+
+        uploadAudioBtn.on('click', () => {
+            if (audioBlob) {
+                const formData = new FormData();
+                formData.append('audio_file', audioBlob, 'gravacao.webm');
+                formData.append('duration_seconds', audioDurationSeconds);
+
+                const taskId = {{ task.id if task else 'null' }}; // Pega o ID da tarefa, se existir
+                if (!taskId) {
+                    flashMessage('Erro: Não é possível salvar o áudio sem uma tarefa existente. Salve a tarefa primeiro.', 'danger');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/api/task/${taskId}/upload_audio`,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    beforeSend: function() {
+                        uploadAudioBtn.prop('disabled', true).text('Salvando...');
+                        discardAudioBtn.prop('disabled', true);
+                    },
+                    success: function(response) {
+                        flashMessage(response.message, 'success');
+                        // Atualiza o player de áudio existente com o novo áudio
+                        const newAudioSrc = response.audio_url_base;
+                        const existingAudioPlayer = audioPlayerContainer.find('audio source');
+                        if (existingAudioPlayer.length) {
+                            existingAudioPlayer.attr('src', newAudioSrc);
+                            audioPlayerContainer.find('audio')[0].load(); // Recarrega o player
+                            audioPlayerContainer.find('#existing-audio-duration').text(`${Math.floor(audioDurationSeconds / 60)}:${('0' + (audioDurationSeconds % 60)).slice(-2)}`);
+                            audioPlayerContainer.show();
+                            noAudioMessage.hide();
+                        } else { // Se não havia player, cria um (útil para novas tarefas)
+                            location.reload(); // Recarrega a página para exibir o player
+                        }
+                        recordedAudioContainer.hide();
+                        uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
+                        discardAudioBtn.prop('disabled', false);
+                    },
+                    error: function(xhr) {
+                        const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao salvar o áudio.';
+                        flashMessage(errorMessage, 'danger');
+                        console.error('Erro no upload de áudio:', xhr);
+                        uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
+                        discardAudioBtn.prop('disabled', false);
+                    }
+                });
+            } else {
+                flashMessage('Nenhum áudio gravado para salvar.', 'warning');
+            }
+        });
+
+        discardAudioBtn.on('click', () => {
+            audioChunks = [];
+            audioBlob = null;
+            recordedAudio.src = '';
+            recordedAudioContainer.hide();
+            recordingStatus.text('');
+            startRecordBtn.prop('disabled', false);
+            stopRecordBtn.prop('disabled', true);
+            if (audioPlayerContainer.length && audioPlayerContainer.find('audio source').attr('src')) {
+                audioPlayerContainer.show(); // Mostra o player de áudio existente de volta
+            } else {
+                noAudioMessage.show(); // Mostra a mensagem de "nenhum áudio" de volta
+            }
+            flashMessage('Gravação descartada.', 'info');
+        });
+
+        deleteAudioBtn.on('click', () => {
+            if (confirm('Tem certeza que deseja excluir o áudio existente? Esta ação não pode ser desfeita.')) {
+                const taskId = {{ task.id if task else 'null' }};
+                if (!taskId) {
+                    flashMessage('Erro: Não há tarefa associada para excluir o áudio.', 'danger');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/api/task/${taskId}/delete_audio`,
+                    type: 'DELETE',
+                    beforeSend: function() {
+                        deleteAudioBtn.prop('disabled', true).text('Excluindo...');
+                    },
+                    success: function(response) {
+                        flashMessage(response.message, 'success');
+                        audioPlayerContainer.hide();
+                        noAudioMessage.show();
+                        deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
+                        // Opcional: remover o atributo src do player de áudio
+                        audioPlayerContainer.find('audio source').attr('src', '');
+                        audioPlayerContainer.find('audio')[0].load();
+                    },
+                    error: function(xhr) {
+                        const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao excluir o áudio.';
+                        flashMessage(errorMessage, 'danger');
+                        console.error('Erro na exclusão de áudio:', xhr);
+                        deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock content %}

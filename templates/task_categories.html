@@ -1,0 +1,62 @@
+{%extends "base.html"%}
+{% block content %}
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-10 offset-md-1">
+                <h2 class="mb-4">{{ title }}</h2>
+                <hr>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Categorias de Tarefa Cadastradas</h4>
+                    <a href="{{ url_for('main.new_task_category') }}" class="btn btn-success">
+                        <i class="fas fa-plus-circle"></i> Nova Categoria de Tarefa
+                    </a>
+                </div>
+
+                {% if task_categories %}
+                    <ul class="list-group">
+                        {% for task_category in task_categories %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>{{ task_category.name }}</h5>
+                                    <p class="mb-0 text-muted">{{ task_category.description or "Nenhuma descrição." }}</p>
+                                </div>
+                                <div>
+                                    <a href="{{ url_for('main.update_task_category', task_category_id=task_category.id) }}" class="btn btn-primary btn-sm me-2">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </a>
+                                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ task_category.id }}">
+                                        <i class="fas fa-trash-alt"></i> Excluir
+                                    </button>
+
+                                    <!-- Delete Confirmation Modal -->
+                                    <div class="modal fade" id="deleteModal-{{ task_category.id }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ task_category.id }}" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="deleteModalLabel-{{ task_category.id }}">Confirmar Exclusão</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    Você tem certeza que deseja excluir a categoria de tarefa "{{ task_category.name }}"? Esta ação não pode ser desfeita.
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <form action="{{ url_for('main.delete_task_category', task_category_id=task_category.id) }}" method="POST" style="display: inline;">
+                                                        <input type="submit" value="Excluir" class="btn btn-danger">
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="alert alert-info">Nenhuma categoria de tarefa cadastrada ainda.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock content %}

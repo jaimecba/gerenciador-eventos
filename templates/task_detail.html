@@ -1,0 +1,875 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Eventos</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.event', event_id=event.id) }}">{{ event.title }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ task.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Coluna principal da tarefa -->
+        <div class="col-lg-8">
+            <!-- Card de Detalhes da Tarefa -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ task.title }}</h4>
+                    <div>
+                        {% if task.is_completed %}
+                            <span class="badge bg-success">Concluída</span>
+                        {% else %}
+                            {% set days_left = (task.due_date.date() - current_date).days %}
+                            {% if task.due_date.date() < current_date %}
+                                <span class="badge bg-danger">Vencida</span>
+                            {% elif days_left <= 5 %}
+                                <span class="badge bg-warning text-dark">Urgente</span>
+                            {% elif days_left <= 10 %}
+                                <span class="badge bg-info">Alerta</span>
+                            {% else %}
+                                <span class="badge bg-primary">No Prazo</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Informações básicas -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Prazo:</strong> {{ task.due_date.strftime('%d/%m/%Y %H:%M') }}</p>
+                            <p><strong>Status:</strong> <span class="badge bg-primary">{{ task.task_status.name if task.task_status else 'N/A' }}</span></p>
+                            {% if task.task_category %}
+                                <p><strong>Categoria:</strong> {{ task.task_category.name }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if task.assignees %}
+                                <p><strong>Atribuída a:</strong></p>
+                                {% for assignee in task.assignees %}
+                                    <span class="badge bg-info text-dark me-1">{{ assignee.username }}</span>
+                                {% endfor %}
+                            {% endif %}
+                            {% if task.is_completed %}
+                                <p class="mt-2"><strong>Concluída em:</strong> {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                                {% if task.completed_by_user %}
+                                    <p><strong>Concluída por:</strong> {{ task.completed_by_user.username }}</p>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Descrição -->
+                    {% if task.description %}
+                        <div class="mb-3">
+                            <h6>Descrição:</h6>
+                            <p class="text-muted">{{ task.description }}</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- Notas -->
+                    {% if task.notes %}
+                        <div class="mb-3">
+                            <h6>Notas Internas:</h6>
+                            <p class="text-muted">{{ task.notes }}</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- Link de Armazenamento -->
+                    {% if task.cloud_storage_link %}
+                        <div class="mb-3">
+                            <h6>Link de Armazenamento:</h6>
+                            <a href="{{ task.cloud_storage_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-external-link-alt"></i> Acessar Link
+                            </a>
+                            {% if task.link_notes %}
+                                <p class="text-muted mt-2">{{ task.link_notes }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    {# Seção de Áudio com player visível e controles expansíveis #}
+                    <div class="mb-3 border rounded p-3 bg-light">
+                        <h6>Instruções de Áudio</h6>
+                        {% if task.audio_path %}
+                            <div id="audio-player-container" class="mb-3">
+                                <audio controls style="width: 100%;">
+                                    <source src="{{ url_for('main.serve_audio_file', filename=task.audio_path) }}" type="audio/webm">
+                                    Seu navegador não suporta o elemento de áudio.
+                                </audio>
+                                <p class="text-muted small mb-0">Duração: <span id="existing-audio-duration">{{ task.audio_duration_seconds // 60 }}:{{ '%02d' % (task.audio_duration_seconds % 60) }}</span></p>
+                            </div>
+                        {% else %}
+                            <p id="no-audio-message" class="text-muted small">Nenhum áudio gravado para esta tarefa.</p>
+                        {% endif %}
+                        
+                        <hr>
+                        {# Botão para expandir/revelar controles de gravação/exclusão #}
+                        <button type="button" class="btn btn-outline-info btn-sm btn-compact-icon" data-bs-toggle="collapse" data-bs-target="#audioControlsCollapse" aria-expanded="false" aria-controls="audioControlsCollapse">
+                            <i class="fas fa-microphone"></i> Gravar/Gerenciar
+                        </button>
+
+                        <div class="collapse mt-3" id="audioControlsCollapse">
+                            <p class="small mb-1">Grave uma nova instrução de áudio:</p>
+                            <button type="button" id="start-record-btn" class="btn btn-success btn-sm me-2"><i class="fas fa-microphone"></i> Gravar</button>
+                            <button type="button" id="stop-record-btn" class="btn btn-danger btn-sm" disabled><i class="fas fa-stop"></i> Parar</button>
+                            <span id="recording-status" class="ms-2 text-muted small"></span>
+                            <div id="recorded-audio-container" class="mt-3" style="display:none;">
+                                <audio id="recorded-audio" controls style="width: 100%;"></audio>
+                                <button type="button" id="upload-audio-btn" class="btn btn-primary btn-sm mt-2"><i class="fas fa-upload"></i> Salvar Áudio</button>
+                                <button type="button" id="discard-audio-btn" class="btn btn-secondary btn-sm mt-2 ms-2"><i class="fas fa-times"></i> Descartar</button>
+                            </div>
+                            
+                            {% if task.audio_path %}
+                                <hr>
+                                <button type="button" id="delete-audio-btn" class="btn btn-danger btn-sm mt-2"><i class="fas fa-trash-alt"></i> Excluir Áudio Existente</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {# Fim Seção de Áudio #}
+
+
+                    <!-- Botões de Ação -->
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        {# 1 = Concluir / Desfazer Conclusão #}
+                        {% if not task.is_completed and can_complete_task %}
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#completeTaskModal">
+                                <i class="fas fa-check"></i> Concluir
+                            </button>
+                        {% elif task.is_completed and can_uncomplete_task %}
+                            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#uncompleteTaskModal">
+                                <i class="fas fa-undo"></i> Desfazer Conclusão
+                            </button>
+                        {% endif %}
+                        
+                        {# 2 = Editar Tarefa #}
+                        {% if can_edit_task %}
+                            <a href="{{ url_for('main.update_task', task_id=task.id) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit"></i> Editar Tarefa
+                            </a>
+                        {% endif %}
+                        
+                        {# 3 = Histórico #}
+                        {% if can_view_task_history %}
+                            <a href="{{ url_for('main.task_history_view', task_id=task.id) }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-history"></i> Histórico
+                            </a>
+                        {% endif %}
+
+                        {# 4 = Voltar #}
+                        <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                        
+                        {# 5 = Excluir #}
+                        {% if can_delete_task %}
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteTaskModal">
+                                <i class="fas fa-trash-alt"></i> Excluir
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Anexos -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Anexos ({{ task.attachments|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if task.attachments %}
+                        <div class="row">
+                            {% for attachment in task.attachments %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="border rounded p-3">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">
+                                                    <i class="fas fa-file me-2"></i>{{ attachment.filename }}
+                                                </h6>
+                                                <small class="text-muted">
+                                                    {{ (attachment.filesize / 1024 / 1024)|round(2, 'floor') }} MB
+                                                    • Por {{ attachment.uploader.username }}
+                                                    • {{ attachment.upload_timestamp.strftime('%d/%m/%Y %H:%M') }}
+                                                </small>
+                                            </div>
+                                            <div class="ms-2">
+                                                <a href="{{ url_for('main.download_attachment', attachment_id=attachment.id) }}" 
+                                                    class="btn btn-outline-primary btn-sm" title="Download">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                {% if can_manage_attachments or attachment.uploaded_by_user_id == current_user.id %}
+                                                    <button type="button" class="btn btn-outline-danger btn-sm ms-1 delete-attachment-btn" 
+                                                            data-attachment-id="{{ attachment.id }}" 
+                                                            data-filename="{{ attachment.filename }}" title="Excluir">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Nenhum anexo nesta tarefa.</p>
+                    {% endif %}
+
+                    <!-- Formulário de Upload -->
+                    {% if can_upload_attachments %}
+                        <hr>
+                        <h6>Adicionar Novo Anexo</h6>
+                        <form id="attachment-upload-form" method="POST" enctype="multipart/form-data" 
+                              action="{{ url_for('main.upload_attachment', task_id=task.id) }}">
+                            {{ attachment_form.hidden_tag() }}
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    {{ attachment_form.file(class="form-control", accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.mp3,.mp4") }}
+                                    {% if attachment_form.file.errors %}
+                                        {% for error in attachment_form.file.errors %}
+                                            <div class="alert alert-danger mt-1">{{ error }}</div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ attachment_form.submit(class="btn btn-primary", value='Anexar Arquivo') }}
+                                </div>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Informações do Evento -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Evento</h6>
+                </div>
+                <div class="card-body">
+                    <h6><a href="{{ url_for('main.event', event_id=event.id) }}" class="text-decoration-none">{{ event.title }}</a></h6>
+                    <p class="text-muted small">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
+                    <p class="small">
+                        <strong>Prazo do Evento:</strong> {{ event.due_date.strftime('%d/%m/%Y') }}<br>
+                        {% if event.location %}
+                            <strong>Local:</strong> {{ event.location }}
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Comentários -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 id="comments-count-header" class="mb-0">Comentários ({{ task.comments|length }})</h6>
+                </div>
+                <div class="card-body">
+                    {% if task.comments %}
+                        <div id="comments-list-body" class="comments-list" style="max-height: 300px; overflow-y: auto;">
+                            {% for comment in task.comments %}
+                                <div class="border-bottom pb-2 mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>{{ comment.author.username }}</strong>
+                                        <small class="text-muted">{{ comment.timestamp.strftime('%d/%m/%Y %H:%M') }}</small>
+                                    </div>
+                                    {# Usa o filtro regex_replace para destacar as menções com a nova classe #}
+                                    <p class="mb-0">{{ comment.content | regex_replace('@([a-zA-Z0-9_]+)', '<span class="mention-highlight">@\1</span> ') | safe }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div id="comments-list-body" class="comments-list" style="max-height: 300px; overflow-y: auto;">
+                            <p class="text-muted" id="no-comments-message">Nenhum comentário ainda.</p>
+                        </div>
+                    {% endif %}
+
+                    {% if can_manage_task_comments %}
+                        <hr>
+                        <form id="add-comment-form" method="POST" action="{{ url_for('main.get_or_add_task_comments_api', task_id=task.id) }}">
+                            {{ comment_form.hidden_tag() }}
+                            <div class="mb-3 position-relative"> {# Adicionado position-relative para o container das sugestões #}
+                                {{ comment_form.content(class="form-control", rows="3", placeholder="Adicione um comentário...", id="comment-content-textarea") }}
+                                {% for error in comment_form.content.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
+                                {# Container para as sugestões de menção #}
+                                <div id="mentions-suggestions" class="list-group position-absolute w-100 shadow-lg mt-1" style="z-index: 1000; display: none; max-height: 200px; overflow-y: auto;">
+                                    {# Sugestões serão inseridas aqui pelo JavaScript #}
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Comentar</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# O erro de TemplateSyntaxError de blocos não fechados costumava estar aqui #}
+{% endblock content %}
+
+<!-- Modais (mantidos aqui) -->
+{% if can_complete_task and not task.is_completed %}
+    <!-- Modal de Conclusão -->
+    <div class="modal fade" id="completeTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Concluir Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('main.complete_task', task_id=task.id) }}">
+                    <div class="modal-body">
+                        <p>Tem certeza que deseja marcar esta tarefa como concluída?</p>
+                        <div class="mb-3">
+                            <label for="completionComment" class="form-label">Comentários/Observações (Opcional):</label>
+                            <textarea class="form-control" id="completionComment" name="completion_comment" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Concluir Tarefa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% if can_uncomplete_task and task.is_completed %}
+    <!-- Modal de Desfazer Conclusão -->
+    <div class="modal fade" id="uncompleteTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Desfazer Conclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('main.uncomplete_task', task_id=task.id) }}">
+                    <div class="modal-body">
+                        <p>Tem certeza que deseja marcar esta tarefa como <strong>não concluída</strong>?</p>
+                        <p class="text-muted small">Esta ação irá reverter o status da tarefa para pendente.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning">Desfazer Conclusão</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% if can_delete_task %}
+    <!-- Modal de Exclusão -->
+    <div class="modal fade" id="deleteTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Excluir Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('main.delete_task', task_id=task.id) }}">
+                    <div class="modal-body">
+                        <p>Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.</p>
+                        <p><strong>Tarefa:</strong> {{ task.title }}</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Excluir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% block scripts %}
+    {{ super() }} {# Importante: Isso inclui os scripts do base.html, como o jQuery e o contador de notificações #}
+    <script>
+    $(document).ready(function() {
+        // Função auxiliar para exibir mensagens flash
+        function flashMessage(message, category) {
+            console.log(`Flash Message: ${message} (Category: ${category})`);
+            var alertHtml = `<div class="alert alert-${category} alert-dismissible fade show" role="alert">
+                                ${message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                             </div>`;
+            $('.container').prepend(alertHtml);
+            setTimeout(function() {
+                $('.alert').alert('close');
+            }, 5000);
+        }
+
+        // Lógica de exclusão de anexo
+        $('.delete-attachment-btn').on('click', function() {
+            console.log('Botão de deletar anexo clicado.');
+            var attachmentId = $(this).data('attachment-id');
+            var filename = $(this).data('filename');
+            
+            if (confirm(`Tem certeza que deseja excluir o anexo "${filename}"? Esta ação é irreversível!`)) {
+                console.log(`Confirmação de exclusão para ID: ${attachmentId}, arquivo: ${filename}`);
+                $.ajax({
+                    url: `/attachment/${attachmentId}/delete`,
+                    type: 'POST',
+                    success: function(response) {
+                        console.log('AJAX delete sucesso:', response);
+                        flashMessage('Anexo excluído com sucesso!', 'success');
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        console.error('AJAX delete erro:', xhr);
+                        var errorMessage = 'Erro ao excluir anexo.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        flashMessage(errorMessage, 'danger');
+                    }
+                });
+            } else {
+                console.log('Exclusão de anexo cancelada pelo usuário.');
+            }
+        });
+
+        // Adicionar comentário (ATUALIZADO PARA USAR A API E ATUALIZAR DINAMICAMENTE)
+        $('#add-comment-form').on('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulário de comentário submetido.');
+            var commentTextarea = $('#comment-content-textarea');
+            var commentText = commentTextarea.val().trim();
+            var taskId = {{ task.id }};
+
+            if (!commentText) {
+                flashMessage('Por favor, digite um comentário.', 'warning');
+                return;
+            }
+
+            $.ajax({
+                url: "{{ url_for('main.get_or_add_task_comments_api', task_id=task.id) }}",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ content: commentText }),
+                success: function(response) {
+                    console.log('AJAX comentário sucesso:', response);
+                    flashMessage(response.message || 'Comentário adicionado com sucesso!', 'success');
+                    commentTextarea.val(''); // Limpar o textarea
+
+                    // Adicionar dinamicamente o novo comentário à lista
+                    var commentsList = $('#comments-list-body');
+                    // Aplica o realce de menções também no comentário recém-adicionado
+                    // USANDO A CLASSE mention-highlight
+                    var formattedContent = response.content.replace(/@([a-zA-Z0-9_]+)/g, '<span class="mention-highlight">@$1</span> ');
+                    var newCommentHtml = `
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between">
+                                <strong>${response.user}</strong>
+                                <small class="text-muted">${response.date}</small>
+                            </div>
+                            <p class="mb-0">${formattedContent}</p>
+                        </div>
+                    `;
+                    commentsList.append(newCommentHtml);
+                    
+                    // Remover a mensagem "Nenhum comentário ainda." se ela existir
+                    $('#no-comments-message').remove();
+
+                    // Rolar para o final da lista de comentários
+                    commentsList.scrollTop(commentsList[0].scrollHeight);
+
+                    // Atualizar o cabeçalho de contagem de comentários
+                    var commentsCountHeader = $('#comments-count-header');
+                    var currentCountMatch = commentsCountHeader.text().match(/\\((\\d+)\\)/);
+                    if (currentCountMatch) {
+                        var currentCount = parseInt(currentCountMatch[1]);
+                        commentsCountHeader.html(`Comentários (${currentCount + 1})`);
+                    }
+
+                },
+                error: function(xhr) {
+                    console.error('AJAX comentário erro:', xhr);
+                    var errorMessage = 'Erro ao adicionar comentário.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    flashMessage(errorMessage, 'danger');
+                }
+            });
+        });
+
+        // =========================================================================================
+        // Lógica de Gravação de Áudio 
+        // =========================================================================================
+        const startRecordBtn = $('#start-record-btn');
+        const stopRecordBtn = $('#stop-record-btn');
+        const recordingStatus = $('#recording-status');
+        const recordedAudioContainer = $('#recorded-audio-container');
+        const recordedAudio = $('#recorded-audio')[0];
+        const uploadAudioBtn = $('#upload-audio-btn');
+        const discardAudioBtn = $('#discard-audio-btn');
+        const audioPlayerContainer = $('#audio-player-container');
+        const deleteAudioBtn = $('#delete-audio-btn');
+        const noAudioMessage = $('#no-audio-message');
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+        let audioDurationSeconds = 0;
+        let recordingStartTime;
+
+        // Lógica para o botão de Gravar/Gerenciar Áudio (toggle collapse)
+        $('#audioControlsCollapse').on('show.bs.collapse', function () {
+            console.log('Controles de áudio expandidos.');
+            if (audioPlayerContainer.length) audioPlayerContainer.hide();
+            if (noAudioMessage.length) noAudioMessage.hide();
+        }).on('hide.bs.collapse', function () {
+            console.log('Controles de áudio recolhidos.');
+            if (audioPlayerContainer.length && audioPlayerContainer.find('audio source').attr('src')) {
+                audioPlayerContainer.show();
+            } else {
+                noAudioMessage.show();
+            }
+            audioChunks = [];
+            audioBlob = null;
+            recordedAudio.src = '';
+            recordedAudioContainer.hide();
+            recordingStatus.text('');
+            startRecordBtn.prop('disabled', false);
+            stopRecordBtn.prop('disabled', true);
+        });
+
+
+        startRecordBtn.on('click', async () => {
+            console.log('Botão Gravar clicado.');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Acesso ao microfone concedido.');
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+                audioDurationSeconds = 0;
+                recordingStartTime = Date.now();
+
+                mediaRecorder.ondataavailable = event => {
+                    console.log('Dados de audio disponíveis:', event.data.size);
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    console.log('Gravação de audio parada. Processando Blob.');
+                    audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    recordedAudio.src = audioUrl;
+                    recordedAudioContainer.show();
+                    recordingStatus.text('Gravação finalizada.');
+                    stream.getTracks().forEach(track => track.stop());
+                    console.log('Prévia do audio gravado exibida.');
+                };
+
+                mediaRecorder.start();
+                console.log('Gravação iniciada.');
+                recordingStatus.text('Gravando...');
+                startRecordBtn.prop('disabled', true);
+                stopRecordBtn.prop('disabled', false); // Habilita o botão de parar quando começa a gravar
+                recordedAudioContainer.hide();
+            } catch (err) {
+                console.error('Erro ao acessar o microfone:', err);
+                recordingStatus.text('Erro ao acessar o microfone.');
+                flashMessage('Erro ao acessar o microfone. Verifique as permissões do navegador (HTTPS é obrigatório para microfone em muitos navegadores).', 'danger');
+            }
+        });
+
+        stopRecordBtn.on('click', () => {
+            console.log('Botão Parar clicado.');
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                audioDurationSeconds = Math.round((Date.now() - recordingStartTime) / 1000);
+                startRecordBtn.prop('disabled', false);
+                stopRecordBtn.prop('disabled', true);
+                flashMessage('Gravação concluída. Clique em Salvar Áudio para anexar.', 'info');
+                console.log('Gravação parada, duração:', audioDurationSeconds, 'segundos.');
+            }
+        });
+
+        uploadAudioBtn.on('click', () => {
+            console.log('Botão Salvar Áudio clicado.');
+            if (audioBlob) {
+                const formData = new FormData();
+                formData.append('audio_file', audioBlob, 'gravacao.webm');
+                formData.append('duration_seconds', audioDurationSeconds);
+
+                const taskId = {{ task.id if task else 'null' }};
+                if (!taskId) {
+                    flashMessage('Erro: ID da tarefa não encontrado. Recarregue a página.', 'danger');
+                    console.error('ID da tarefa não encontrado para upload de áudio.');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/api/task/${taskId}/upload_audio`,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    beforeSend: function() {
+                        uploadAudioBtn.prop('disabled', true).text('Salvando...');
+                        discardAudioBtn.prop('disabled', true);
+                        console.log('Iniciando AJAX para upload de audio.');
+                    },
+                    success: function(response) {
+                        console.log('Upload de audio sucesso:', response);
+                        flashMessage(response.message, 'success');
+                        const newAudioSrc = response.audio_url_base;
+                        let existingAudioPlayerSource = audioPlayerContainer.find('audio source');
+                        if (existingAudioPlayerSource.length === 0) {
+                            audioPlayerContainer.html('<audio controls style="width: 100%;"><source type="audio/webm"></audio><p class="text-muted small mb-0">Duração: <span id="existing-audio-duration"></span></p>');
+                            existingAudioPlayerSource = audioPlayerContainer.find('audio source');
+                        }
+                        existingAudioPlayerSource.attr('src', newAudioSrc);
+                        audioPlayerContainer.find('audio')[0].load();
+                        audioPlayerContainer.find('#existing-audio-duration').text(`${Math.floor(audioDurationSeconds / 60)}:${('0' + (audioDurationSeconds % 60)).slice(-2)}`);
+                        audioPlayerContainer.show();
+                        noAudioMessage.hide();
+
+                        recordedAudioContainer.hide();
+                        uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
+                        discardAudioBtn.prop('disabled', false);
+                        
+                        $('#audioControlsCollapse').collapse('hide');
+                        flashMessage('Áudio salvo e atualizado. Recarregando a página em breve para refletir a mudança.', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    },
+                    error: function(xhr) {
+                        console.error('Upload de audio erro:', xhr);
+                        const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao salvar o áudio.';
+                        flashMessage(errorMessage, 'danger');
+                        uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
+                        discardAudioBtn.prop('disabled', false);
+                    }
+                });
+            } else {
+                flashMessage('Nenhum áudio gravado para salvar.', 'warning');
+                console.warn('Nenhum audioBlob para fazer upload.');
+            }
+        });
+
+        discardAudioBtn.on('click', () => {
+            console.log('Botão Descartar clicado.');
+            audioChunks = [];
+            audioBlob = null;
+            recordedAudio.src = '';
+            recordedAudioContainer.hide();
+            recordingStatus.text('');
+            startRecordBtn.prop('disabled', false);
+            stopRecordBtn.prop('disabled', true);
+            
+            if (audioPlayerContainer.length && audioPlayerContainer.find('audio source').attr('src')) {
+                audioPlayerContainer.show();
+            } else {
+                noAudioMessage.show();
+            }
+            flashMessage('Gravação descartada.', 'info');
+            $('#audioControlsCollapse').collapse('hide');
+        });
+
+        deleteAudioBtn.on('click', () => {
+            console.log('Botão Excluir Áudio Existente clicado.');
+            if (confirm('Tem certeza que deseja excluir o áudio existente? Esta ação não pode ser desfeita.')) {
+                const taskId = {{ task.id if task else 'null' }};
+                if (!taskId) {
+                    flashMessage('Erro: Não há tarefa associada para excluir o áudio.', 'danger');
+                    console.error('ID da tarefa não encontrado para exclusão de áudio.');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/api/task/${taskId}/delete_audio`,
+                    type: 'DELETE',
+                    beforeSend: function() {
+                        deleteAudioBtn.prop('disabled', true).text('Excluindo...');
+                        console.log('Iniciando AJAX para exclusão de audio.');
+                    },
+                    success: function(response) {
+                        console.log('Exclusão de audio sucesso:', response);
+                        flashMessage(response.message, 'success');
+                        audioPlayerContainer.hide();
+                        noAudioMessage.show();
+                        deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
+                        audioPlayerContainer.find('audio source').attr('src', '');
+                        audioPlayerContainer.find('audio')[0].load();
+
+                        $('#audioControlsCollapse').collapse('hide');
+                        flashMessage('Áudio excluído. Recarregando a página em breve para refletir a mudança.', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    },
+                    error: function(xhr) {
+                        console.error('Exclusão de audio erro:', xhr);
+                        const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao excluir o áudio.';
+                        flashMessage(errorMessage, 'danger');
+                        deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
+                    }
+                });
+            }
+        });
+
+        // =========================================================================================
+        // Lógica para Autocompletar @menções - ATUALIZADA (para navegação e destaque)
+        // =========================================================================================
+        const commentTextarea = $('#comment-content-textarea');
+        const mentionsSuggestions = $('#mentions-suggestions');
+        let searchTimeout;
+        let mentionStartIndex = -1; // Índice onde a menção atual começa (@)
+        let currentCaretPos = -1; // Posição atual do cursor
+        let activeSuggestionIndex = -1; // NOVO: Índice da sugestão ativa
+
+        // Função para obter a posição do cursor no textarea
+        function getCaretPosition(ctrl) {
+            let CaretPos = 0;
+            if (ctrl.selectionStart || ctrl.selectionStart == '0')
+                CaretPos = ctrl.selectionStart;
+            return CaretPos;
+        }
+
+        // Função para definir a posição do cursor
+        function setCaretPosition(ctrl, pos) {
+            if (ctrl.setSelectionRange) {
+                ctrl.focus();
+                ctrl.setSelectionRange(pos, pos);
+            } else if (ctrl.createTextRange) { // Fallback para IE
+                let range = ctrl.createTextRange();
+                range.collapse(true);
+                range.moveEnd('character', pos);
+                range.moveStart('character', pos);
+                range.select();
+            }
+        }
+
+        commentTextarea.on('keydown', function(e) { // Usamos keydown para capturar antes que o caractere seja inserido
+            const suggestions = mentionsSuggestions.find('.list-group-item');
+            if (suggestions.length === 0 || !mentionsSuggestions.is(':visible')) return;
+
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault(); // Previne o movimento do cursor no textarea
+                
+                // Remove a classe 'active' da sugestão anterior
+                suggestions.eq(activeSuggestionIndex).removeClass('active');
+
+                if (e.key === 'ArrowUp') {
+                    activeSuggestionIndex = (activeSuggestionIndex <= 0) ? suggestions.length - 1 : activeSuggestionIndex - 1;
+                } else { // ArrowDown
+                    activeSuggestionIndex = (activeSuggestionIndex >= suggestions.length - 1) ? 0 : activeSuggestionIndex + 1;
+                }
+
+                // Adiciona a classe 'active' à nova sugestão
+                suggestions.eq(activeSuggestionIndex).addClass('active');
+                // Garante que o elemento ativo esteja visível
+                suggestions.eq(activeSuggestionIndex)[0].scrollIntoView({ block: 'nearest' });
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Previne nova linha no textarea
+                if (mentionsSuggestions.is(':visible') && activeSuggestionIndex !== -1) {
+                    mentionsSuggestions.find('.list-group-item.active').click();
+                } else if (mentionsSuggestions.is(':visible') && suggestions.length > 0) {
+                     // Se Enter for pressionado sem um item ativo, seleciona o primeiro
+                    suggestions.first().click();
+                }
+            }
+        });
+
+
+        commentTextarea.on('keyup', function(e) {
+            currentCaretPos = getCaretPosition(this); // Atualiza a posição do cursor
+            const text = commentTextarea.val();
+            const textBeforeCaret = text.substring(0, currentCaretPos);
+            // Procura @ seguido de letras/números/underscore no final, mas só se não houver espaço depois do @
+            const match = textBeforeCaret.match(/@([a-zA-Z0-9_]*)$/); 
+
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+                return; // Ignora keyup para essas teclas, pois a lógica de navegação foi movida para keydown
+            }
+
+            if (match) {
+                mentionStartIndex = textBeforeCaret.lastIndexOf('@');
+                const query = match[1]; // O que foi digitado após o @
+                
+                // Debounce para não fazer requisições demais
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (query.length >= 1) { // Busca apenas se houver pelo menos 1 caractere após o @
+                        $.getJSON("{{ url_for('main.search_users_api') }}", { q: query }, function(data) {
+                            mentionsSuggestions.empty();
+                            activeSuggestionIndex = -1; // Reseta o índice ativo
+
+                            if (data.length > 0) {
+                                $.each(data, function(index, user) {
+                                    let item = $('<a>')
+                                        .attr('href', '#')
+                                        .addClass('list-group-item list-group-item-action')
+                                        .text(user.username)
+                                        .data('username', user.username); // Armazena o username
+                                    
+                                    // Adiciona manipulador de evento mouseenter para ativar sugestão
+                                    item.on('mouseenter', function() {
+                                        mentionsSuggestions.find('.list-group-item.active').removeClass('active');
+                                        $(this).addClass('active');
+                                        activeSuggestionIndex = $(this).index();
+                                    });
+
+                                    item.on('click', function(event) {
+                                        event.preventDefault();
+                                        const selectedUsername = $(this).data('username');
+                                        insertMention(selectedUsername);
+                                    });
+                                    mentionsSuggestions.append(item);
+                                });
+                                mentionsSuggestions.show();
+                            } else {
+                                mentionsSuggestions.hide();
+                            }
+                        });
+                    } else { // Se não tem caracteres após o @, ou só @, esconde as sugestões
+                        mentionsSuggestions.hide();
+                    }
+                }, 300); // Pequeno delay para evitar múltiplas requisições rápidas
+            } else {
+                mentionsSuggestions.hide();
+                activeSuggestionIndex = -1; // Reseta o índice ativo quando as sugestões desaparecem
+            }
+        });
+
+        // Esconder sugestões ao clicar fora (mantido)
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('#mentions-suggestions, #comment-content-textarea').length) {
+                mentionsSuggestions.hide();
+                activeSuggestionIndex = -1;
+            }
+        });
+
+        function insertMention(username) {
+            const currentText = commentTextarea.val();
+            const textBeforeMention = currentText.substring(0, mentionStartIndex);
+            const textAfterMention = currentText.substring(currentCaretPos);
+            
+            // Remove o texto parcial da menção antes de inserir a completa
+            // Por exemplo, se digitou "@jo", isso remove "jo" e insere "joao "
+            const textToReplace = currentText.substring(mentionStartIndex, currentCaretPos);
+            const replacementText = '@' + username + ' '; // Adiciona o espaço aqui
+            
+            // Constrói o novo texto, substituindo a parte da menção
+            const newText = textBeforeMention + replacementText + textAfterMention;
+            
+            // Calcula a nova posição do cursor
+            const newCaretPosition = mentionStartIndex + replacementText.length;
+            
+            commentTextarea.val(newText);
+            setCaretPosition(commentTextarea[0], newCaretPosition);
+            mentionsSuggestions.hide();
+            activeSuggestionIndex = -1; // Reseta após inserção
+        }
+    });
+    </script>
+{% endblock scripts %}

@@ -1,0 +1,116 @@
+{# C:\gerenciador-eventos\templates\manage_event_permissions.html #}
+{% extends "base.html" %}
+
+{% block head_extra %}
+    {{ super() }}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="content-section">
+                    <h2 class="border-bottom pb-2 mb-4">Gerenciar Permissões para Evento: {{ event.title }}</h2>
+                    <p class="text-muted">Autor do Evento: {{ event.author.username }}</p>
+
+                    {# Formulário para Conceder Acesso ao Evento (apenas Usuário) #}
+                    <form method="POST" action="{{ url_for('main.manage_event_permissions', event_id=event.id) }}">
+                        {{ permission_form.hidden_tag() }}
+                        <fieldset class="form-group">
+                            <legend class="border-bottom mb-4">Conceder Acesso ao Evento para Usuário</legend>
+                            
+                            <div class="form-group mb-3">
+                                {{ permission_form.user.label(class="form-control-label") }}
+                                {# Adicionamos um ID para o Select2 #}
+                                {{ permission_form.user(class="form-control", id="user_select") }} 
+                                {% if permission_form.user.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in permission_form.user.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            {# REMOVIDO: Campo 'group' #}
+                            {# REMOVIDO: Campo 'role' #}
+                            
+                        </fieldset>
+                        <div class="form-group">
+                            {{ permission_form.submit(class="btn btn-outline-info") }}
+                        </div>
+                    </form>
+
+                    {# REMOVIDO: Formulário para Permissões por Papel Global #}
+
+                </div>
+
+                <div class="content-section mt-4">
+                    <h3 class="border-bottom pb-2 mb-4">Permissões de Acesso Existentes</h3>
+                    
+                    {# Tabela de Permissões de Usuário (simplificada) #}
+                    {% if permissions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for permission in permissions %}
+                                        <tr>
+                                            <td>{{ permission.user.username }}</td>
+                                            <td>
+                                                <form action="{{ url_for('main.delete_event_permission', permission_id=permission.id) }}" method="POST" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover esta permissão?')">Remover</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>Nenhuma permissão de acesso direto concedida para este evento.</p>
+                    {% endif %}
+
+                    {# REMOVIDO: Tabela de Acessos por Papel Global #}
+
+                </div>
+                <div class="mt-4">
+                    <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-secondary">Voltar para o Evento</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    {# Adicione o JS do Select2 aqui ou no seu base.html, mas APÓS o jQuery #}
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            var $userField = $('#user_select');
+            {# REMOVIDO: Declaração de variáveis para group e role fields #}
+
+            // 1. Inicializa Select2 para o campo de usuário
+            try {
+                $userField.select2({
+                    placeholder: "--- Selecione um Usuário ---",
+                    allowClear: true // Permite limpar a seleção
+                });
+                console.log("Select2 initialized for user_select.");
+            } catch (e) {
+                console.error("Error initializing Select2 for user_select:", e);
+            }
+
+            {# REMOVIDO: Inicialização do Select2 para group e role fields #}
+            {# REMOVIDO: Função applyMutualExclusionLogic e seus listeners #}
+        });
+    </script>
+{% endblock %}

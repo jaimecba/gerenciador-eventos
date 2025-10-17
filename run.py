@@ -1,5 +1,5 @@
 # run.py
-from app import create_app
+from wsgi import create_app # <--- LINHA ALTERADA!
 
 app = create_app()
 

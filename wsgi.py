@@ -1,4 +1,4 @@
-# C:\gerenciador-eventos\app.py
+# C:\gerenciador-eventos\app.py (AGORA wsgi.py)
 from flask import Flask, render_template, url_for, flash, redirect, request, abort, jsonify, send_from_directory
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_bcrypt import Bcrypt
@@ -964,7 +964,15 @@ def create_app():
 
     return app
 
+# --- ALTERAÇÃO CRÍTICA: CHAMAR create_app() NO NÍVEL DO MÓDULO ---
+# Esta linha cria a instância do seu aplicativo Flask e a atribui à variável 'app',
+# tornando-a acessível para o Gunicorn (gunicorn wsgi:app).
+app = create_app()
+# --- FIM DA ALTERAÇÃO CRÍTICA ---
 
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True)
+    # O bloco __main__ é para execução local.
+    # Como seu `run.py` já faz isso, esta parte aqui se torna redundante
+    # para a execução via `run.py`, mas pode ser útil para testes diretos do wsgi.py.
+    # O importante é que a linha `app = create_app()` acima já foi executada.
+    app.run(debug=True, port=5000) # Adicionei port=5000 para consistência com o run.py

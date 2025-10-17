@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Eventos</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('main.static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
         <h1>Bem-vindo ao Gerenciador de Eventos</h1>
-        <a href="{{ url_for('login') }}">Login</a>
-        <a href="{{ url_for('register') }}">Registrar</a>
+        <a href="{{ url_for('main.login') }}">Login</a>
+        <a href="{{ url_for('main.register') }}">Registrar</a>
     </div>
 </body>
 </html>

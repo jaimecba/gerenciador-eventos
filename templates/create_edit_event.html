@@ -8,7 +8,7 @@
                     <h2 class="card-title text-center mb-4 fs-5">{{ legend }}</h2> 
                     <form method="POST">
                         {{ form.hidden_tag() }}
-{% if form.errors %}
+                        {% if form.errors %}
                             <div class="alert alert-danger" role="alert">
                                 <h4 class="alert-heading">Erros de Validação:</h4>
                                 <ul>
@@ -21,7 +21,7 @@
                                     {% endfor %}
                                     {% if form.csrf_token.errors %}
                                         <li>CSRF Token: {{ form.csrf_token.errors|join(', ') }}</li>
-{% endif %}
+                                    {% endif %}
                                 </ul>
                             </div>
                         {% endif %}
@@ -36,7 +36,7 @@
                                 {% endfor %}
                             {% endif %}
                         </div>
-<div class="mb-3">
+                        <div class="mb-3">
                             {# APLICADO: compact-text para o label e form-control-compact-uppercase para o textarea com oninput #}
                             {{ form.description.label(class="form-label small compact-text") }}
                             {{ form.description(class="form-control form-control-compact-uppercase", rows=8, placeholder="Detalhes completos do evento...", oninput="this.value = this.value.toUpperCase()") }}
@@ -70,7 +70,7 @@
                                 {% endif %}
                             </div>
                         </div>
-<div class="mb-3">
+                        <div class="mb-3">
                             {# APLICADO: compact-text para o label e form-control-compact-uppercase para o input com oninput #}
                             {{ form.location.label(class="form-label small compact-text") }}
                             {{ form.location(class="form-control form-control-sm form-control-compact-uppercase", placeholder="Local do evento (Ex: Online, Escritório, Rua X, nº Y)", oninput="this.value = this.value.toUpperCase()") }}
@@ -80,7 +80,7 @@
                                 {% endfor %}
                             {% endif %}
                         </div>
-<div class="row">
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 {# APLICADO: compact-text para o label, o select não precisa de maiúsculas no valor real #}
                                 {{ form.category.label(class="form-label small compact-text") }}
@@ -91,18 +91,18 @@
                                     {% endfor %}
                                 {% endif %}
                             </div>
-<div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-3">
                                 {# APLICADO: compact-text para o label, o select não precisa de maiúsculas no valor real #}
-                                {{ form.status.label(class="form-label small compact-text") }}
-                                {{ form.status(class="form-select form-select-sm") }}
-                                {% if form.status.errors %}
-                                    {% for error in form.status.errors %}
+                                {{ form.event_status.label(class="form-label small compact-text") }} {# CORRIGIDO AQUI #}
+                                {{ form.event_status(class="form-select form-select-sm") }}          {# CORRIGIDO AQUI #}
+                                {% if form.event_status.errors %}                                      {# CORRIGIDO AQUI #}
+                                    {% for error in form.event_status.errors %}                       {# CORRIGIDO AQUI #}
                                         <div class="text-danger small">{{ error }}</div>
                                     {% endfor %}
                                 {% endif %}
                             </div>
                         </div>
-<div class="d-flex justify-content-between mt-4">
+                        <div class="d-flex justify-content-between mt-4">
                             <a href="{{ url_for('main.home') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left me-2"></i>Voltar</a>
                             {{ form.submit(class="btn btn-primary btn-sm") }}
                         </div>

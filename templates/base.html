@@ -12,22 +12,32 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     {# Link para o Font Awesome para ícones (versão 5.15.4 para compatibilidade com os exemplos) #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    {# REMOVIDO: Link para Phosphor Icons - usaremos Font Awesome Free por enquanto #}
+    {# <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/webfont@1.1.8/dist/index.min.css"> #}
     {# NOVO: Link para o Select2 CSS #}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     {# NOVO: Link para o tema Bootstrap 5 do Select2 (opcional, mas recomendado para consistência visual) #}
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-    {# FullCalendar CSS #}
-    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
+    
+    {# REMOVIDO: FullCalendar CSS separado, pois já está incluído no index.global.min.js #}
+    
     {# NOVO: Import da fonte Roboto Condensed do Google Fonts #}
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    
+    {# --- INÍCIO DA ADIÇÃO DO FLATPCIKR CSS --- #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    {# --- FIM DA ADIÇÃO DO FLATPCIKR CSS --- #}
+
     {# SEU CSS PERSONALIZADO (style.css) - AGORA COM CACHE-BUSTER E CARREGADO POR ÚLTIMO #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20240928v01') }}">
-{# PWA: Link para o Manifest da PWA #}
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="stylesheet" href="{{ url_for('main.static', filename='css/style.css', v='20240928v06') }}"> {# Cache-buster atualizado #}
+    {# PWA: Link para o Manifest da PWA #}
+    <link rel="manifest" href="{{ url_for('main.static', filename='manifest.json') }}">
     {# PWA: Meta tags para compatibilidade com iOS #}
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192x192.png') }}">
+    <meta name="apple-mobile-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="{{ url_for('main.static', filename='images/icon-192x192.png') }}">
+    {# NOVO: Link para o Favicon #}
+    <link rel="icon" href="{{ url_for('main.static', filename='images/icon-192x192.png') }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
@@ -57,22 +67,19 @@
                                     <i class="fas fa-user-cog me-1"></i> Painel Admin
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                                    {# REMOVIDOS: "Visão Geral Admin" e "Home do Aplicativo" #}
                                     <li><a class="dropdown-item" href="/admin/" target="_top">Painel Flask-Admin</a></li>
-                                    <li><hr class="dropdown-divider"></li> {# Separador #}
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{{ url_for('main.changelog') }}" target="_top">Histórico de Alterações</a></li>
                                 </ul>
                             </li>
                         {% endif %}
                     {% endif %}
                 </ul>
-                <ul class="navbar-nav ms-auto"> {# ms-auto para alinhar à direita #}
+                <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
-                        {# NOVO: Link e Ícone de Notificações - AGORA COM ID PARA O JS E CLASSES DINÂMICAS #}
                         <li class="nav-item position-relative me-3">
                             <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}"  rel="noopener noreferrer" title="Notificações">
                                 <i class="fas fa-bell"></i>
-                                {# O badge agora tem um ID para ser manipulado pelo JS #}
                                 <span id="unread-notifications-badge"
                                       class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle"
                                       style="font-size: 0.65em; padding: 0.3em 0.5em;"
@@ -98,21 +105,13 @@
                                 <i class="fas fa-sign-in-alt me-1"></i> Login
                             </a>
                         </li>
-                        {# Removido/Comentado: O link de registro público #}
-                        {#
-                        <li class="nav-item">
-                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.register') }}" target="_top">
-                                <i class="fas fa-user-plus me-1"></i> Registrar
-                            </a>
-                        </li>
-                        #}
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
-<main class="container-fluid mt-4">
-        <div class="main-content-wrapper">
+    <div class="container-fluid mt-4">
+        <div class="content-wrapper">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div class="row">
@@ -129,22 +128,30 @@
             {% endwith %}
             {% block content %}{% endblock %}
         </div>
-    </main>
-<footer class="footer mt-5 py-3 bg-light border-top">
+    </div>
+    <footer class="footer mt-5 py-3 bg-light border-top">
         <div class="container text-center">
             <span class="text-muted">
                 &copy; {{ current_year }} Flexx Tecnologia e Softwares. Todos os direitos reservados.
             </span>
         </div>
     </footer>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
-    {# FullCalendar JS #}
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt-br.global.min.js'></script>
-<script>
+    
+    {# FullCalendar JS (global bundle) - USANDO UNPKG.COM COMO ALTERNATIVA #}
+    <script src='https://unpkg.com/fullcalendar@6.1.11/index.global.min.js'></script>
+    {# REMOVIDO: FullCalendar Locales JS, pois já está incluído no index.global.min.js #}
+    
+    {# --- INÍCIO DA ADIÇÃO DO FLATPCIKR JS --- #}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Flatpickr Portuguese (Brazil) locale -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+    {# --- FIM DA ADIÇÃO DO FLATPCIKR JS --- #}
+
+    <script>
         document.addEventListener('DOMContentLoaded', function () {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -178,9 +185,7 @@
                     .catch(error => {
                         const badge = document.getElementById('unread-notifications-badge');
                         if (badge) {
-                            // Em caso de erro, talvez esconda o badge ou mostre um indicador de erro
                             badge.setAttribute('hidden', '');
-                            // Ou badge.textContent = '!'; para indicar um problema
                         }
                     });
             }
@@ -188,28 +193,22 @@
             setInterval(updateUnreadNotificationsCount, 30000); 
         });
     </script>
-{# NOVO: Registro do Service Worker - AGORA COM url_for() PARA ROBUSTEZ NO CAMINHO #}
+    {# NOVO: Registro do Service Worker #}
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                // AGORA USANDO url_for PARA O CAMINHO CORRETO DO SERVICE WORKER
-                navigator.serviceWorker.register('{{ url_for("static", filename="service-worker.js") }}', { scope: '/' })
+                navigator.serviceWorker.register('{{ url_for("main.serve_service_worker") }}', { scope: '/' })
                     .then(function(registration) {
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                        // O escopo agora deve ser '/'
                     }, function(err) {
                         console.log('ServiceWorker registration failed: ', err);
                     });
             });
         }
     </script>
-{# NOVO: Inclusão e chamada do script de notificações PUSH #}
-    <script src="{{ url_for('static', filename='js/push_notifications.js') }}"></script>
+    {# NOVO: Inclusão e chamada do script de notificações PUSH #}
+    <script src="{{ url_for('main.static', filename='js/push_notifications.js') }}"></script>
     <script>
-        // Esta chamada vai tentar registrar o usuário para notificações Push
-        // Você pode envolver isso em um botão "Ativar Notificações" na UI,
-        // ou, para testes iniciais, chamar diretamente no carregamento.
-        // Remova este bloco se preferir que o usuário ative manualmente.
         window.addEventListener('load', () => {
             subscribeUserToPush();
         });

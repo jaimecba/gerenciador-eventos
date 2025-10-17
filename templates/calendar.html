@@ -22,52 +22,6 @@
 
     <div id='calendar-container-wrapper' class="d-flex">
         <div id='calendar'></div>
-
-        {# Painel Lateral para Detalhes de Evento/Tarefa (Desktop) #}
-        <div id="eventDetailSidebar" class="event-detail-sidebar">
-            <div class="sidebar-header d-flex justify-content-between align-items-center p-3 border-bottom">
-                <h5 id="eventDetailSidebarTitle" class="mb-0"></h5>
-                <button type="button" class="btn-close" aria-label="Close" id="closeSidebar"></button>
-            </div>
-            <div class="sidebar-body p-3">
-                <p><strong>Tipo:</strong> <span id="eventDetailSidebarType"></span></p>
-                <p><strong>Início:</strong> <span id="eventDetailSidebarStart"></span></p>
-                <p><strong>Fim:</strong> <span id="eventDetailSidebarEnd"></span></p>
-                <p><strong>Descrição:</strong> <span id="eventDetailSidebarDescription"></span></p>
-                <a href="#" id="eventDetailSidebarLink" class="btn btn-primary btn-sm mt-3 w-100">Ver Detalhes Completos</a>
-
-                <hr class="my-3">
-
-                {# Seção de Comentários #}
-                <div class="comments-section">
-                    <h5 class="mb-2">Comentários</h5>
-                    <div id="eventDetailSidebarCommentsList" class="comments-list mb-3">
-                        {# Comentários serão carregados aqui via JS #}
-                        <p class="text-muted">Selecione uma tarefa para ver os comentários.</p>
-                    </div>
-                    <div class="comment-form">
-                        <textarea id="commentTextarea" class="form-control mb-2" rows="3" placeholder="Adicionar um comentário..."></textarea>
-                        <button id="addCommentBtn" class="btn btn-success btn-sm w-100">Adicionar Comentário</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {# Modal para Detalhes de Evento/Tarefa - Mantido para mobile #}
-    <div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventDetailModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="eventDetailModalLabel"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <p class="mb-3">Clique em "Ver Detalhes" para abrir a página completa.</p>
-                    <a href="#" id="eventDetailLink" class="btn btn-primary">Ver Detalhes</a>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}
@@ -76,10 +30,9 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
-        var currentItemId = null; // Para armazenar o ID do evento/tarefa atualmente exibido na sidebar
-        var currentItemType = null; // Para armazenar o tipo (Evento/Tarefa)
+        // As variáveis currentItemId e currentItemType foram removidas, pois não são mais necessárias.
 
-        // Variável JS para o username do usuário logado (passado do Flask)
+        // Variável JS para o username do usuário logado (passado do Flask) - Mantido caso seja usado em outro lugar
         const currentUsername = '{{ current_user.username if current_user.is_authenticated else "Usuário Desconhecido" }}';
 
         var calendar = new FullCalendar.Calendar(calendarEl, {
@@ -109,60 +62,45 @@
                     alert('Houve um erro ao carregar os eventos!');
                 }
             },
+            // >>> AJUSTE AQUI: eventClick agora apenas redireciona diretamente <<<
             eventClick: function(info) {
-                if (info.view.type.startsWith('list') && $(info.jsEvent.target).is('a.fc-list-event-title-link')) {
-                    return; 
-                }
-                
-                info.jsEvent.preventDefault(); 
-                
-                var eventTitle = info.event.extendedProps.description || info.event.title;
-                var eventUrl = info.event.url;
-                var eventType = info.event.extendedProps.type;
-                var eventStart = info.event.start ? new Date(info.event.start).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
-                var eventEnd = info.event.end ? new Date(info.event.end).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
-                var eventDescription = info.event.extendedProps.fullDescription || info.event.extendedProps.description || info.event.title || 'Nenhuma descrição.';
-
-                // Atualiza o ID e Tipo do item atualmente selecionado
-                // info.event.id é do tipo "event-X" ou "task-Y", precisamos do ID numérico
-                currentItemId = info.event.id.split('-')[1]; 
-                currentItemType = eventType;
-
-                const isDesktop = window.matchMedia('(min-width: 992px)').matches;
-
-                if (isDesktop) {
-                    $('#eventDetailSidebarTitle').text(eventTitle);
-                    $('#eventDetailSidebarType').text(eventType);
-                    $('#eventDetailSidebarStart').text(eventStart);
-                    $('#eventDetailSidebarEnd').text(eventEnd);
-                    $('#eventDetailSidebarDescription').text(eventDescription);
-                    $('#eventDetailSidebarLink').attr('href', eventUrl);
-                    
-                    $('#eventDetailSidebar').addClass('open');
-                    $('#calendar-container-wrapper').addClass('sidebar-open');
-
-                    if (currentItemType === 'Tarefa' && currentItemId) {
-                        $('.comments-section').show(); // Mostra a seção de comentários
-                        $('.comment-form').show(); // Mostra o formulário de comentários
-                        loadCommentsForItem(currentItemId); // Passa apenas o ID, o tipo já é 'Tarefa'
-                    } else {
-                        // Esconde a seção de comentários para Eventos ou se o ID não for válido
-                        $('.comments-section').hide();
-                        $('.comment-form').hide(); // Esconde o formulário para eventos
-                        $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Comentários não disponíveis para este tipo de item.</p>');
-                    }
-
-                } else {
-                    $('#eventDetailModalLabel').text(eventTitle);
-                    $('#eventDetailLink').attr('href', eventUrl);
-
-                    var myModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
-                    myModal.show();
+                info.jsEvent.preventDefault(); // Impede qualquer comportamento padrão do FullCalendar
+                if (info.event.url) {
+                    window.location.href = info.event.url; // Redireciona para a URL do evento/tarefa
                 }
             },
+            // >>> AJUSTE AQUI: eventDidMount para garantir transparência total e estilo dos ícones <<<
             eventDidMount: function(info) {
-                if (!(info.view.type.startsWith('list') && $(info.el).find('a.fc-list-event-title-link').length)) {
-                    $(info.el).tooltip({
+                if (!info.view.type.startsWith('list')) {
+                    // Seletores mais agressivos para garantir transparência
+                    const $eventEl = $(info.el);
+                    $eventEl.css({
+                        'background-color': 'transparent',
+                        'border-color': 'transparent',
+                        'border-width': '0',
+                        'color': 'transparent', // Garante que qualquer texto padrão seja invisível
+                        'overflow': 'visible', // Permite que sombras e transições de hover não sejam cortadas
+                        'height': 'auto', // Ajusta a altura da célula ao conteúdo
+                        'min-height': 'auto' // Reseta o min-height padrão do FC
+                    });
+
+                    // Aplica transparência a todos os elementos internos do evento FullCalendar
+                    $eventEl.find(
+                        '.fc-event-start, .fc-event-end, .fc-event-time, .fc-event-title, ' +
+                        '.fc-event-title-wrap, .fc-event-main, .fc-event-main-harness, ' +
+                        '.fc-daygrid-event-dot'
+                    ).css({
+                        'background-color': 'transparent',
+                        'border-color': 'transparent',
+                        'border-width': '0',
+                        'color': 'transparent', // Garante que qualquer texto padrão seja invisível
+                        'height': 'auto',
+                        'min-height': 'auto',
+                        'line-height': '1' // Linha compacta
+                    });
+                    
+                    // Ativar tooltip (se você quiser tooltips nos ícones)
+                    $eventEl.tooltip({
                         title: info.event.extendedProps.description || info.event.title,
                         placement: 'top',
                         trigger: 'hover',
@@ -170,19 +108,27 @@
                     });
                 }
             },
+            // >>> AJUSTE AQUI: eventContent para usar Font Awesome Free <<<
             eventContent: function(arg) {
                 if (arg.view.type.startsWith('list')) {
+                    // Para visualizações de lista, mantém o link clicável com o título completo
                     return { html: `<a class="fc-list-event-title-link" href="${arg.event.url}">${arg.event.title}</a>` };
                 } else {
-                    let iconHtml = '';
-                    let titleHtml = `<span class="fc-event-title-text">${arg.event.title}</span>`;
+                    // Para dayGrid (Mês, Semana, Dia), exibe apenas o ícone.
+                    let iconClasses = ''; 
+                    let specificIconClass = ''; 
+                    let iconTitle = arg.event.title || arg.event.extendedProps.description; 
 
                     if (arg.event.extendedProps.type === 'Tarefa') {
-                        iconHtml = '<i class="fas fa-tasks fc-event-task-icon"></i>'; 
+                        iconClasses = 'fas fa-clipboard-list'; // Ícone Font Awesome para Tarefa
+                        specificIconClass = 'fc-event-task-icon'; 
                     } else if (arg.event.extendedProps.type === 'Evento') {
-                        iconHtml = '<i class="fas fa-calendar-alt fc-event-event-icon"></i>'; 
+                        iconClasses = 'fas fa-calendar-alt'; // Ícone Font Awesome para Evento
+                        specificIconClass = 'fc-event-event-icon'; 
                     }
-                    return { html: `<div class="fc-event-display-wrapper">${iconHtml}${titleHtml}</div>` };
+                    
+                    // Combina todas as classes para a tag <i>
+                    return { html: `<div class="fc-event-display-wrapper"><i class="${iconClasses} ${specificIconClass}" aria-label="${iconTitle}"></i></div>` };
                 }
             }
         });
@@ -207,77 +153,8 @@
             $('#viewModeDropdown').text('Visualização: ' + currentViewText);
         });
 
-        $('#closeSidebar').on('click', function() {
-            $('#eventDetailSidebar').removeClass('open');
-            $('#calendar-container-wrapper').removeClass('sidebar-open');
-            currentItemId = null; 
-            currentItemType = null;
-        });
-
-        // Função para carregar e exibir comentários de um item (tarefa)
-        function loadCommentsForItem(taskId) { // Recebe apenas o taskId
-            $('#eventDetailSidebarCommentsList').html('<p class="text-muted">Carregando comentários...</p>');
-            
-            $.ajax({
-                url: `/api/comments/task/${taskId}`, 
-                method: 'GET',
-                success: function(comments) {
-                    let commentsHtml = '';
-                    if (comments && comments.length > 0) {
-                        comments.forEach(comment => {
-                            // >>> CORRIGIDO AQUI: comment.content (espera a chave 'content' do backend) <<<
-                            commentsHtml += `
-                                <div class="comment-item mb-2 p-2 border rounded">
-                                    <small class="text-muted"><strong>${comment.user}</strong> em ${comment.date}</small>
-                                    <p class="mb-0">${comment.content}</p>
-                                </div>
-                            `;
-                        });
-                    } else {
-                        commentsHtml = '<p class="text-muted">Nenhum comentário ainda para esta tarefa.</p>';
-                    }
-                    $('#eventDetailSidebarCommentsList').html(commentsHtml);
-                    // Rola para o final da lista de comentários para ver o mais recente
-                    $('#eventDetailSidebarCommentsList').scrollTop($('#eventDetailSidebarCommentsList')[0].scrollHeight);
-
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    console.error('Erro ao carregar comentários:', textStatus, errorThrown, jqXHR.responseText);
-                    $('#eventDetailSidebarCommentsList').html('<p class="text-danger">Erro ao carregar comentários.</p>');
-                }
-            });
-        }
-
-        // Função para adicionar um novo comentário
-        $('#addCommentBtn').on('click', function() {
-            const commentText = $('#commentTextarea').val().trim();
-            
-            if (!commentText) {
-                alert('Por favor, digite um comentário.');
-                return;
-            }
-            if (!currentItemId || currentItemType !== 'Tarefa') {
-                alert('Não é possível adicionar comentários para este item.');
-                return;
-            }
-
-            $.ajax({
-                url: `/api/comments/task/${currentItemId}`, 
-                method: 'POST',
-                contentType: 'application/json',
-                // >>> CORRIGIDO AQUI: Enviando 'content' (chave esperada pelo backend) <<<
-                data: JSON.stringify({ content: commentText }), 
-                success: function(response) {
-                    $('#commentTextarea').val(''); // Limpa o campo
-                    // Não precisa de reload completo, apenas recarrega os comentários via AJAX
-                    loadCommentsForItem(currentItemId); 
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    alert('Erro ao adicionar comentário. Verifique o console para detalhes.');
-                    console.error('Erro ao adicionar comentário:', textStatus, errorThrown, jqXHR.responseText);
-                }
-            });
-        });
+        // CÓDIGO REMOVIDO: Event listener para fechar a sidebar
+        // CÓDIGO REMOVIDO: Funções de comentários (loadCommentsForItem, addCommentBtn)
     });
 </script>
 {% endblock %}

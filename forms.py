@@ -1,383 +1,421 @@
-# C:\gerenciador-eventos\forms.py
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField, DateField, SelectField, SelectMultipleField, HiddenField, DateTimeField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, Optional, Regexp
-# --- ATUALIZADO: Importar Attachment e EventPermission ---
-from models import User, Category, Status, TaskCategory, Role, Group, Attachment, EventPermission
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField, DateField, SelectField, SelectMultipleField, HiddenField, DateTimeField, IntegerField
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, Optional, Regexp, NumberRange
+from models import User, Category, Status, TaskCategory, Role, Group, Attachment, EventPermission, \
+    TaskSubcategory, ChecklistTemplate, ChecklistItemTemplate, CustomFieldTypeEnum, Task, Event, TaskChecklistItem
 from extensions import db
 from flask_login import current_user
 from datetime import date, datetime
-from wtforms.widgets import ListWidget, CheckboxInput # Manter essas importações se MultipleCheckboxField for usado em outros lugares
+from wtforms.widgets import ListWidget, CheckboxInput
+from wtforms_sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField # <-- AGORA QuerySelectMultipleField está aqui
+import json
+from sqlalchemy.orm import joinedload # Importado para otimizar QuerySelectField com relações
 
-# NOVO CAMPO PERSONALIZADO: MultipleCheckboxField
-# Mantenha esta classe se você a usa em outros formulários.
-# Se TaskForm é o único lugar onde você precisava de seleção múltipla,
-# e agora usará SelectMultipleField padrão, você pode remover esta classe.
-class MultipleCheckboxField(SelectMultipleField):
-    widget = ListWidget(prefix_label=False)
-    option_widget = CheckboxInput()
-
-# Função auxiliar para pegar usuários ativos
-def get_users():
-    # print("DEBUG_GET_USERS: Executando get_users()...") # Descomentar para depuração
-    # Certifique-se que seu modelo User tem o campo is_active_db
-    users = User.query.filter_by(is_active_db=True).order_by(User.username).all()
-    # print(f"DEBUG_GET_USERS: get_users() retornou {len(users)} usuários.") # Descomentar para depuração
-    return users
-
-# Função auxiliar para pegar categorias de tarefas
-def get_task_categories():
-    return TaskCategory.query.order_by(TaskCategory.name).all()
-
-# Função auxiliar para pegar status de tarefas (filtrando por type='task')
-def get_task_statuses():
-    return Status.query.filter_by(type='task').order_by(Status.name).all()
-
-# Função auxiliar para pegar roles
-def get_roles():
-    return Role.query.order_by(Role.name).all()
-
+# --- Formulários de Usuário e Autenticação ---
 
 class RegistrationForm(FlaskForm):
-    username = StringField('Nome de Usuário',
-                           validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email',
-                        validators=[DataRequired(), Email()])
+    username = StringField('Nome de Usuário', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Senha', validators=[DataRequired()])
-    confirm_password = PasswordField('Confirmar Senha',
-                                     validators=[DataRequired(), EqualTo('password')])
+    confirm_password = PasswordField('Confirmar Senha', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Registrar')
 
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
         if user:
-            raise ValidationError('Esse nome de usuário já existe. Por favor, escolha um diferente.')
+            raise ValidationError('Esse nome de usuário já está em uso. Por favor, escolha outro.')
 
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
         if user:
-            raise ValidationError('Esse e-mail já existe. Por favor, escolha um diferente.')
+            raise ValidationError('Esse email já está registrado. Por favor, escolha outro.')
 
 class LoginForm(FlaskForm):
-    email = StringField('Email',
-                        validators=[DataRequired(), Email()])
+    email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Senha', validators=[DataRequired()])
     remember = BooleanField('Lembrar-me')
     submit = SubmitField('Login')
 
 class UpdateAccountForm(FlaskForm):
-    username = StringField('Nome de Usuário',
-                           validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email',
-                        validators=[DataRequired(), Email()])
-    picture = FileField('Atualizar Foto de Perfil', validators=[FileAllowed(['jpg', 'png'])])
+    username = StringField('Nome de Usuário', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    picture = FileField('Atualizar Foto de Perfil', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])
     submit = SubmitField('Atualizar')
 
     def validate_username(self, username):
         if username.data != current_user.username:
             user = User.query.filter_by(username=username.data).first()
             if user:
-                raise ValidationError('Esse nome de usuário já existe. Por favor, escolha um diferente.')
+                raise ValidationError('Esse nome de usuário já está em uso. Por favor, escolha outro.')
 
     def validate_email(self, email):
         if email.data != current_user.email:
             user = User.query.filter_by(email=email.data).first()
             if user:
-                raise ValidationError('Esse e-mail já existe. Por favor, escolha um diferente.')
+                raise ValidationError('Esse email já está registrado. Por favor, escolha outro.')
 
 class RequestResetForm(FlaskForm):
-    email = StringField('Email',
-                        validators=[DataRequired(), Email()])
+    email = StringField('Email', validators=[DataRequired(), Email()])
     submit = SubmitField('Redefinir Senha')
 
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
         if user is None:
-            raise ValidationError('Não existe conta com este e-mail. Você pode se registrar primeiro.')
+            raise ValidationError('Não há conta com esse email. Você deve se registrar primeiro.')
 
 class ResetPasswordForm(FlaskForm):
     password = PasswordField('Nova Senha', validators=[DataRequired()])
-    confirm_password = PasswordField('Confirmar Nova Senha',
-                                     validators=[DataRequired(), EqualTo('password')])
+    confirm_password = PasswordField('Confirmar Nova Senha', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Redefinir Senha')
 
-class EventForm(FlaskForm):
-    title = StringField('Título', validators=[DataRequired()])
-    description = TextAreaField('Descrição', validators=[Optional()])
-
-    # === ALTERAÇÃO FEITA AQUI ===
-    due_date = DateTimeField('Data de Vencimento', format='%Y-%m-%dT%H:%M', validators=[DataRequired()], render_kw={'type': 'datetime-local'})
-    end_date = DateTimeField('Data de Término (Opcional)', format='%Y-%m-%dT%H:%M', validators=[Optional()], render_kw={'type': 'datetime-local'})
-    # ============================
-
-    location = StringField('Localização', validators=[Optional(), Length(max=100)])
-
-    category = SelectField('Categoria', coerce=int)
-    status = SelectField('Status', coerce=int)
-
-    submit = SubmitField('Salvar Evento')
-
-    def __init__(self, *args, **kwargs):
-        super(EventForm, self).__init__(*args, **kwargs)
-        self.category.choices = [(c.id, c.name) for c in Category.query.order_by(Category.name).all()]
-        self.status.choices = [(s.id, s.name) for s in Status.query.filter_by(type='event').order_by(Status.name).all()]
+# --- Formulários de Eventos ---
 
 class CategoryForm(FlaskForm):
     name = StringField('Nome da Categoria', validators=[DataRequired(), Length(max=50)])
     description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
     submit = SubmitField('Salvar Categoria')
 
-    def __init__(self, *args, **kwargs):
-        super(CategoryForm, self).__init__(*args, **kwargs)
-        self.original_name = kwargs.get('original_name') # Para validação de atualização
-
-    def validate_name(self, name):
-        if name.data != self.original_name: # Apenas valida se o nome mudou
-            category = Category.query.filter_by(name=name.data).first()
-            if category:
-                raise ValidationError('Este nome de categoria já existe. Por favor, escolha um diferente.')
-
 class StatusForm(FlaskForm):
-    name = StringField('Nome do Status', validators=[DataRequired(), Length(max=80)])
-    type = SelectField('Tipo', choices=[('event', 'Evento'), ('task', 'Tarefa')], validators=[DataRequired()])
-    description = TextAreaField('Descrição', validators=[Optional(), Length(max=255)])
+    name = StringField('Nome do Status', validators=[DataRequired(), Length(max=50)])
+    type = SelectField('Tipo', choices=[('event', 'Evento'), ('task', 'Tarefa'), ('generic', 'Genérico')], validators=[DataRequired()])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
     submit = SubmitField('Salvar Status')
 
-    def __init__(self, *args, **kwargs):
-        super(StatusForm, self).__init__(*args, **kwargs)
-        self.original_name = kwargs.get('original_name')
-        self.original_type = kwargs.get('original_type')
+class EventForm(FlaskForm):
+    title = StringField('Título do Evento', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Descrição do Evento', validators=[Optional()])
+    due_date = DateTimeField('Data e Hora de Início', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
+    end_date = DateTimeField('Data e Hora de Término', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    location = StringField('Localização', validators=[Optional(), Length(max=100)])
+    category = QuerySelectField(
+        'Categoria',
+        query_factory=lambda: db.session.query(Category).all(),
+        get_label=lambda x: x.name,
+        allow_blank=True,
+        blank_text='Selecione uma Categoria'
+    )
+    event_status = QuerySelectField(
+        'Status do Evento',
+        query_factory=lambda: db.session.query(Status).filter_by(type='event').all(),
+        get_label=lambda x: x.name,
+        allow_blank=True,
+        blank_text='Selecione um Status'
+    )
+    submit = SubmitField('Salvar Evento')
 
-    def validate_name(self, name):
-        # Apenas valida se o nome OU o tipo mudaram para evitar conflitos com ele mesmo
-        if name.data != self.original_name or self.type.data != self.original_type:
-            status_entry = Status.query.filter_by(name=name.data, type=self.type.data).first()
-            if status_entry:
-                raise ValidationError(f'Já existe um status com o nome "{name.data}" para o tipo "{self.type.data}".')
+    def validate_end_date(self, field):
+        if self.due_date.data and field.data and field.data < self.due_date.data:
+            raise ValidationError('A data de término não pode ser anterior à data de início.')
+
+# --- Formulários de Administração ---
+
+class AdminRoleForm(FlaskForm):
+    name = StringField('Nome do Papel', validators=[DataRequired(), Length(max=50)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
+    can_view_event = BooleanField('Pode Visualizar Eventos')
+    can_edit_event = BooleanField('Pode Editar Eventos')
+    can_manage_permissions = BooleanField('Pode Gerenciar Permissões')
+    can_create_event = BooleanField('Pode Criar Eventos')
+    can_publish_event = BooleanField('Pode Publicar Eventos')
+    can_cancel_event = BooleanField('Pode Cancelar Eventos')
+    can_duplicate_event = BooleanField('Pode Duplicar Eventos')
+    can_view_event_registrations = BooleanField('Pode Visualizar Inscrições de Eventos')
+    can_view_event_reports = BooleanField('Pode Visualizar Relatórios de Eventos')
+    can_approve_art = BooleanField('Pode Aprovar Arte')
+    can_create_task = BooleanField('Pode Criar Tarefas')
+    can_edit_task = BooleanField('Pode Editar Tarefas')
+    can_delete_task = BooleanField('Pode Excluir Tarefas')
+    can_complete_task = BooleanField('Pode Concluir Tarefas')
+    can_uncomplete_task = BooleanField('Pode Desmarcar Tarefas como Concluídas')
+    can_upload_task_audio = BooleanField('Pode Fazer Upload de Áudio da Tarefa')
+    can_delete_task_audio = BooleanField('Pode Excluir Áudio da Tarefa')
+    can_view_task_history = BooleanField('Pode Visualizar Histórico da Tarefa')
+    can_manage_task_comments = BooleanField('Pode Gerenciar Comentários da Tarefa')
+    can_upload_attachments = BooleanField('Pode Fazer Upload de Anexos')
+    can_manage_attachments = BooleanField('Pode Gerenciar Anexos')
+    submit = SubmitField('Salvar Papel')
+
+
+class UserForm(FlaskForm):
+    username = StringField('Nome de Usuário', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Senha')
+    role_obj = QuerySelectField(
+        'Papel',
+        query_factory=lambda: db.session.query(Role).all(),
+        get_label=lambda x: x.name,
+        allow_blank=True,
+        blank_text='Nenhum Papel Atribuído'
+    )
+    is_active_db = BooleanField('Ativo')
+    submit = SubmitField('Salvar Usuário')
+
+    def __init__(self, *args, **kwargs):
+        super(UserForm, self).__init__(*args, **kwargs)
+        # flags customizadas passadas pelo Flask-Admin
+        self.is_new_user = getattr(self, 'is_new_user', False)
+        self.original_username = getattr(self, 'original_username', None)
+        self.original_email = getattr(self, 'original_email', None)
+
+        if self.is_new_user:
+            self.password.validators = [DataRequired()]
+        else:
+            self.password.validators = [Optional()]
+
+    def validate_username(self, username):
+        if self.is_new_user or (self.original_username and username.data != self.original_username):
+            user = User.query.filter_by(username=username.data).first()
+            if user:
+                raise ValidationError('Esse nome de usuário já está em uso. Por favor, escolha outro.')
+
+    def validate_email(self, email):
+        if self.is_new_user or (self.original_email and email.data != self.original_email):
+            user = User.query.filter_by(email=email.data).first()
+            if user:
+                raise ValidationError('Esse email já está registrado. Por favor, escolha outro.')
+
+
+class GroupForm(FlaskForm):
+    name = StringField('Nome do Grupo', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=500)])
+    submit = SubmitField('Salvar Grupo')
+
+class AssignUsersToGroupForm(FlaskForm):
+    # 'coerce=int' é importante para que os valores do SelectMultipleField sejam IDs inteiros
+    users = SelectMultipleField('Usuários', coerce=int, validators=[DataRequired()], widget=ListWidget(prefix_label=False), option_widget=CheckboxInput())
+    submit = SubmitField('Atribuir Usuários')
+
+    def __init__(self, *args, **kwargs):
+        super(AssignUsersToGroupForm, self).__init__(*args, **kwargs)
+        self.users.choices = [(user.id, user.username) for user in User.query.order_by(User.username).all()]
+
+class EventPermissionForm(FlaskForm):
+    event = QuerySelectField(
+        'Evento',
+        query_factory=lambda: db.session.query(Event).all(),
+        get_label='title',
+        validators=[DataRequired()]
+    )
+    user = QuerySelectField(
+        'Usuário',
+        query_factory=lambda: db.session.query(User).all(),
+        get_label='username',
+        validators=[DataRequired()]
+    )
+    submit = SubmitField('Salvar Permissão')
+
+# --- Formulários de Tarefas ---
 
 class TaskCategoryForm(FlaskForm):
     name = StringField('Nome da Categoria de Tarefa', validators=[DataRequired(), Length(max=50)])
     description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
     submit = SubmitField('Salvar Categoria de Tarefa')
 
-    def __init__(self, *args, **kwargs):
-        super(TaskCategoryForm, self).__init__(*args, **kwargs)
-        self.original_name = kwargs.get('original_name')
+class TaskSubcategoryForm(FlaskForm):
+    name = StringField('Nome da Subcategoria', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=500)])
+    parent_category = QuerySelectField(
+        'Categoria Pai',
+        query_factory=lambda: db.session.query(TaskCategory).all(),
+        get_label='name',
+        validators=[DataRequired()]
+    )
+    checklist_template = QuerySelectField(
+        'Template de Checklist Associado',
+        query_factory=lambda: db.session.query(ChecklistTemplate).all(),
+        get_label='name',
+        allow_blank=True,
+        blank_text='Nenhum Template'
+    )
+    requires_art_approval_on_images = BooleanField('Requer aprovação de arte em imagens')
+    submit = SubmitField('Salvar Subcategoria')
 
-    def validate_name(self, name):
-        if name.data != self.original_name:
-            task_category = TaskCategory.query.filter_by(name=name.data).first()
-            if task_category:
-                raise ValidationError('Este nome de categoria de tarefa já existe. Por favor, escolha um diferente.')
+
+class CustomFieldTypeEnumField(SelectField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.choices = [(member.name, member.value) for member in CustomFieldTypeEnum]
+
+
+class ChecklistTemplateForm(FlaskForm):
+    name = StringField('Nome do Template', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Descrição', validators=[Optional(), Length(max=500)])
+    submit = SubmitField('Salvar Template')
+
+class ChecklistItemTemplateForm(FlaskForm):
+    label = StringField('Etiqueta do Item', validators=[DataRequired(), Length(max=255)])
+    field_type = CustomFieldTypeEnumField('Tipo de Campo', validators=[DataRequired()])
+    is_required = BooleanField('É Obrigatório?')
+    order = IntegerField('Ordem', validators=[DataRequired(), NumberRange(min=0)])
+    min_images = IntegerField('Mínimo de Imagens', validators=[Optional(), NumberRange(min=0)])
+    max_images = IntegerField('Máximo de Imagens', validators=[Optional(), NumberRange(min=0)])
+    options = TextAreaField('Opções (para Select/Radio, JSON formatado)', validators=[Optional()])
+    placeholder = StringField('Placeholder', validators=[Optional(), Length(max=255)])
+    submit = SubmitField('Salvar Item do Template')
+
+    def validate_options(self, field):
+        if field.data:
+            try:
+                json.loads(field.data)
+            except json.JSONDecodeError:
+                raise ValidationError('As opções devem ser um JSON válido.')
+    
+    def validate_max_images(self, field):
+        if self.min_images.data is not None and field.data is not None and field.data < self.min_images.data:
+            raise ValidationError('O máximo de imagens não pode ser menor que o mínimo de imagens.')
+
 
 class TaskForm(FlaskForm):
-    title = StringField('Título da Tarefa', validators=[DataRequired()])
+    title = StringField('Título da Tarefa', validators=[DataRequired(), Length(max=150)])
     description = TextAreaField('Descrição', validators=[Optional()])
-    notes = TextAreaField('Notas Internas (visíveis apenas para quem pode gerenciar a tarefa)', validators=[Optional()])
-    due_date = DateTimeField('Data de Vencimento', format='%Y-%m-%dT%H:%M', validators=[DataRequired()], render_kw={'type': 'datetime-local'})
+    notes = TextAreaField('Notas Internas', validators=[Optional()])
+    due_date = DateTimeField('Data e Hora de Vencimento', format='%d/%m/%Y %H:%M', validators=[DataRequired()])
+    cloud_storage_link = StringField('Link para Armazenamento na Nuvem', validators=[Optional(), Length(max=255)])
+    link_notes = TextAreaField('Notas do Link', validators=[Optional()])
+    audio_path = StringField('Caminho do Áudio', validators=[Optional(), Length(max=255)])
+    audio_duration_seconds = IntegerField('Duração do Áudio (segundos)', validators=[Optional(), NumberRange(min=0)])
 
-    cloud_storage_link = StringField('Link para Armazenamento na Nuvem', validators=[Optional()])
-    link_notes = TextAreaField('Notas sobre o Link', validators=[Optional()])
+    event = QuerySelectField(
+        'Evento Associado',
+        query_factory=lambda: db.session.query(Event).all(),
+        get_label='title',
+        allow_blank=True,
+        blank_text='Nenhum Evento'
+    )
+    task_category = QuerySelectField(
+        'Categoria da Tarefa',
+        query_factory=lambda: db.session.query(TaskCategory).all(),
+        get_label='name',
+        validators=[DataRequired()]
+    )
+    task_subcategory = QuerySelectField(
+        'Subcategoria da Tarefa',
+        query_factory=lambda: db.session.query(TaskSubcategory).all(),
+        get_label='name',
+        allow_blank=True,
+        blank_text='Nenhuma Subcategoria'
+    )
+    task_status_rel = QuerySelectField(
+        'Status da Tarefa',
+        query_factory=lambda: db.session.query(Status).filter_by(type='task').all(),
+        get_label='name',
+        validators=[DataRequired()]
+    )
+    
+    # <-- CAMPO 'ASSIGNEES' ADICIONADO AQUI!
+    assignees = QuerySelectMultipleField(
+        'Atribuído a',
+        query_factory=lambda: db.session.query(User).all(),
+        get_label='username',
+        widget=ListWidget(prefix_label=False), # Para renderizar como lista de checkboxes, por exemplo
+        option_widget=CheckboxInput(),        # Para renderizar como checkboxes
+        allow_blank=True,
+        blank_text='Ninguém Atribuído'
+    )
 
-    # === CORREÇÃO AQUI: Troca para SelectMultipleField padrão ===
-    assignees = SelectMultipleField('Atribuir a Usuários', coerce=int)
-    # ==========================================================
-
-    task_category = SelectField('Categoria da Tarefa', coerce=int, validators=[Optional()])
-    status = SelectField('Status da Tarefa', coerce=int, validators=[DataRequired()])
-
-    event = HiddenField() # Para passar o objeto do evento para a validação
-
+    is_completed = BooleanField('Tarefa Concluída')
+    completed_at = DateTimeField('Concluída em', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    completed_by_user_obj = QuerySelectField(
+        'Concluída por',
+        query_factory=lambda: db.session.query(User).all(),
+        get_label='username',
+        allow_blank=True,
+        blank_text='Ninguém'
+    )
+    creator_id = HiddenField('ID do Criador')
     submit = SubmitField('Salvar Tarefa')
 
-    def __init__(self, *args, **kwargs):
-        super(TaskForm, self).__init__(*args, **kwargs)
-        # Popula as escolhas dinamicamente
-        self.assignees.choices = [(user.id, user.username) for user in get_users()]
-        # Adiciona a opção padrão (vazia) para o SelectField de categoria de tarefa
-        task_category_choices = [(tc.id, tc.name) for tc in get_task_categories()]
-        self.task_category.choices = [(0, "-- Selecione uma Categoria de Tarefa (Opcional) --")] + task_category_choices
 
-        self.status.choices = [(s.id, s.name) for s in get_task_statuses()]
-
-    # A validação `validate_assignees` pode ser removida ou mantida dependendo se você
-    # precisa de validação extra além do `DataRequired()` se o campo for obrigatório.
-    # Por exemplo, se o campo não é obrigatório e nenhum usuário for selecionado,
-    # não há problema, então esta função é redundante se `DataRequired` não estiver lá.
-    def validate_assignees(self, field):
-        if not field.data:
-            # Caso o campo não seja obrigatório e não haja seleção, não faz nada.
-            # Se for obrigatório, adicione DataRequired() no campo 'assignees' acima.
-            pass
-
-class UserForm(FlaskForm):
-    username = StringField('Nome de Usuário', validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Senha', validators=[Optional()])
-    confirm_password = PasswordField('Confirmar Senha', validators=[EqualTo('password', message='As senhas devem ser iguais.')])
-    role_obj = SelectField('Papel do Usuário', coerce=lambda x: Role.query.get(int(x)), validators=[DataRequired()])
-    submit = SubmitField('Salvar Usuário')
-
-    def __init__(self, *args, **kwargs):
-        super(UserForm, self).__init__(*args, **kwargs)
-        self.is_new_user = kwargs.get('is_new_user', False)
-        self.original_username = kwargs.get('original_username')
-        self.original_email = kwargs.get('original_email')
-
-        self.role_obj.choices = [(r.id, r.name) for r in get_roles()]
-
-        if not self.is_new_user:
-            self.password.validators = [Optional()]
-            self.confirm_password.validators = [Optional(), EqualTo('password', message='As senhas devem ser iguais.')]
-        else:
-            self.password.validators = [DataRequired()]
-            self.confirm_password.validators = [DataRequired(), EqualTo('password', message='As senhas devem ser iguais.')]
-
-    def validate_username(self, username):
-        if self.original_username and username.data == self.original_username:
-            return
-        user = User.query.filter_by(username=username.data).first()
-        if user:
-            raise ValidationError('Esse nome de usuário já existe. Por favor, escolha um diferente.')
-
-    def validate_email(self, email):
-        if self.original_email and email.data == self.original_email:
-            return
-        user = User.query.filter_by(email=email.data).first()
-        if user:
-            raise ValidationError('Esse e-mail já existe. Por favor, escolha um diferente.')
-
-class AdminRoleForm(FlaskForm):
-    name = StringField('Nome do Papel', validators=[DataRequired(), Length(max=50)])
-    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
-
-    # Permissões de Evento
-    can_view_event = BooleanField('Pode Visualizar Eventos')
-    can_edit_event = BooleanField('Pode Editar Eventos')
-    can_manage_permissions = BooleanField('Pode Gerenciar Permissões de Eventos')
-    can_create_event = BooleanField('Pode Criar Eventos')
-
-    # Permissões de Tarefa
-    can_create_task = BooleanField('Pode Criar Tarefas')
-    can_edit_task = BooleanField('Pode Editar Tarefas')
-    can_delete_task = BooleanField('Pode Excluir Tarefas')
-    can_complete_task = BooleanField('Pode Concluir Tarefas')
-    can_uncomplete_task = BooleanField('Pode Reverter Conclusão de Tarefas')
-    can_upload_task_audio = BooleanField('Pode Fazer Upload de Áudio em Tarefas')
-    can_delete_task_audio = BooleanField('Pode Excluir Áudio de Tarefas')
-    can_view_task_history = BooleanField('Pode Visualizar Histórico de Tarefas')
-    can_manage_task_comments = BooleanField('Pode Gerenciar Comentários em Tarefas')
-
-    # --- NOVO: Permissões de anexo (ADICIONADO AQUI) ---
-    can_upload_attachments = BooleanField('Pode Fazer Upload de Anexos em Tarefas')
-    can_manage_attachments = BooleanField('Pode Gerenciar (Excluir) Anexos em Tarefas')
-    # --- FIM NOVO ---
-
-    submit = SubmitField('Salvar Papel')
-
-    # --- REMOVIDO: validate_name para AdminRoleForm, pois a validação de unicidade
-    #              já é tratada no `on_model_change` da `RoleAdminView` em `app.py`.
-    #              Isso resolve o `AttributeError: 'AdminRoleForm' object has no attribute 'obj'`.
-    # def validate_name(self, name):
-    #     if self.obj and self.obj.name == name.data:
-    #         return
-    #     role = Role.query.filter_by(name=name.data).first()
-    #     if role:
-    #         raise ValidationError('Este nome de papel já existe. Por favor, escolha um diferente.')
-
-
-class GroupForm(FlaskForm):
-    name = StringField('Nome do Grupo', validators=[DataRequired(), Length(max=50)])
-    description = TextAreaField('Descrição', validators=[Optional(), Length(max=200)])
-    submit = SubmitField('Salvar Grupo')
-
-    def __init__(self, *args, **kwargs):
-        super(GroupForm, self).__init__(*args, **kwargs)
-        self.original_name = kwargs.get('original_name')
-
-    def validate_name(self, name):
-        if name.data != self.original_name:
-            group = Group.query.filter_by(name=name.data).first()
-            if group:
-                raise ValidationError('Este nome de grupo já existe. Por favor, escolha um diferente.')
-
-class AssignUsersToGroupForm(FlaskForm):
-    users = MultipleCheckboxField('Usuários', coerce=int)
-    submit = SubmitField('Atribuir Usuários')
-
-    def __init__(self, *args, **kwargs):
-        super(AssignUsersToGroupForm, self).__init__(*args, **kwargs)
-        self.users.choices = [(u.id, u.username) for u in User.query.order_by(User.username).all()]
-
-class EventPermissionForm(FlaskForm):
-    user = SelectField('Usuário', coerce=int, validators=[DataRequired()])
-    # REMOVIDO: group e role fields
-    # group = SelectField('Grupo', coerce=int, validators=[Optional()])
-    # role = SelectField('Papel de Permissão', coerce=int, validators=[DataRequired()])
-    
-    event = HiddenField() # Para passar o objeto do evento para a validação
-    submit = SubmitField('Adicionar Permissão')
-
-    def __init__(self, *args, **kwargs):
-        super(EventPermissionForm, self).__init__(*args, **kwargs)
-        
-        # --- DEBUG TEMPORÁRIO ---
-        all_users = User.query.order_by(User.username).all()
-        print(f"DEBUG EventPermissionForm: Encontrados {len(all_users)} usuários.")
-        # REMOVIDO: DEBUG para grupos e papéis
-        # all_groups = Group.query.order_by(Group.name).all()
-        # print(f"DEBUG EventPermissionForm: Encontrados {len(all_groups)} grupos.")
-        # all_roles = Role.query.order_by(Role.name).all()
-        # print(f"DEBUG EventPermissionForm: Encontrados {len(all_roles)} papéis.")
-        # --- FIM DEBUG TEMPORÁRIO ---
-
-        self.user.choices = [(0, "-- Selecione um Usuário --")] + [(u.id, u.username) for u in all_users]
-        # REMOVIDO: group.choices e role.choices
-        # self.group.choices = [(0, "-- Selecione um Grupo (Opcional) --")] + [(g.id, g.name) for g in all_groups]
-        # self.role.choices = [(r.id, r.name) for r in all_roles]
-
-    # --- CORRIGIDO E SIMPLIFICADO: A validação agora só lida com o usuário ---
-    def validate(self, extra_validators=None):
-        if not super(EventPermissionForm, self).validate(extra_validators=extra_validators):
-            return False
-
-        # Verifica se um usuário foi realmente selecionado (DataRequired no campo user já faz isso)
-        if self.user.data == 0:
-            self.user.errors.append('Por favor, selecione um usuário.')
-            return False
-
-        # Validação para evitar permissões duplicadas (usuário já tem permissão para este evento)
-        event_id = self.event.data if self.event.data else None
-        if event_id:
-            existing_permission = db.session.query(EventPermission).filter_by(event_id=event_id, user_id=self.user.data).first()
-            
-            # self.obj é usado para edições; se não for None, significa que estamos editando uma permissão existente.
-            # O objetivo é evitar adicionar uma permissão duplicada, mas permitir a edição da mesma.
-            if existing_permission and (not hasattr(self, 'obj') or (hasattr(self, 'obj') and self.obj.id != existing_permission.id)):
-                self.user.errors.append('Este usuário já tem uma permissão para este evento.')
-                return False
-
-        return True
-
-class SearchForm(FlaskForm):
-    query = StringField('Pesquisar', validators=[DataRequired()])
-    submit = SubmitField('Buscar')
+# --- Formulário de Comentários ---
 
 class CommentForm(FlaskForm):
-    content = TextAreaField('Seu Comentário', validators=[DataRequired(), Length(min=1, max=500)])
+    content = TextAreaField('Comentário', validators=[DataRequired(), Length(min=1, max=1000)])
+    task = QuerySelectField(
+        'Tarefa',
+        query_factory=lambda: db.session.query(Task).all(),
+        get_label='title',
+        validators=[DataRequired()]
+    )
+    author = QuerySelectField(
+        'Autor',
+        query_factory=lambda: db.session.query(User).all(),
+        get_label='username',
+        validators=[DataRequired()]
+    )
     submit = SubmitField('Adicionar Comentário')
 
-# =========================================================================
-# NOVO: Formulário para upload de anexos (ADICIONADO AQUI)
-# =========================================================================
+
+# --- Formulário de Pesquisa ---
+
+class SearchForm(FlaskForm):
+    search_query = StringField('Pesquisar', validators=[DataRequired()])
+    submit = SubmitField('Pesquisar')
+
+
+# --- Formulário de Anexo (AttachmentForm) ---
+
 class AttachmentForm(FlaskForm):
-    file = FileField('Selecionar Anexo', validators=[
-        DataRequired(message='Por favor, selecione um arquivo.'),
-        FileAllowed(['jpg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip', 'rar'],
-                    message='Tipo de arquivo não permitido.')
+    filename = StringField('Nome do Arquivo', validators=[DataRequired(), Length(min=2, max=100)])
+    unique_filename = StringField('Nome Único do Arquivo', validators=[DataRequired(), Length(max=120)], render_kw={'readonly': True})
+    storage_path = StringField('Caminho de Armazenamento', validators=[DataRequired(), Length(max=200)], render_kw={'readonly': True})
+    mimetype = StringField('Tipo MIME', validators=[Optional(), Length(max=50)], render_kw={'readonly': True})
+    filesize = IntegerField('Tamanho do Arquivo (bytes)', validators=[Optional(), NumberRange(min=0)], render_kw={'readonly': True})
+    uploaded_at = DateTimeField('Data/Hora Upload', format='%Y-%m-%dT%H:%M:%S', validators=[DataRequired()], render_kw={'readonly': True})
+
+    # ESTE É O CAMPO 'file' ADICIONADO PARA O UPLOAD DE ARQUIVOS
+    file = FileField('Upload de Arquivo', validators=[
+        Optional(), # É opcional porque em edições você pode não querer reenviar o arquivo
+        FileAllowed(['jpg', 'png', 'jpeg', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip', 'rar', 'mp3', 'mp4'], 'Tipos de arquivo não permitidos!')
     ])
-    submit = SubmitField('Anexar Arquivo')
-# =========================================================================
-# FIM NOVO FORMULÁRIO: AttachmentForm
-# =========================================================================
+
+    task = QuerySelectField(
+        'Tarefa Associada',
+        query_factory=lambda: db.session.query(Task).all(),
+        get_label=lambda t: f'{t.title} (Evento: {t.event.title})' if t.event else t.title,
+        allow_blank=True,
+        blank_text='Nenhuma Tarefa'
+    )
+    event = QuerySelectField(
+        'Evento Associado',
+        query_factory=lambda: db.session.query(Event).all(),
+        get_label=lambda e: e.title,
+        allow_blank=True,
+        blank_text='Nenhum Evento'
+    )
+    uploader = QuerySelectField(
+        'Enviado por',
+        query_factory=lambda: db.session.query(User).all(),
+        get_label=lambda u: u.username,
+        allow_blank=True,
+        blank_text='Usuário Desconhecido'
+    )
+    art_approved_by = QuerySelectField(
+        'Aprovado por',
+        query_factory=lambda: db.session.query(User).all(),
+        get_label=lambda u: u.username,
+        allow_blank=True,
+        blank_text='Ninguém'
+    )
+    task_checklist_item = QuerySelectField(
+        'Item de Checklist da Tarefa',
+        query_factory=lambda: db.session.query(TaskChecklistItem).options(joinedload(TaskChecklistItem.checklist_item_template)).all(),
+        get_label=lambda item: item.custom_label or (item.checklist_item_template.label if item.checklist_item_template else f'Item {item.id} (Sem Template)'),
+        allow_blank=True,
+        blank_text='Nenhum Item de Checklist'
+    )
+
+    art_approval_status = SelectField(
+        'Status Aprovação Arte',
+        choices=[
+            ('not_required', 'Não Obrigatório'),
+            ('pending', 'Pendente'),
+            ('approved', 'Aprovado'),
+            ('rejected', 'Reprovado')
+        ],
+        coerce=str,
+        validators=[DataRequired()]
+    )
+    art_feedback = TextAreaField('Feedback da Arte', validators=[Optional(), Length(max=500)])
+    art_approval_timestamp = DateTimeField('Data/Hora Aprovação Arte', format='%Y-%m-%dT%H:%M:%S', validators=[Optional()], render_kw={'readonly': True})
+    submit = SubmitField('Salvar Anexo')

@@ -51,11 +51,11 @@
                         {# --- NOVAS AÇÕES SUGERIDAS (PRECISAM DE IMPLEMENTAÇÃO NO BACKEND) --- #}
 
                         {# Ação: Visualizar Inscrições/Participantes #}
-                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT EM SEU main.py OU ROTAS #}
+                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT EM SEU py OU ROTAS #}
                         {# e talvez uma permissão como current_user.can_view_event_registrations #}
                         {# Por enquanto, usando is_authenticated. Altere para uma permissão específica se houver. #}
                         {% if current_user.is_authenticated and current_user.can_view_event_registrations %}
-                            {# O endpoint 'main.view_event_registrations' ainda precisa ser criado no seu main.py #}
+                            {# O endpoint 'view_event_registrations' ainda precisa ser criado no seu py #}
                             <a href="{{ url_for('main.view_event_registrations', event_id=event.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                 Visualizar Participantes
                                 <i class="fas fa-users fa-fw"></i>
@@ -68,7 +68,7 @@
                         {# Por enquanto, usando is_admin como placeholder. #}
                         {% if current_user.is_authenticated and current_user.can_publish_event %}
                             {% if event.is_published %} {# Supondo que 'event' tem um atributo 'is_published' (True/False) #}
-                                {# O endpoint 'main.unpublish_event' ainda precisa ser criado no seu main.py #}
+                                {# O endpoint 'unpublish_event' ainda precisa ser criado no seu py #}
                                 <form action="{{ url_for('main.unpublish_event', event_id=event.id) }}" method="POST" style="display: inline; width: 100%;">
                                     <button type="submit" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-warning w-100">
                                         Despublicar Evento
@@ -76,7 +76,7 @@
                                     </button>
                                 </form>
                             {% else %}
-                                {# O endpoint 'main.publish_event' ainda precisa ser criado no seu main.py #}
+                                {# O endpoint 'publish_event' ainda precisa ser criado no seu py #}
                                 <form action="{{ url_for('main.publish_event', event_id=event.id) }}" method="POST" style="display: inline; width: 100%;">
                                     <button type="submit" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-success w-100">
                                         Publicar Evento
@@ -87,7 +87,7 @@
                         {% endif %}
 
                         {# Ação: Duplicar Evento #}
-                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT EM SEU main.py OU ROTAS #}
+                        {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT EM SEU py OU ROTAS #}
                         {% if current_user.is_authenticated and current_user.can_duplicate_event %} {# Usando a permissão mais específica #}
                             <form action="{{ url_for('main.duplicate_event', event_id=event.id) }}" method="POST" style="display: inline; width: 100%;">
                                 <button type="submit" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center w-100">
@@ -101,7 +101,7 @@
                         {# ESTA AÇÃO PRECISA DE UM NOVO ENDPOINT E LÓGICA DE RELATÓRIOS NO BACKEND #}
                         {# Por enquanto, usando is_admin como placeholder. #}
                         {% if current_user.is_authenticated and current_user.can_view_event_reports %}
-                            {# O endpoint 'main.event_reports' ainda precisa ser criado no seu main.py #}
+                            {# O endpoint 'event_reports' ainda precisa ser criado no seu py #}
                             <a href="{{ url_for('main.event_reports', event_id=event.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                 Relatórios e Estatísticas
                                 <i class="fas fa-chart-bar fa-fw"></i>
@@ -420,7 +420,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não, Manter Evento</button>
-                        {# O endpoint 'main.cancel_event' ainda precisa ser criado no seu main.py #}
+                        {# O endpoint 'cancel_event' ainda precisa ser criado no seu py #}
                         <form id="cancelEventForm" method="POST" action="{{ url_for('main.cancel_event', event_id=event.id) }}" style="display: inline;">
                             <button type="submit" class="btn btn-warning">Sim, Cancelar Evento</button>
                         </form>

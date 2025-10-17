@@ -7,11 +7,19 @@
     box-sizing: border-box;
 }
 
+/* Variáveis CSS para cores dos ícones */
+:root {
+    --event-icon-primary-color: #206bc4; /* Azul Oceano */
+    --event-icon-secondary-color: #0dcaf0; /* Verde Água/Ciano (opcional para gradiente) */
+    --task-icon-primary-color: #fd7e14; /* Laranja Vibrante */
+    --task-icon-secondary-color: #6610f2; /* Roxo Intenso (opcional para gradiente) */
+}
+
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f4; /* Mantido seu fundo de corpo existente */
     color: #333;
     line-height: 1.6;
+    background-color: #f4f4f4; /* Mantido seu fundo de corpo existente */
 }
 /* ------------------------------------------------------------- */
 /* Ajustes para o Wrapper do Conteúdo Principal */
@@ -22,7 +30,7 @@ body {
     margin-left: auto; /* Centraliza o wrapper horizontalmente */
     margin-right: auto; /* Centraliza o wrapper horizontalmente */
     padding-left: 1.5rem; /* Espaçamento interno nas laterais para evitar que o conteúdo "cole" nas bordas */
-padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
+    padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
 }
 /* Ajustes de responsividade para o wrapper em telas menores */
 @media (max-width: 767.98px) { /* Para telas menores que 768px (sm e xs) */
@@ -48,21 +56,7 @@ padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
 h1 {
     text-align: center;
     margin-bottom: 20px;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 20px;
-}
-h1 {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #007bff;
+    color: #007bff; /* Mantido o ajuste de cor do h1 */
 }
 
 /* Mantido o estilo genérico de form, mas os estilos mais específicos abaixo sobrepõem onde aplicável */
@@ -100,10 +94,7 @@ button:hover {
 }
 
 /* -- Estilos de Formulário Elegantes e Modernos -- */
-/* -- Estilos de Formulário Elegantes e Modernos -- */
 
-/* Container principal do formulário - content-section */
-.content-section {
 /* Container principal do formulário - content-section */
 .content-section {
     background: #ffffff; /* Fundo branco para o "cartão" do formulário */
@@ -121,7 +112,6 @@ legend.border-bottom {
     border-bottom: 2px solid #dee2e6; /* Linha divisória um pouco mais pronunciada */
     padding-bottom: 1rem; /* Espaço entre o título e a linha */
     margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
-margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
     text-align: center; /* Centraliza o título */
 }
 /* Rótulos dos campos específicos de formulário */
@@ -139,7 +129,6 @@ margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
     margin-top: 0.5rem; /* Espaço acima da mensagem de erro */
     display: block; /* Garante que o erro esteja em sua própria linha */
     background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
-background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
     padding: 0.4rem 0.75rem; /* Preenchimento interno */
     border-radius: 0.25rem; /* Bordas levemente arredondadas */
     border: 1px solid rgba(220, 53, 69, 0.2); /* Borda sutil de erro */
@@ -157,8 +146,6 @@ background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
 /* Campos de texto em foco */
 .form-control:focus {
     border-color: #17a2b8; /* Borda na cor de acento */
-.form-control:focus {
-    border-color: #17a2b8; /* Borda na cor de acento */
     box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); /* Sombra de foco na cor de acento */
     outline: none; /* Remove o outline padrão do navegador */
 }
@@ -172,15 +159,6 @@ background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
     transition: all 0.2s ease-in-out; /* Transição suave para hover */
     margin-top: 1.5rem; /* Espaço acima do botão */
     width: 100%; /* Botão com largura total, para melhor UX em mobile */
-}
-
-/* Botão de submit em hover/focus */
-.btn-outline-info:hover,
-.btn-outline-info:focus {
-}
-/* Botão de submit em hover/focus */
-.btn-outline-info:hover,
-.btn-outline-info:focus {
 }
 
 /* Botão de submit em hover/focus */
@@ -205,9 +183,6 @@ background-color: rgba(220, 53, 69, 0.05); /* Fundo sutil para erros */
     .btn-outline-info {
         font-size: 1rem; /* Ajusta o tamanho do botão para mobile */
         padding: 0.6rem 1.2rem;
-    }
-}
-padding: 0.6rem 1.2rem;
     }
 }
 
@@ -235,9 +210,6 @@ a {
 a:hover {
     background-color: #0056b3;
 }
-a:hover {
-    background-color: #0056b3;
-}
 
 /* Classes para mensagens de erro/sucesso (Bootstrap alert classes são usadas no base.html) */
 .flash-message {
@@ -249,7 +221,6 @@ a:hover {
 .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 .flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-/* Efeitos visuais sutis para o Painel de Eventos (Adicionado para melhorias de UX) */
 /* Efeitos visuais sutis para o Painel de Eventos (Adicionado para melhorias de UX) */
 
 /* Efeito de hover para cards */
@@ -275,9 +246,6 @@ a:hover {
 .btn-outline-primary:focus,
 .btn-outline-secondary:focus,
 .btn-outline-danger:focus,
-.btn-outline-primary:focus,
-.btn-outline-secondary:focus,
-.btn-outline-danger:focus,
 .btn-outline-info:focus { /* Adicionado btn-outline-info aqui também */
     box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
 }
@@ -296,7 +264,6 @@ a:hover {
 .text-overdue-red { color: #FF0000 !important; }
 .text-long-term-green { color: #008000 !important; }
 .text-urgent-orange { color: #FF4500 !important; }
-.text-alert-yellow { color: #FFD700 !important; }
 .text-alert-yellow { color: #FFD700 !important; }
 
 /* NOVA CLASSE PARA PADRONIZAR FONTES EM 12px (para textos de detalhes do evento em /home E tarefas em /event) */
@@ -329,12 +296,6 @@ a:hover {
 .task-card .card-title {
     margin-bottom: 0.25rem;
 }
-height: 100%; 
-}
-
-.task-card .card-title {
-    margin-bottom: 0.25rem;
-}
 
 .task-card .card-text {
     margin-bottom: 0.25rem;
@@ -346,10 +307,6 @@ height: 100%;
     font-size: 12px !important; /* Garante 12px para badges dentro dos cards de tarefa */
 }
 
-.task-card .badge.bg-info {
-    margin-right: 0.2rem;
-    margin-bottom: 0.2rem;
-}
 .task-card .badge.bg-info {
     margin-right: 0.2rem;
     margin-bottom: 0.2rem;
@@ -370,7 +327,6 @@ height: 100%;
 }
 
 /* ========================================================== */
-/* NOVOS ESTILOS PARA A PÁGINA DE CHANGELOG (COM MODAL) - AJUSTADO */
 /* NOVOS ESTILOS PARA A PÁGINA DE CHANGELOG (COM MODAL) - AJUSTADO */
 /* ========================================================== */
 .table-responsive .changelog-table {
@@ -406,7 +362,6 @@ height: 100%;
 }
 
 .table-responsive .changelog-table th:nth-child(3),
-.table-responsive .changelog-table td:nth-child(3) {
 .table-responsive .changelog-table td:nth-child(3) {
     width: 80px;
     min-width: 80px;
@@ -444,9 +399,6 @@ height: 100%;
         font-size: 0.7em;
         padding: 0.3rem;
     }
-font-size: 0.7em;
-        padding: 0.3rem;
-    }
     .table-responsive .changelog-table th:nth-child(1), .table-responsive .changelog-table td:nth-child(1),
     .table-responsive .changelog-table th:nth-child(2), .table-responsive .changelog-table td:nth-child(2),
     .table-responsive .changelog-table th:nth-child(3), .table-responsive .changelog-table td:nth-child(3),
@@ -457,20 +409,10 @@ font-size: 0.7em;
         width: auto;
         min-width: auto;
     }
-white-space: normal;
-        width: auto;
-        min-width: auto;
-    }
     .table-responsive .changelog-table td:nth-child(6) {
         max-width: none;
     }
 }
-.modal-body pre {
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-}
-
 .modal-body pre {
     white-space: pre-wrap;
     word-break: break-word;
@@ -510,18 +452,11 @@ white-space: normal;
     table-layout: fixed;
     width: 100%;
 }
-.user-data-table {
-    table-layout: fixed;
-    width: 100%;
-}
 
 .user-data-table th,
 .user-data-table td {
     white-space: nowrap;
     padding: 0.5rem 0.75rem;
-    font-size: 0.85em;
-    vertical-align: middle;
-padding: 0.5rem 0.75rem;
     font-size: 0.85em;
     vertical-align: middle;
     text-align: left;
@@ -556,7 +491,6 @@ padding: 0.5rem 0.75rem;
     width: 120px;
     min-width: 120px;
 }
-
 .user-data-table th:nth-child(5),
 .user-data-table td:nth-child(5) {
     width: 140px;
@@ -565,11 +499,6 @@ padding: 0.5rem 0.75rem;
 .user-data-table th:nth-child(6),
 .user-data-table td:nth-child(6) {
     width: 140px;
-    min-width: 140px;
-}
-
-.user-data-table th:nth-child(7),
-width: 140px;
     min-width: 140px;
 }
 
@@ -607,12 +536,10 @@ width: 140px;
 }
 /* ========================================================== */
 /* NOVOS ESTILOS PARA A BARRA DE NAVEGAÇÃO (NAVBAR) - AJUSTADO */
-/* NOVOS ESTILOS PARA A BARRA DE NAVEGAÇÃO (NAVBAR) - AJUSTADO */
 /* ========================================================== */
 
 /* Estilo para garantir que o espaçamento entre os itens seja consistente */
 .navbar-nav .nav-item {
-    /* Removido margin-right: 15px; para evitar overflow prematuro. */
     /* O espaçamento será agora gerenciado principalmente pelo padding dos .nav-link e as classes de espaçamento do Bootstrap (e.g., me-auto, ms-auto) */
 }
 
@@ -626,8 +553,6 @@ width: 140px;
 .navbar-brand,
 .dropdown-item {
     display: flex;
-    align-items: center; /* Alinha verticalmente ícone e texto */
-display: flex;
     align-items: center; /* Alinha verticalmente ícone e texto */
     white-space: nowrap; /* Impede que o texto quebre para a linha de baixo */
 }
@@ -648,8 +573,6 @@ display: flex;
 /* No breakpoint 'lg' (991.98px) e abaixo, remove o margin-left extra do botão Sair para comprimir */
 @media (max-width: 991.98px) {
     .navbar-nav.ms-auto .nav-item .btn {
-@media (max-width: 991.98px) {
-    .navbar-nav.ms-auto .nav-item .btn {
         margin-left: 0 !important; /* Sobrescreve ms-lg-2 do Bootstrap para telas menores */
     }
 }
@@ -668,9 +591,6 @@ display: flex;
 }
 /* -- Estilos para os Cards de Tarefas (Task Cards) -- */
 /* Já tem o height: 100% definido acima, que é o que precisamos */
-/* .task-card .card-body já tem height: 100% definido acima */
-
-.task-card .card-title {
 /* .task-card .card-body já tem height: 100% definido acima */
 
 .task-card .card-title {
@@ -696,9 +616,6 @@ display: flex;
 
 /* -- Estilo para Truncamento de Descrição e Notas -- */
 .task-text-truncate {
-}
-/* -- Estilo para Truncamento de Descrição e Notas -- */
-.task-text-truncate {
     white-space: nowrap; /* Impede a quebra de linha */
     overflow: hidden; /* Esconde o conteúdo que excede a largura */
     text-overflow: ellipsis; /* Adiciona reticências ao final */
@@ -716,8 +633,6 @@ display: flex;
     /* Remover font-size: 0.8em; pois agora fa-xs no HTML controla (12px) */
     color: var(--bs-primary); /* Cor primária do Bootstrap para destaque */
 }
-/* Removido .task-text-truncate small { display: inline; } pois agora usamos spans ou divs diretamente */
-/* -- Estilo para Botão de Link de Armazenamento -- */
 /* -- Estilo para Botão de Link de Armazenamento -- */
 .task-card .btn.btn-outline-secondary.btn-sm {
     padding: .25rem .5rem; /* Ajuste se preferir mais preenchimento para o ícone */
@@ -734,7 +649,6 @@ display: flex;
     flex-shrink: 0; /* Impede que os botões encolham em telas pequenas */
     vertical-align: middle; /* Alinha o elemento ao meio da linha */
     line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
-line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
     box-sizing: border-box; /* Assegura que padding e border sejam incluídos na largura/altura */
     text-decoration: none; /* Remove sublinhado padrão de links, se aplicável */
 }
@@ -755,8 +669,6 @@ line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
 /* -- Ajustes no Player de Áudio -- */
 .audio-player-display {
     margin-top: 0.5rem !important;
-.audio-player-display {
-    margin-top: 0.5rem !important;
     margin-bottom: 0.5rem !important;
 }
 .audio-player-display label {
@@ -765,10 +677,9 @@ line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
 }
 .audio-player-display audio {
     width: 100%;
-    height: 30px; /* Torna o player de áudio mais compacto */
+    height: 30px; /* Torna o player de audio mais compacto */
     margin-top: 0.25rem;
 }
-/* Removido .audio-player-display p.small para deixar o text-size-12px controlar */
 
 /* Ajuste para o badge de 'Atribuída a' */
 .task-card .card-text .badge {
@@ -780,49 +691,108 @@ line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
     align-items: center;
 }
 /* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
-}
-
-/* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
 .btn-compact-icon {
     padding: 0.25rem 0.45rem !important; /* Reduz o padding horizontal e vertical */
     line-height: 1 !important;          /* Garante que a altura seja mínima */
     font-size: 0.75rem !important;      /* Força o tamanho da fonte do ícone */
 }
 
-/* --- Responsividade do FullCalendar --- */
-/* Estilos de Eventos: Mostra Ícone no Mobile, Título no Desktop */
+/* --- FullCalendar Specific Overrides to ensure transparency --- */
+/* These rules target specific FullCalendar elements and force transparency
+   to prevent the default background colors (tarjas) from appearing. */
+
+/* Target the main event container */
+.fc-daygrid-event {
+    background-color: transparent !important;
+    border: none !important;
+    color: transparent !important; /* Hides any residual text */
+    overflow: visible !important; /* Essential for shadows/transforms to not be clipped */
+    /* Ensure no padding or margin from FC defaults pushing content */
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important; /* Allow height to adjust to icon size */
+    min-height: auto !important; /* Reset min-height */
+}
+
+/* Target inner containers that might hold background/border color */
+.fc-daygrid-event .fc-event-start,
+.fc-daygrid-event .fc-event-end,
+.fc-daygrid-event .fc-event-time,
+.fc-daygrid-event .fc-event-title,
+.fc-daygrid-event .fc-event-title-wrap,
+.fc-daygrid-event .fc-event-main,
+.fc-daygrid-event .fc-event-main-harness,
+.fc-daygrid-event-dot {
+    background-color: transparent !important;
+    border: none !important;
+    color: transparent !important; /* Hides any residual text */
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important; /* Compact line height */
+    height: auto !important;
+    min-height: auto !important;
+}
+
+/* Make sure the internal content wrapper is also transparent and properly aligned */
 .fc-event-display-wrapper {
-    display: flex;
-    align-items: center; /* Alinha verticalmente ícone e texto */
-    justify-content: center; /* Centraliza horizontalmente (útil para ícone-only) */
-    width: 100%; /* Ocupa a largura total para ajudar na centralização */
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 20px !important; /* Keep a minimum height for visibility */
+    height: auto;
+    width: 100%;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-sizing: border-box;
+    flex-wrap: wrap; /* Allows icons to wrap to next line if space is tight */
+    gap: 2px; /* Small gap between icons if they are on the same line */
 }
-.fc-event-display-wrapper .fc-event-task-icon,
+
+/* Hide default title text in dayGrid views */
+.fc-event-display-wrapper .fc-event-title-text {
+    display: none !important;
+}
+
+/* Consolidated style for Font Awesome icons */
+.fc-event-display-wrapper .fas { /* Seleciona especificamente a classe Font Awesome */
+    /* Para corrigir ícones empilhados: torná-los inline-block */
+    display: inline-block !important; /* CRUCIAL para layout horizontal */
+    vertical-align: middle !important; /* Alinha-os bem se tiverem tamanhos diferentes */
+
+    font-family: 'Font Awesome 5 Free' !important; /* GARANTE a aplicação da fonte Font Awesome */
+    font-weight: 900 !important; /* Força o estilo 'solid' para muitos ícones Font Awesome */
+    font-size: 1.3em !important;
+    line-height: 1;
+    margin: 0 1px; /* Margem ainda menor para compactação */
+    padding: 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease-in-out;
+    background-color: transparent !important; /* Garante que o próprio ícone não tenha fundo */
+}
+
+
+/* Efeito de hover nos ícones para interatividade */
+.fc-event-display-wrapper .fas:hover {
+    transform: scale(1.1); /* Ícone cresce um pouco ao passar o mouse */
+}
+
+/* Cores específicas para ícones de Tarefa e Evento */
+.fc-event-display-wrapper .fc-event-task-icon {
+    color: var(--task-icon-primary-color) !important;
+}
+
 .fc-event-display-wrapper .fc-event-event-icon {
-    display: none; /* Por padrão, esconde os ícones */
+    color: var(--event-icon-primary-color) !important;
 }
-.fc-event-display-wrapper .fc-event-title-text {
-}
-.fc-event-display-wrapper .fc-event-title-text {
-    display: block; /* Por padrão, mostra o título */
-    flex-grow: 1; /* Permite que o título ocupe o espaço */
-    text-align: left; /* Alinhamento padrão do título */
-    white-space: nowrap; /* Tenta manter o título em uma linha */
-    overflow: hidden; /* Esconde overflow */
-    text-overflow: ellipsis; /* Adiciona elipses */
-    font-size: 0.85em; /* Tamanho da fonte padrão para eventos */
-font-size: 0.85em; /* Tamanho da fonte padrão para eventos */
-    line-height: 1.2; /* Altura da linha padrão */
-    color: inherit; /* Herda a cor do texto do evento */
-}
+
 /* Estilos específicos para eventos no dayGridMonth/dayGridWeek */
 .fc-daygrid-event .fc-event-display-wrapper {
     background: transparent !important; /* Fundo transparente para o wrapper dentro do evento */
     border: none !important; /* Remove borda para o wrapper dentro do evento */
     padding: 0 !important; /* Remove padding para o wrapper dentro do evento */
     height: auto; /* Altura automática */
-height: auto; /* Altura automática */
-    min-height: 20px; /* Garante altura mínima para ícones */
+    min-height: auto !important; /* Garante que a altura se ajuste aos ícones */
     width: 100%; /* Ocupa largura total */
 }
 
@@ -847,9 +817,6 @@ height: auto; /* Altura automática */
     /* Nomes dos dias da semana (Dom, Seg, Ter...) */
     .fc-col-header-cell-cushion { 
         font-size: 0.8em !important;
-        padding: 0.2em !important;
-    }
-font-size: 0.8em !important;
         padding: 0.2em !important;
     }
 
@@ -877,8 +844,6 @@ font-size: 0.8em !important;
         padding: 0.2em 0.5em !important; 
         font-size: 0.9em !important; /* Aumentado */
     }
-font-size: 0.9em !important; /* Aumentado */
-    }
 
     /* Ajusta o título do calendário (chunk central da toolbar) */
     .fc-toolbar-chunk:nth-child(2) { 
@@ -886,31 +851,6 @@ font-size: 0.9em !important; /* Aumentado */
         margin-bottom: 1rem !important; 
         justify-content: center !important; 
     }
-/* Eventos/Tarefas em Mobile (dayGridMonth/dayGridWeek) - Mostra SÓ Ícone */
-    .fc-daygrid-event .fc-event-display-wrapper {
-        padding: 0 !important; 
-        min-height: 20px !important; 
-        background: transparent !important; 
-        border: none !important; 
-        display: flex !important; 
-        justify-content: center !important; 
-        align-items: center !important; 
-        width: 100% !important; 
-    }
-    .fc-daygrid-event .fc-event-display-wrapper .fc-event-title-text {
-        display: none !important; /* Esconde o título */
-    }
-    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
-}
-    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
-    .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
-        display: block !important; /* Mostra o ícone */
-        font-size: 1em !important; /* Tamanho do ícone */
-    }
-    .fc-event-task-icon { color: #ffc107 !important; } /* Cor amarela para tarefa */
-}
-    .fc-event-task-icon { color: #ffc107 !important; } /* Cor amarela para tarefa */
-    .fc-event-event-icon { color: #007bff !important; } /* Cor azul para evento */
     
     /* Número do dia na célula do calendário */
     .fc-daygrid-day-number { font-size: 0.8em !important; }
@@ -919,7 +859,6 @@ font-size: 0.9em !important; /* Aumentado */
 /* Estilos para truncamento de títulos na visualização de lista em mobile */
     .fc-list-event-title-link { /* Nosso <a> dentro da <td>.fc-list-event-title */
         display: block; /* Essencial para que text-overflow: ellipsis funcione */
-display: block; /* Essencial para que text-overflow: ellipsis funcione */
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -934,14 +873,10 @@ display: block; /* Essencial para que text-overflow: ellipsis funcione */
     .fc-list-event-title {
         min-width: 0; /* Permite que a célula encolha se necessário */
         flex-grow: 1; /* Permite que ela ocupe o espaço restante */
-flex-grow: 1; /* Permite que ela ocupe o espaço restante */
     }
     /* Certifica que o item da lista usa display flex para melhor responsividade */
     .fc-list-item > td {
         white-space: nowrap; /* Para os outros TDs (tempo, dot) */
-    }
-    .fc-list-item {
-white-space: nowrap; /* Para os outros TDs (tempo, dot) */
     }
     .fc-list-item {
         display: flex; /* Transforma a linha da lista em um flex container */
@@ -950,10 +885,6 @@ white-space: nowrap; /* Para os outros TDs (tempo, dot) */
     .fc-list-event-time, .fc-list-event-marker {
         flex-shrink: 0; /* Impede que o tempo e o marcador encolham */
     }
-    /* Esconde o painel lateral no mobile */
-    .event-detail-sidebar {
-        display: none !important;
-    }
 }
 /* ========================================================== */
 /* ESTILOS PARA DESKTOP (min-width: 992px) - ATUALIZADO */
@@ -961,17 +892,13 @@ white-space: nowrap; /* Para os outros TDs (tempo, dot) */
 @media (min-width: 992px) {
     /* Título principal da página do calendário */
     .calendar-page-title {
-        font-size: 2.5rem !important; 
+        font-size: 2rem !important;
         text-align: left;
     }
 
     /* Título do FullCalendar (ex: "Setembro 2025") */
-    .fc-toolbar-title {
-}
-
-    /* Título do FullCalendar (ex: "Setembro 2025") */
     .fc-toolbar-title { 
-        font-size: 2em !important; /* Aumentado para desktop */
+        font-size: 1.8em !important;
     }
     /* Nomes dos dias da semana (Dom, Seg, Ter...) */
     .fc-col-header-cell-cushion { 
@@ -994,43 +921,10 @@ white-space: nowrap; /* Para os outros TDs (tempo, dot) */
     }
     .fc-toolbar-chunk:nth-child(2) { /* Title (e.g., September 2025) */
         order: 0 !important;
-order: 0 !important; 
         margin-bottom: 0 !important;
     }
-/* Eventos/Tarefas em Desktop (dayGridMonth/dayGridWeek) - Mostra SÓ Título */
-    .fc-daygrid-event .fc-event-display-wrapper {
-        /* Restaura estilos padrão do FullCalendar para eventos */
-        background-color: var(--fc-event-bg-color, #3788d8) !important;
-        border-color: var(--fc-event-border-color, #3788d8) !important;
-        color: var(--fc-event-text-color, #fff) !important;
-        border-radius: var(--fc-event-border-radius, 3px) !important;
-        padding: var(--fc-event-padding, 1px 3px) !important;
-        display: block !important; /* Volta para o display block padrão do FC */
-        text-align: left !important; /* Garante que o texto esteja à esquerda */
-        width: auto !important; /* Deixa o FullCalendar gerenciar a largura */
-        justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
-    }
-justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
-    }
-}
-justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
-    }
-    .fc-daygrid-event .fc-event-display-wrapper .fc-event-title-text {
-        display: block !important; /* Mostra o título */
-        font-size: 0.9em !important; /* Tamanho da fonte para eventos desktop (ajustado para ser legível) */
-        line-height: 1.2 !important;
-        white-space: normal !important; /* Permite quebra de linha se necessário */
-        text-overflow: ellipsis; /* Mantém elipses para overflow */
-        overflow: hidden; /* Esconde overflow */
-    }
-    .fc-daygrid-event .fc-event-display-wrapper .fc-event-task-icon,
-    .fc-daygrid-event .fc-event-display-wrapper .fc-event-event-icon {
-        display: none !important; /* Esconde o ícone */
-    }
-/* Estilos para títulos na visualização de lista em desktop (opcional, mas bom para consistência) */
+    /* Estilos para títulos na visualização de lista em desktop (opcional, mas bom para consistência) */
     .fc-list-event-title-link {
-        color: inherit; /* Herda a cor */
-.fc-list-event-title-link {
         color: inherit; /* Herda a cor */
         text-decoration: none; /* Sem sublinhado */
     }
@@ -1038,69 +932,18 @@ justify-content: flex-start !important; /* Alinha o conteúdo à esquerda */
         text-decoration: underline; /* Sublinhado ao passar o mouse */
     }
 
-    /* Estilos do Painel Lateral para Detalhes (apenas desktop) */
-    .event-detail-sidebar {
-        position: relative; /* Ajuste para o flex container */
-        width: 0; /* Começa fechado */
-        min-width: 0;
-        background-color: #fff;
-        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-        overflow-x: hidden;
-        overflow-y: auto;
-        transition: all 0.3s ease-in-out;
-        flex-shrink: 0; /* Não permite que o sidebar encolha */
-        margin-left: 0; /* Sem margem inicial */
-        border-left: 1px solid #dee2e6; /* Borda sutil */
-    }
-.event-detail-sidebar.open {
-        width: 300px; /* Largura aberta do painel lateral */
-.event-detail-sidebar.open {
-        width: 300px; /* Largura aberta do painel lateral */
-        min-width: 300px; /* Impede que ele encolha abaixo disso */
-        margin-left: 1rem; /* Pequena margem entre calendário e painel */
-    }
-
-    /* Contêiner principal do calendário e sidebar */
+    /* Contêiner principal do calendário */
     #calendar-container-wrapper {
         width: 100%;
         margin-top: 1rem; /* Espaço após o dropdown */
-        align-items: flex-start; /* Alinha o calendário e a sidebar no topo */
+        align-items: flex-start; /* Alinha o calendário no topo */
     }
 
-    #calendar-container-wrapper.sidebar-open #calendar {
-        flex-grow: 1; /* Permite que o calendário ocupe o espaço restante */
-        max-width: calc(100% - 300px - 1rem); /* 100% - largura da sidebar - margem */
-    }
+    /* O calendário agora ocupa 100% da largura */
     #calendar {
         flex-grow: 1;
-        max-width: 100%; /* Largura total quando sidebar está fechada */
+        max-width: 100%; /* Largura total já que a sidebar foi removida */
         transition: max-width 0.3s ease-in-out;
-    }
-/* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
-    .comments-list {
-}
-
-    /* NOVOS ESTILOS PARA A SEÇÃO DE COMENTÁRIOS */
-    .comments-list {
-        max-height: 250px; /* Altura máxima para a lista de comentários, aumentado um pouco */
-        overflow-y: auto; /* Adiciona scroll se houver muitos comentários */
-        border: 1px solid #e9ecef;
-        border-radius: 5px;
-        padding: 0.5rem;
-        background-color: #f8f9fa;
-    }
-    .comments-list .comment-item {
-        background-color: #fff;
-        border-color: #ced4da !important;
-    }
-    .comments-list .comment-item:not(:last-child) {
-        margin-bottom: 0.5rem; /* Espaço entre os comentários */
-    }
-    .comments-list .comment-item p {
-        font-size: 0.9em;
-    }
-    .comments-list .comment-item small {
-        font-size: 0.75em;
     }
 }
 /* Custom CSS para o destaque das sugestões de @menção */

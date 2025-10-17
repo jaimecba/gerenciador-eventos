@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Painel Administrativo{% endblock %}
+{% block title %}Painel Administrativo{% endblock %}''
 
 {% block content %}
 <div class="row">
@@ -47,7 +47,7 @@
                 <h5 class="card-title text-success text-center" style="font-size: 11px; font-weight: bold;"><i class="fas fa-tags me-2"></i> Gerenciar Categorias</h5>
                 <p class="card-text" style="font-size: 11px;">Crie, edite e exclua categorias para eventos.</p>
                 <div class="mt-auto">
-                    <a href="{{ url_for('main.list_categories') }}" class="btn btn-success btn-sm"> {# Ajustado para main.list_categories #}
+                    <a href="{{ url_for('main.list_categories') }}" class="btn btn-success btn-sm"> {# Ajustado para list_categories #}
                         <i class="fas fa-tags"></i>
                     </a>
                 </div>

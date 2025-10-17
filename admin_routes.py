@@ -47,7 +47,7 @@ def admin_required(f):
             return f(*args, **kwargs) # Permite o acesso se for administrador
         else:
             flash('Você não tem permissão para acessar esta página.', 'danger')
-            return redirect(url_for('main.home')) # Redireciona para a página inicial
+            return redirect(url_for('home')) # Redireciona para a página inicial
     
     # O Flask precisa que o nome da função embrulhada seja o mesmo da função original para roteamento.
     wrap.__name__ = f.__name__

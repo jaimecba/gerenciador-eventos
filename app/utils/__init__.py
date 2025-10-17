@@ -22,7 +22,7 @@ def create_app():
     # Inicializa as extensões com o app
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'main.login' # Nome do endpoint para a rota de login
+    login_manager.login_view = 'login' # Nome do endpoint para a rota de login
     login_manager.login_message_category = 'info'
 
     app.jinja_env.add_extension('jinja2.ext.do')

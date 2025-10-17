@@ -44,6 +44,9 @@
                             {% if task.task_category %}
                                 <p><strong>Categoria:</strong> {{ task.task_category.name }}</p>
                             {% endif %}
+                             {% if task.task_subcategory %}
+                                <p><strong>Subcategoria:</strong> {{ task.task_subcategory.name }}</p>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
                             {% if task.assignees %}
@@ -173,10 +176,10 @@
                 </div>
             </div>
 
-            <!-- Seção de Anexos -->
+            <!-- Seção de Anexos da Tarefa -->
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Anexos ({{ task.attachments|length }})</h5>
+                    <h5 class="mb-0">Anexos da Tarefa ({{ task.attachments|length }})</h5>
                 </div>
                 <div class="card-body">
                     {% if task.attachments %}
@@ -191,13 +194,23 @@
                                                 </h6>
                                                 <small class="text-muted">
                                                     {{ (attachment.filesize / 1024 / 1024)|round(2, 'floor') }} MB
-                                                    • Por {{ attachment.uploader.username }}
-                                                    • {{ attachment.upload_timestamp.strftime('%d/%m/%Y %H:%M') }}
+                                                    • Por {{ attachment.uploader.username if attachment.uploader else 'Desconhecido' }}
+                                                    • {{ attachment.uploaded_at.strftime('%d/%m/%Y %H:%M') }}
                                                 </small>
+                                                {% if attachment.art_approval_status == 'pending' %}
+                                                    <span class="badge bg-warning text-dark mt-1">Arte Pendente de Aprovação</span>
+                                                {% elif attachment.art_approval_status == 'approved' %}
+                                                    <span class="badge bg-success mt-1">Arte Aprovada</span>
+                                                {% elif attachment.art_approval_status == 'rejected' %}
+                                                    <span class="badge bg-danger mt-1">Arte Reprovada</span>
+                                                    {% if attachment.art_feedback %}
+                                                        <small class="text-danger d-block">Feedback: {{ attachment.art_feedback }}</small>
+                                                    {% endif %}
+                                                {% endif %}
                                             </div>
                                             <div class="ms-2">
-                                                <a href="{{ url_for('main.download_attachment', attachment_id=attachment.id) }}" 
-                                                    class="btn btn-outline-primary btn-sm" title="Download">
+                                                <a href="{{ url_for('main.serve_attachment_file', filename=attachment.unique_filename) }}" 
+                                                    class="btn btn-outline-primary btn-sm" title="Download" target="_blank">
                                                     <i class="fas fa-download"></i>
                                                 </a>
                                                 {% if can_manage_attachments or attachment.uploaded_by_user_id == current_user.id %}
@@ -207,6 +220,17 @@
                                                         <i class="fas fa-trash-alt"></i>
                                                     </button>
                                                 {% endif %}
+                                                 {# Botões de Aprovação/Reprovação (visíveis apenas para quem pode aprovar e se o status for pendente) #}
+                                                {% if can_approve_art and attachment.art_approval_status == 'pending' %}
+                                                    <div class="btn-group btn-group-sm mt-1" role="group">
+                                                        <button type="button" class="btn btn-success approve-art-btn" data-attachment-id="{{ attachment.id }}" data-filename="{{ attachment.filename }}" title="Aprovar Arte">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger reject-art-btn" data-attachment-id="{{ attachment.id }}" data-filename="{{ attachment.filename }}" title="Reprovar Arte">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -214,24 +238,24 @@
                             {% endfor %}
                         </div>
                     {% else %}
-                        <p class="text-muted">Nenhum anexo nesta tarefa.</p>
+                        <p class="text-muted">Nenhum anexo direto à tarefa.</p>
                     {% endif %}
 
                     <!-- Formulário de Upload -->
                     {% if can_upload_attachments %}
                         <hr>
-                        <h6>Adicionar Novo Anexo</h6>
+                        <h6>Adicionar Novo Anexo à Tarefa</h6>
                         <form id="attachment-upload-form" method="POST" enctype="multipart/form-data" 
                               action="{{ url_for('main.upload_attachment', task_id=task.id) }}">
                             {{ attachment_form.hidden_tag() }}
                             <div class="row">
                                 <div class="col-md-8 mb-3">
                                     {{ attachment_form.file(class="form-control", accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.mp3,.mp4") }}
-                                    {% if attachment_form.file.errors %}
-                                        {% for error in attachment_form.file.errors %}
-                                            <div class="alert alert-danger mt-1">{{ error }}</div>
-                                        {% endfor %}
-                                    {% endif %}
+                                        {% if attachment_form.file.errors %}
+                                            {% for error in attachment_form.file.errors %}
+                                                <div class="alert alert-danger mt-1">{{ error }}</div>
+                                            {% endfor %}
+                                        {% endif %}
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     {{ attachment_form.submit(class="btn btn-primary", value='Anexar Arquivo') }}
@@ -241,6 +265,85 @@
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Seção de Anexos dos Itens de Checklist -->
+            {% if task.checklist and task.checklist.items %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Anexos dos Itens de Checklist</h5>
+                    </div>
+                    <div class="card-body">
+                        {% set has_checklist_attachments = false %}
+                        {% for checklist_item in task.checklist.items %}
+                            {% if checklist_item.attachments %}
+                                {% set has_checklist_attachments = true %}
+                                <h6 class="mt-3">
+                                    <i class="fas fa-tasks me-2"></i>
+                                    {{ checklist_item.custom_label or (checklist_item.template_item.label if checklist_item.template_item else 'Item de Checklist') }}
+                                </h6>
+                                <div class="row ps-4">
+                                {% for attachment in checklist_item.attachments %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="border rounded p-3">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-1">
+                                                        <i class="fas fa-file me-2"></i>{{ attachment.filename }}
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        {{ (attachment.filesize / 1024 / 1024)|round(2, 'floor') }} MB
+                                                        • Por {{ attachment.uploader.username if attachment.uploader else 'Desconhecido' }}
+                                                        • {{ attachment.upload_timestamp.strftime('%d/%m/%Y %H:%M') }}
+                                                    </small>
+                                                    {% if attachment.art_approval_status == 'pending' %}
+                                                        <span class="badge bg-warning text-dark mt-1">Arte Pendente de Aprovação</span>
+                                                    {% elif attachment.art_approval_status == 'approved' %}
+                                                        <span class="badge bg-success mt-1">Arte Aprovada</span>
+                                                    {% elif attachment.art_approval_status == 'rejected' %}
+                                                        <span class="badge bg-danger mt-1">Arte Reprovada</span>
+                                                        {% if attachment.art_feedback %}
+                                                            <small class="text-danger d-block">Feedback: {{ attachment.art_feedback }}</small>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                                <div class="ms-2">
+                                                    <a href="{{ url_for('main.serve_attachment_file', filename=attachment.unique_filename) }}" 
+                                                        class="btn btn-outline-primary btn-sm" title="Download" target="_blank">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                    {% if can_manage_attachments or attachment.uploaded_by_user_id == current_user.id %}
+                                                        <button type="button" class="btn btn-outline-danger btn-sm ms-1 delete-attachment-btn" 
+                                                                data-attachment-id="{{ attachment.id }}" 
+                                                                data-filename="{{ attachment.filename }}" title="Excluir">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    {% endif %}
+                                                    {# Botões de Aprovação/Reprovação (visíveis apenas para quem pode aprovar e se o status for pendente) #}
+                                                    {% if can_approve_art and attachment.art_approval_status == 'pending' %}
+                                                        <div class="btn-group btn-group-sm mt-1" role="group">
+                                                            <button type="button" class="btn btn-success approve-art-btn" data-attachment-id="{{ attachment.id }}" data-filename="{{ attachment.filename }}" title="Aprovar Arte">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-danger reject-art-btn" data-attachment-id="{{ attachment.id }}" data-filename="{{ attachment.filename }}" title="Reprovar Arte">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% if not has_checklist_attachments %}
+                            <p class="text-muted">Nenhum anexo nos itens de checklist.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
         </div>
 
         <!-- Sidebar -->
@@ -310,10 +413,7 @@
     </div>
 </div>
 
-{# O erro de TemplateSyntaxError de blocos não fechados costumava estar aqui #}
-{% endblock content %}
-
-<!-- Modais (mantidos aqui) -->
+{# Modais (mantidos aqui) #}
 {% if can_complete_task and not task.is_completed %}
     <!-- Modal de Conclusão -->
     <div class="modal fade" id="completeTaskModal" tabindex="-1">
@@ -389,10 +489,37 @@
     </div>
 {% endif %}
 
+{# Modal para feedback de rejeição #}
+<div class="modal fade" id="rejectArtModal" tabindex="-1" aria-labelledby="rejectArtModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rejectArtModalLabel">Reprovar Arte: <span id="modalFilename"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Por favor, forneça um feedback para a reprovação da arte.</p>
+                <div class="mb-3">
+                    <label for="artFeedback" class="form-label">Feedback:</label>
+                    <textarea class="form-control" id="artFeedback" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRejectArtBtn">Confirmar Reprovação</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock content %}
+
+
 {% block scripts %}
     {{ super() }} {# Importante: Isso inclui os scripts do base.html, como o jQuery e o contador de notificações #}
     <script>
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', function() {
         // Função auxiliar para exibir mensagens flash
         function flashMessage(message, category) {
             console.log(`Flash Message: ${message} (Category: ${category})`);
@@ -414,9 +541,15 @@
             
             if (confirm(`Tem certeza que deseja excluir o anexo "${filename}"? Esta ação é irreversível!`)) {
                 console.log(`Confirmação de exclusão para ID: ${attachmentId}, arquivo: ${filename}`);
+                // Obtém o token CSRF do meta tag ou de algum input hidden
+                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
                 $.ajax({
                     url: `/attachment/${attachmentId}/delete`,
-                    type: 'POST',
+                    type: 'POST', // Mudado para POST para compatibilidade com Flask-WTF CSRF
+                    headers: {
+                        'X-CSRFToken': csrfToken // Envia o token CSRF no header
+                    },
                     success: function(response) {
                         console.log('AJAX delete sucesso:', response);
                         flashMessage('Anexo excluído com sucesso!', 'success');
@@ -483,7 +616,7 @@
 
                     // Atualizar o cabeçalho de contagem de comentários
                     var commentsCountHeader = $('#comments-count-header');
-                    var currentCountMatch = commentsCountHeader.text().match(/\\((\\d+)\\)/);
+                    var currentCountMatch = commentsCountHeader.text().match(/(\d+)/);
                     if (currentCountMatch) {
                         var currentCount = parseInt(currentCountMatch[1]);
                         commentsCountHeader.html(`Comentários (${currentCount + 1})`);
@@ -607,6 +740,8 @@
                     console.error('ID da tarefa não encontrado para upload de áudio.');
                     return;
                 }
+                // Obtém o token CSRF do meta tag ou de algum input hidden
+                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
 
                 $.ajax({
                     url: `/api/task/${taskId}/upload_audio`,
@@ -614,7 +749,8 @@
                     data: formData,
                     processData: false,
                     contentType: false,
-                    beforeSend: function() {
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('X-CSRFToken', csrfToken); // Envia o token CSRF no header
                         uploadAudioBtn.prop('disabled', true).text('Salvando...');
                         discardAudioBtn.prop('disabled', true);
                         console.log('Iniciando AJAX para upload de audio.');
@@ -684,10 +820,15 @@
                     console.error('ID da tarefa não encontrado para exclusão de áudio.');
                     return;
                 }
+                // Obtém o token CSRF do meta tag ou de algum input hidden
+                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
 
                 $.ajax({
                     url: `/api/task/${taskId}/delete_audio`,
                     type: 'DELETE',
+                     headers: {
+                        'X-CSRFToken': csrfToken // Envia o token CSRF no header
+                    },
                     beforeSend: function() {
                         deleteAudioBtn.prop('disabled', true).text('Excluindo...');
                         console.log('Iniciando AJAX para exclusão de audio.');
@@ -811,7 +952,6 @@
                                         .addClass('list-group-item list-group-item-action')
                                         .text(user.username)
                                         .data('username', user.username); // Armazena o username
-                                    
                                     // Adiciona manipulador de evento mouseenter para ativar sugestão
                                     item.on('mouseenter', function() {
                                         mentionsSuggestions.find('.list-group-item.active').removeClass('active');
@@ -870,6 +1010,73 @@
             mentionsSuggestions.hide();
             activeSuggestionIndex = -1; // Reseta após inserção
         }
+
+        // Lógica de aprovação/reprovação de arte
+        const approveButtons = document.querySelectorAll('.approve-art-btn');
+        const rejectButtons = document.querySelectorAll('.reject-art-btn');
+        const rejectArtModal = new bootstrap.Modal(document.getElementById('rejectArtModal'));
+        const confirmRejectArtBtn = document.getElementById('confirmRejectArtBtn');
+        const artFeedbackTextarea = document.getElementById('artFeedback');
+        const modalFilenameSpan = document.getElementById('modalFilename');
+
+        let currentAttachmentId = null;
+
+        // Função genérica para enviar requisições AJAX (POST)
+        async function sendApprovalRequest(attachmentId, action, feedback = null) {
+            const url = `/attachment/${attachmentId}/${action}_art`;
+            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ feedback: feedback })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    flashMessage(data.message, 'success');
+                    window.location.reload(); // Recarrega a página para atualizar o status
+                } else {
+                    flashMessage('Erro: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                flashMessage('Ocorreu um erro ao processar sua requisição.', 'danger');
+            }
+        }
+
+        approveButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const attachmentId = this.dataset.attachmentId;
+                const filename = this.dataset.filename;
+                if (confirm(`Tem certeza que deseja APROVAR a arte "${filename}"?`)) {
+                    sendApprovalRequest(attachmentId, 'approve');
+                }
+            });
+        });
+
+        rejectButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                currentAttachmentId = this.dataset.attachmentId;
+                const filename = this.dataset.filename;
+                modalFilenameSpan.textContent = filename; // Define o nome do arquivo no modal
+                artFeedbackTextarea.value = ''; // Limpa o feedback anterior
+                rejectArtModal.show();
+            });
+        });
+
+        confirmRejectArtBtn.addEventListener('click', function() {
+            const feedback = artFeedbackTextarea.value;
+            if (currentAttachmentId) {
+                sendApprovalRequest(currentAttachmentId, 'reject', feedback);
+                rejectArtModal.hide();
+            }
+        });
     });
     </script>
 {% endblock scripts %}

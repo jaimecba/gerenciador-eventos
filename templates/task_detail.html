@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-4"> {# MODIFICADO: De 'container' para 'container-fluid' #}
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -84,7 +84,7 @@
                     {% if task.cloud_storage_link %}
                         <div class="mb-3">
                             <h6>Link de Armazenamento:</h6>
-                            <a href="{{ task.cloud_storage_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                            <a href="{{ task.cloud_storage_link }}"  rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
                                 <i class="fas fa-external-link-alt"></i> Acessar Link
                             </a>
                             {% if task.link_notes %}
@@ -209,8 +209,8 @@
                                                 {% endif %}
                                             </div>
                                             <div class="ms-2">
-                                                <a href="{{ url_for('main.serve_attachment_file', filename=attachment.unique_filename) }}" 
-                                                    class="btn btn-outline-primary btn-sm" title="Download" target="_blank">
+                                                <a href="{{ url_for('main.serve_attachment_file', filename=attachment.unique_filename) }}"
+                                                        class="btn btn-outline-primary btn-sm" title="Download" >
                                                     <i class="fas fa-download"></i>
                                                 </a>
                                                 {% if can_manage_attachments or attachment.uploaded_by_user_id == current_user.id %}
@@ -308,7 +308,7 @@
                                                 </div>
                                                 <div class="ms-2">
                                                     <a href="{{ url_for('main.serve_attachment_file', filename=attachment.unique_filename) }}" 
-                                                        class="btn btn-outline-primary btn-sm" title="Download" target="_blank">
+                                                        class="btn btn-outline-primary btn-sm" title="Download" >
                                                         <i class="fas fa-download"></i>
                                                     </a>
                                                     {% if can_manage_attachments or attachment.uploaded_by_user_id == current_user.id %}

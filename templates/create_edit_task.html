@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-4"> {# MODIFICADO: De 'container' para 'container-fluid' #}
     {# Breadcrumb #}
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -15,7 +15,7 @@
     </nav>
 
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-lg-10 col-md-12 mx-auto"> {# MODIFICADO: De 'col-md-8' para 'col-lg-10 col-md-12 mx-auto' #}
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">{{ legend }}</h5>

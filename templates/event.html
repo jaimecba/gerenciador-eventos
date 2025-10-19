@@ -1,10 +1,13 @@
 {# C:\gerenciador-eventos\templates\event.html #}
 {% extends "base.html" %}
 {% block content %}
-    <div class="container mt-4">
+    <!-- **MODIFICAÇÃO AQUI:** O div principal agora usa 'container-fluid' para largura total. -->
+    <!-- Os elementos internos 'row' e 'col-md-8' foram ajustados para que o conteúdo ocupe mais espaço. -->
+    <div class="container-fluid mt-4">
         <div class="row">
-            {# Coluna principal centralizada para o Evento e suas Ações #}
-            <div class="col-md-8 mx-auto">
+            {# **MODIFICAÇÃO AQUI:** Ajustado de col-md-8 para col-lg-10 (para ter mais largura em desktops) e col-md-12 (para ocupar toda a largura em tablets) #}
+            {# Mantido mx-auto para centralizar o conteúdo quando ele não ocupa 100% (ex: col-lg-10) #}
+            <div class="col-lg-10 col-md-12 mx-auto">
                 {# Card de Detalhes do Evento #}
                 <div class="card mb-4">
                     <div class="card-body">
@@ -134,7 +137,8 @@
         <div class="row">
             <div class="col-12">
                 <hr class="mt-4 mb-4">
-
+            </div>
+            <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     {# TÍTULO DA SEÇÃO DE TAREFAS #}
                     <h4 class="mb-3 text-secondary task-section-title"><strong>Tarefas do Evento</strong></h4>
@@ -190,7 +194,7 @@
                                         {# INÍCIO DA CORREÇÃO: Atribuído a #}
                                         {% if task.assignees %}
                                             <p class="task-assignees mb-1 text-size-12px">
-                                                <span class="text-muted">Atribuído a:</span> 
+                                                <span class="text-muted">Atribuído a:</span>
                                                 {% for assignee in task.assignees %}
                                                     <span class="assignee-name">{{ assignee.username }}</span>{% if not loop.last %}, {% endif %}
                                                 {% endfor %}
@@ -296,11 +300,11 @@
                                             <h6 class="card-title mb-2 fs-6 fw-bold text-truncate"><strong>{{ task.title }}</strong></h6>
                                             {# Data de Conclusão e por quem #}
                                             <p class="task-due-date mb-1 text-size-12px"><span class="text-muted">Concluída em:</span> <span>{{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</span> {% if task.completed_by_user %}<br><small>Por: {{ task.completed_by_user.username }}</small>{% endif %}</p>
-                                            
+
                                             {# INÍCIO DA CORREÇÃO: Atribuído a #}
                                             {% if task.assignees %}
                                                 <p class="task-assignees mb-1 text-size-12px">
-                                                    <span class="text-muted">Atribuído a:</span> 
+                                                    <span class="text-muted">Atribuído a:</span>
                                                     {% for assignee in task.assignees %}
                                                         <span class="assignee-name">{{ assignee.username }}</span>{% if not loop.last %}, {% endif %}
                                                 {% endfor %}
@@ -371,7 +375,7 @@
                                                 {% endif %}
                                             </div>
                                         </div>
-                                        <div class="card-footer bg-white border-top-0 pt-0 pb-1">
+                                        <div class="card-footer bg-white border-top-0 pb-1">
                                             <p class="text-muted text-size-12px mb-0">Concluída em: {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</p>
                                         </div>
                                     </div>
@@ -449,7 +453,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Modal de Conclusão da Tarefa -->
         <div class="modal fade" id="completeTaskModal" tabindex="-1" aria-labelledby="completeTaskModalLabel" aria-hidden="true">
             <div class="modal-dialog">
@@ -491,8 +495,8 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-warning">Desfazer Conclusão</button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-4"> {# MODIFICADO: De 'container' para 'container-fluid' #}
     <h2 class="calendar-page-title">Calendário de Eventos e Tarefas</h2>
 
     {# Dropdown para seleção de visualização customizado para mobile E DESKTOP #}
@@ -33,7 +33,7 @@
         // As variáveis currentItemId e currentItemType foram removidas, pois não são mais necessárias.
 
         // Variável JS para o username do usuário logado (passado do Flask) - Mantido caso seja usado em outro lugar
-        const currentUsername = '{{ current_user.username if current_user.is_authenticated else "Usuário Desconhecido" }}';
+const currentUsername = '{{ current_user.username if current_user.is_authenticated else "Usuário Desconhecido" }}';
 
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth', 

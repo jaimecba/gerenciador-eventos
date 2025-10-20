@@ -1,18 +1,18 @@
 {# C:\gerenciador-eventos\templates\event.html #}
 {% extends "base.html" %}
 {% block content %}
-    <!-- **MODIFICAÇÃO AQUI:** O div principal agora usa 'container-fluid' para largura total. -->
-    <!-- Os elementos internos 'row' e 'col-md-8' foram ajustados para que o conteúdo ocupe mais espaço. -->
+    <!-- **MODIFICAÇÃO ANTERIOR (MANTIDA):** O div principal agora usa 'container-fluid' para largura total. -->
     <div class="container-fluid mt-4">
         <div class="row">
-            {# **MODIFICAÇÃO AQUI:** Ajustado de col-md-8 para col-lg-10 (para ter mais largura em desktops) e col-md-12 (para ocupar toda a largura em tablets) #}
-            {# Mantido mx-auto para centralizar o conteúdo quando ele não ocupa 100% (ex: col-lg-10) #}
+            {# **MODIFICAÇÃO ANTERIOR (MANTIDA):** Ajustado de col-md-8 para col-lg-10 (para ter mais largura) e mantido mx-auto para centralizar #}
+            {# Em telas pequenas (md e abaixo), ele ocupará 12 colunas por padrão do Bootstrap #}
             <div class="col-lg-10 col-md-12 mx-auto">
                 {# Card de Detalhes do Evento #}
                 <div class="card mb-4">
                     <div class="card-body">
                         {# Título do Evento #}
-                        <h1 class="mb-3 fs-4 fw-bold text-uppercase">{{ event.title }}</h1>
+                        <!-- **MODIFICAÇÃO AQUI:** Removida a classe 'fs-4', adicionadas 'text-size-16px' e 'text-primary' -->
+                        <h1 class="mb-3 fw-bold text-uppercase text-size-16px text-primary">{{ event.title }}</h1>
                         {# Detalhes do Evento #}
                         <p class="text-muted small lh-sm mb-1">Criado em: {{ event.created_at.strftime('%d/%m/%Y às %H:%M') }}</p>
                         <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Descrição:</span> {{ event.description }}</p>
@@ -27,7 +27,6 @@
                             <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Categoria:</span> {{ event.category.name }}</p>
                         {% endif %}
                         <p class="small lh-sm mb-1"><span class="text-muted fw-bold">Status do Evento:</span> {{ event.status.name if event.status else 'N/A' }}</p>
-{# Botões de Evento - REMOVIDOS E MOVIDOS PARA O CARD DE AÇÕES DO EVENTO ABAIXO #}
                     </div>
                 </div>
 
@@ -216,7 +215,7 @@
 
                                         {# Link #}
                                         {% if task.cloud_storage_link %}
-                                            <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
+                                            <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"   rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
                                         {% endif %}
                                         {# Obs. do Link #}
                                         {% if task.link_notes %}
@@ -325,7 +324,7 @@
 
                                             {# Link de Armazenamento #}
                                             {% if task.cloud_storage_link %}
-                                                <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"  target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
+                                                <div class="text-start mb-1"><a href="{{ task.cloud_storage_link }}"   rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm" title="Link de Armazenamento"><i class="fas fa-external-link-alt fa-xs"></i></a></div>
                                             {% endif %}
                                             {# Obs. do Link #}
                                             {% if task.link_notes %}
@@ -375,7 +374,7 @@
                                                 {% endif %}
                                             </div>
                                         </div>
-                                        <div class="card-footer bg-white border-top-0 pb-1">
+                                        <div class="card-footer bg-white border-top-0 pt-0 pb-1">
                                             <p class="text-muted text-size-12px mb-0">Concluída em: {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}</p>
                                         </div>
                                     </div>
@@ -495,8 +494,8 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-warning">Desfazer Conclusão</button>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

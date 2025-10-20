@@ -1,11 +1,15 @@
 {# templates/create_edit_event.html #}
 {% extends "base.html" %}
 {% block content %}
-    <div class="container mt-4">
-        <div class="row"> 
-            <div class="col-md-8 offset-md-2">
+    <!-- **MODIFICAÇÃO ANTERIOR (MANTIDA):** De 'container' para 'container-fluid' para que o conteúdo possa se expandir. -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- **MODIFICAÇÃO ANTERIOR (MANTIDA):** Ajustado para 'col-lg-8 col-md-10 mx-auto'. -->
+            <div class="col-lg-8 col-md-10 mx-auto">
                 <div class="card p-4 shadow-sm">
-                    <h2 class="card-title text-center mb-4 fs-5">{{ legend }}</h2> 
+                    <!-- **MODIFICAÇÃO AQUI:** Removida a classe 'fs-5'. -->
+                    <!-- Agora apenas 'card-title text-center mb-4' e a nossa 'text-size-16px' controlam o tamanho. -->
+                    <h2 class="card-title text-center mb-4 text-size-16px">{{ legend }}</h2>
                     <form method="POST">
                         {{ form.hidden_tag() }}
                         {% if form.errors %}
@@ -25,7 +29,7 @@
                                 </ul>
                             </div>
                         {% endif %}
-                        
+
                         <div class="mb-3">
                             {# APLICADO: compact-text para o label e form-control-compact-uppercase para o input com oninput #}
                             {{ form.title.label(class="form-label small compact-text") }}
@@ -46,23 +50,23 @@
                                 {% endfor %}
                             {% endif %}
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 {# APLICADO: compact-text para o label, mas o input de data/hora não precisa de maiúsculas no valor real #}
                                 {{ form.due_date.label(class="form-label small compact-text") }}
-                                {{ form.due_date(class="form-control form-control-sm", type="datetime-local") }} 
-                                {% if form.due_date.errors %} {# <-- CORRIGIDO AQUI: apenas um 'if' #}
+                                {{ form.due_date(class="form-control form-control-sm", type="datetime-local") }}
+                                {% if form.due_date.errors %}
                                     {% for error in form.due_date.errors %}
                                         <div class="text-danger small">{{ error }}</div>
                                     {% endfor %}
-                                {% endif %} {# <-- Este 'endif' fecha o 'if form.due_date.errors' #}
+                                {% endif %}
                             </div>
 {# CAMPO DE DATA DE TÉRMINO RESTAURADO AQUI #}
                             <div class="col-md-6 mb-3">
                                 {# APLICADO: compact-text para o label, mas o input de data/hora não precisa de maiúsculas no valor real #}
                                 {{ form.end_date.label(class="form-label small compact-text") }}
-                                {{ form.end_date(class="form-control form-control-sm", type="datetime-local") }} 
+                                {{ form.end_date(class="form-control form-control-sm", type="datetime-local") }}
                                 {% if form.end_date.errors %}
                                     {% for error in form.end_date.errors %}
                                         <div class="text-danger small">{{ error }}</div>
@@ -93,10 +97,10 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 {# APLICADO: compact-text para o label, o select não precisa de maiúsculas no valor real #}
-                                {{ form.event_status.label(class="form-label small compact-text") }} {# CORRIGIDO AQUI #}
-                                {{ form.event_status(class="form-select form-select-sm") }}          {# CORRIGIDO AQUI #}
-                                {% if form.event_status.errors %}                                      {# CORRIGIDO AQUI #}
-                                    {% for error in form.event_status.errors %}                       {# CORRIGIDO AQUI #}
+                                {{ form.event_status.label(class="form-label small compact-text") }}
+                                {{ form.event_status(class="form-select form-select-sm") }}
+                                {% if form.event_status.errors %}
+                                    {% for error in form.event_status.errors %}
                                         <div class="text-danger small">{{ error }}</div>
                                     {% endfor %}
                                 {% endif %}

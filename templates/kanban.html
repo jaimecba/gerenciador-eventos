@@ -1,0 +1,734 @@
+{# templates/kanban.html #}
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block head_extra %}
+<!-- Sortable.js CDN para Drag & Drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<style>
+    /* Estilo baseado na imagem fornecida */
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container-fluid {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 25px;
+        margin: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .kanban-board {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        overflow-x: auto;
+        padding: 20px 0;
+        gap: 15px;
+        min-height: 70vh;
+    }
+
+    .kanban-column {
+        flex: 0 0 280px;
+        min-width: 280px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        max-height: 75vh;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .kanban-column-header {
+        padding: 12px 15px;
+        border-bottom: 2px solid #e9ecef;
+        border-radius: 10px 10px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        background: #f8f9fa;
+        color: #495057;
+    }
+
+    .kanban-column-header h4 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .kanban-column-header .add-task-btn {
+        background: #007bff;
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .kanban-column-header .add-task-btn:hover:not(:disabled) {
+        background: #0056b3;
+        transform: scale(1.1);
+    }
+
+    .kanban-column-header .add-task-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+
+    .kanban-column-body {
+        padding: 12px;
+        flex-grow: 1;
+        overflow-y: auto;
+        min-height: 150px;
+        background: white;
+        border-radius: 0 0 10px 10px;
+    }
+
+    /* Permitir drop em TODAS as colunas */
+    .kanban-column-body.sortable-drop-zone {
+        min-height: 200px;
+        border: 2px dashed transparent;
+        transition: all 0.3s ease;
+    }
+
+    .kanban-column-body.sortable-drop-zone.drag-over {
+        border-color: #007bff;
+        background-color: rgba(0, 123, 255, 0.05);
+    }
+
+    .kanban-card {
+        background: white;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        cursor: grab;
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+        border-left: 3px solid #007bff;
+    }
+
+    .kanban-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+
+    .kanban-card.sortable-ghost {
+        opacity: 0.4;
+        transform: scale(0.95);
+    }
+
+    .kanban-card .card-title {
+        font-size: 12px !important; /* Fonte de 12px conforme solicitado */
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #2c3e50;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .kanban-card .card-text {
+        font-size: 11px;
+        color: #6c757d;
+        margin-bottom: 3px;
+        display: flex;
+        align-items: center;
+        line-height: 1.2;
+    }
+
+    .kanban-card .card-text i {
+        margin-right: 5px;
+        width: 10px;
+        font-size: 10px;
+    }
+
+    .kanban-card .card-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 6px;
+        border-top: 1px solid #f1f3f4;
+    }
+
+    .kanban-card .priority-badge {
+        padding: 1px 6px;
+        border-radius: 10px;
+        font-size: 9px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .priority-alta { background: #dc3545; color: white; }
+    .priority-media { background: #ffc107; color: #212529; }
+    .priority-baixa { background: #28a745; color: white; }
+
+    /* Mensagens das colunas */
+    .column-message {
+        text-align: center;
+        padding: 20px 15px;
+        color: #6c757d;
+        font-style: italic;
+        font-size: 12px;
+        line-height: 1.4;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px dashed #dee2e6;
+    }
+
+    .column-message.error-message {
+        background: #fff5f5;
+        border-color: #fed7d7;
+        color: #c53030;
+    }
+
+    .column-message.empty-message {
+        display: none; /* Não mostra nada para colunas vazias específicas */
+    }
+
+    /* Filtros */
+    .filters-card {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+
+    .filters-card .card-body {
+        padding: 20px;
+    }
+
+    .filters-card .card-title {
+        color: white;
+        font-weight: 600;
+        margin-bottom: 15px;
+        font-size: 16px;
+    }
+
+    .form-label {
+        color: white;
+        font-weight: 500;
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+
+    .form-select, .form-control {
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 15px 0;
+    }
+
+    .page-header h2 {
+        color: white;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        margin: 0;
+        font-size: 24px;
+    }
+
+    .header-buttons .btn {
+        margin-left: 8px;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 13px;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+        .kanban-column {
+            flex: 0 0 260px;
+            min-width: 260px;
+        }
+        
+        .container-fluid {
+            margin: 10px;
+            padding: 15px;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 15px;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <h2>{{ title }}</h2>
+        <div class="header-buttons">
+            {% if current_event_id %}
+                <a href="{{ url_for('main.new_task', event_id=current_event_id) }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Nova Tarefa para Evento
+                </a>
+            {% else %}
+                <button type="button" class="btn btn-primary btn-sm" disabled data-bs-toggle="tooltip" data-bs-placement="top" title="Selecione um evento no filtro para adicionar uma tarefa a ele.">
+                    <i class="fas fa-plus"></i> Nova Tarefa para Evento
+                </button>
+            {% endif %}
+
+            <a href="{{ url_for('main.kanban_board') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-sync-alt"></i> Limpar Filtros
+            </a>
+        </div>
+    </div>
+
+    <!-- Formulário de Filtros -->
+    <div class="card filters-card">
+        <div class="card-body">
+            <h5 class="card-title">Filtros do Kanban</h5>
+            <form id="kanban-filters-form" action="{{ url_for('main.kanban_board') }}" method="GET">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="event_filter" class="form-label">Filtrar por Evento:</label>
+                        <select class="form-select" id="event_filter" name="event_id">
+                            <option value="">Todos os Eventos</option>
+                            {% for event in all_events %}
+                                <option value="{{ event.id }}" {% if current_event_id == event.id %}selected{% endif %}>
+                                    {{ event.title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="assignee_filter" class="form-label">Filtrar por Atribuído:</label>
+                        <select class="form-select" id="assignee_filter" name="assignee_id">
+                            <option value="">Todos os Usuários</option>
+                            {% for user in all_users %}
+                                <option value="{{ user.id }}" {% if current_assignee_id == user.id %}selected{% endif %}>
+                                    {{ user.username }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-info w-100">
+                            <i class="fas fa-filter"></i> Aplicar Filtros
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quadro Kanban -->
+    <div class="kanban-board">
+        {% for column_info in kanban_columns_data %}
+        <div class="kanban-column" data-status-id="{{ column_info.id if column_info.id else column_info.name|replace(' ', '_') }}" data-status-name="{{ column_info.name }}">
+            <div class="kanban-column-header">
+                <h4>
+                    {{ column_info.name }}
+                    {% if column_info.obj %}
+                        (<span class="task-count">{{ tasks_by_status[column_info.name]|length if column_info.name in tasks_by_status else 0 }}</span>)
+                    {% else %}
+                        {% if 'Não iniciado' in column_info.name or 'Conclu' in column_info.name %}
+                            <!-- Sem indicação de status não configurado no header para essas colunas específicas -->
+                        {% else %}
+                            (<span class="text-warning">Status Não Configurado</span>)
+                        {% endif %}
+                    {% endif %}
+                </h4>
+                <button type="button" class="btn btn-sm add-task-btn"
+                        data-bs-toggle="modal" data-bs-target="#newTaskModal"
+                        data-status-id="{{ column_info.id if column_info.id else column_info.name|replace(' ', '_') }}"
+                        data-status-name="{{ column_info.name }}"
+                        {% if not current_event_id %} disabled {% endif %}>
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <!-- TODAS as colunas agora aceitam drop -->
+            <div class="kanban-column-body sortable-drop-zone" 
+                 id="kanban-column-{{ column_info.id if column_info.id else column_info.name|replace(' ', '_') }}" 
+                 data-status-id="{{ column_info.id if column_info.id else column_info.name|replace(' ', '_') }}"
+                 data-status-name="{{ column_info.name }}">
+                
+                {% if column_info.obj %}
+                    <!-- Renderizar tarefas se o status existir -->
+                    {% for task in tasks_by_status[column_info.name] if column_info.name in tasks_by_status %}
+                        {% include '_task_card.html' %}
+                    {% endfor %}
+                    
+                {% else %}
+                    <!-- Status não configurado - MAS AINDA RENDERIZA TAREFAS -->
+                    {% if column_info.name in tasks_by_status %}
+                        {% for task in tasks_by_status[column_info.name] %}
+                            {% include '_task_card.html' %}
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <!-- TAREFAS SEM STATUS vão para "Não iniciado" -->
+                    {% if 'Não iniciado' in column_info.name %}
+                        {% for task in tasks_by_status['Sem status'] if 'Sem status' in tasks_by_status %}
+                            {% include '_task_card.html' %}
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <!-- Mensagens específicas para colunas não configuradas -->
+                    {% if 'Conclu' in column_info.name %}
+                        <!-- Completamente vazio para "Concluído/Concluída" -->
+                    {% elif 'Não iniciado' in column_info.name %}
+                        <!-- Completamente vazio para "Não iniciado" -->
+                    {% else %}
+                        <div class="column-message error-message">
+                            Este status ('{{ column_info.name }}') não está configurado no banco de dados. Por favor, adicione-o na administração (tipo 'task').
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not kanban_columns_data %}
+        <div class="column-message">
+            <p>Nenhum status de tarefa configurado ou mapeado. Por favor, crie status do tipo 'task' na administração.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para Adicionar Nova Tarefa -->
+<div class="modal fade" id="newTaskModal" tabindex="-1" aria-labelledby="newTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newTaskModalLabel">Nova Tarefa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="new-task-form">
+                    {{ form.csrf_token }}
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control", placeholder="Título da Tarefa") }}
+                        {% if form.title.errors %}
+                            <div class="text-danger">
+                                {% for error in form.title.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="3", placeholder="Descrição detalhada (Opcional)") }}
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            {{ form.due_date.label(class="form-label") }}
+                            <input type="text" id="id_due_date" name="due_date" class="form-control flatpickr-input" placeholder="Selecione a Data de Vencimento">
+                            {% if form.due_date.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.due_date.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.event.label(class="form-label") }}
+                            {{ form.event(class="form-select select2-enabled", id="new_task_event") }}
+                            {% if form.event.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.event.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        {{ form.task_category.label(class="form-label") }}
+                        {{ form.task_category(class="form-select select2-enabled", id="new_task_category") }}
+                         {% if form.task_category.errors %}
+                            <div class="text-danger">
+                                {% for error in form.task_category.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.task_subcategory.label(class="form-label") }}
+                        {{ form.task_subcategory(class="form-select select2-enabled", id="new_task_subcategory") }}
+                        {% if form.task_subcategory.errors %}
+                            <div class="text-danger">
+                                {% for error in form.task_subcategory.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            {{ form.assignees.label(class="form-label") }}
+                            {{ form.assignees(class="form-select select2-enabled", multiple="multiple") }}
+                            {% if form.assignees.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.assignees.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.priority.label(class="form-label") }}
+                            {{ form.priority(class="form-select") }}
+                            {% if form.priority.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.priority.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {{ form.kanban_status_id_hidden(id="new_task_status") }}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="save-new-task">Salvar Tarefa</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar Select2 para os dropdowns no modal do Kanban
+        $('#newTaskModal').on('shown.bs.modal', function () {
+            $('.select2-enabled').select2({
+                theme: "bootstrap-5",
+                dropdownParent: $('#newTaskModal')
+            });
+            // Re-inicializa Flatpickr para o campo de data no modal
+            if (document.getElementById('id_due_date')) {
+                flatpickr("#id_due_date", {
+                    dateFormat: "d/m/Y",
+                    locale: "pt",
+                    allowInput: true,
+                    clickOpens: true
+                });
+            }
+        });
+
+        // Funcionalidade dos botões "Adicionar Tarefa" nas colunas
+        document.querySelectorAll('.add-task-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const statusId = this.getAttribute('data-status-id');
+                const statusName = this.getAttribute('data-status-name');
+
+                // Preencher o campo oculto de status
+                const kanbanStatusInput = document.getElementById('new_task_status');
+                if (kanbanStatusInput) {
+                    kanbanStatusInput.value = statusId;
+                }
+
+                // Atualizar o título do modal
+                document.getElementById('newTaskModalLabel').textContent = `Nova Tarefa - ${statusName}`;
+
+                // Se há um evento selecionado no filtro, pré-selecionar no formulário
+                const eventFilter = document.getElementById('event_filter');
+                const taskEventSelect = document.getElementById('new_task_event');
+                if (eventFilter.value && taskEventSelect) {
+                    taskEventSelect.value = eventFilter.value;
+                    $(taskEventSelect).trigger('change');
+                }
+            });
+        });
+
+        // Salvar nova tarefa
+        document.getElementById('save-new-task').addEventListener('click', function() {
+            const formElement = document.getElementById('new-task-form');
+            const formData = new FormData(formElement);
+
+            // Coleta os valores selecionados do QuerySelectMultipleField 'assignees'
+            const assigneesSelect = formElement.querySelector('select[name="assignees"]');
+            if (assigneesSelect) {
+                const selectedAssignees = Array.from(assigneesSelect.options)
+                                              .filter(option => option.selected)
+                                              .map(option => option.value);
+                formData.set('assignees', JSON.stringify(selectedAssignees));
+            }
+
+            // Converte FormData para JSON para enviar via fetch com headers 'application/json'
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                if (key === 'assignees') {
+                     jsonData[key] = JSON.parse(value);
+                } else if (key === 'due_date') {
+                    // Flatpickr retorna d/m/Y, converter para YYYY-MM-DD
+                    const parts = value.split('/');
+                    if (parts.length === 3) {
+                        jsonData[key] = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    } else {
+                        jsonData[key] = value;
+                    }
+                } else if (key === 'kanban_status_id_hidden') {
+                    jsonData[key] = parseInt(value);
+                }
+                else {
+                    jsonData[key] = value;
+                }
+            });
+
+            fetch('{{ url_for("main.create_task_from_kanban") }}', {
+                method: 'POST',
+                body: JSON.stringify(jsonData),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fechar modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('newTaskModal'));
+                    modal.hide();
+
+                    // Recarregar a página ou atualizar dinamicamente
+                    location.reload();
+                } else {
+                    // Mostrar erros
+                    console.error('Erro ao criar tarefa:', data.errors);
+                    let errorMessages = '';
+                    for (const field in data.errors) {
+                        errorMessages += `${field}: ${data.errors[field].join(', ')}\n`;
+                    }
+                    alert('Erro ao criar tarefa. Verifique os campos e tente novamente:\n' + errorMessages);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao criar tarefa.');
+            });
+        });
+
+        // DRAG AND DROP com Sortable.js - TODAS as colunas agora aceitam drop
+        document.querySelectorAll('.kanban-column-body.sortable-drop-zone').forEach(column => {
+            new Sortable(column, {
+                group: 'kanban-tasks',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onStart: function(evt) {
+                    // Adiciona classe visual quando começar a arrastar
+                    document.querySelectorAll('.kanban-column-body').forEach(col => {
+                        col.classList.add('drag-over');
+                    });
+                },
+                onEnd: function (evt) {
+                    // Remove classe visual quando terminar
+                    document.querySelectorAll('.kanban-column-body').forEach(col => {
+                        col.classList.remove('drag-over');
+                    });
+
+                    const movedTaskId = evt.item.dataset.taskId;
+                    const newStatusId = evt.to.dataset.statusId;
+                    const newStatusName = evt.to.dataset.statusName;
+                    const oldStatusId = evt.from.dataset.statusId;
+
+                    console.log('Movendo tarefa:', {
+                        taskId: movedTaskId,
+                        from: oldStatusId,
+                        to: newStatusId,
+                        toName: newStatusName
+                    });
+
+                    if (movedTaskId && newStatusId && newStatusId !== oldStatusId) {
+                        // Para colunas não configuradas, usamos o nome como identificador
+                        const statusIdToSend = newStatusId.includes('_') ? newStatusName : newStatusId;
+                        
+                        fetch('{{ url_for("main.api_update_task_status", task_id=0) }}'.replace('0', movedTaskId), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({ 
+                                new_status_id: statusIdToSend,
+                                new_status_name: newStatusName
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Atualizar contador de tarefas nas colunas
+                                const oldColumn = document.getElementById(`kanban-column-${oldStatusId}`);
+                                const newColumn = document.getElementById(`kanban-column-${newStatusId}`);
+                                if (oldColumn) {
+                                    const oldCount = oldColumn.closest('.kanban-column').querySelector('.task-count');
+                                    if (oldCount) oldCount.textContent = oldColumn.children.length;
+                                }
+                                if (newColumn) {
+                                    const newCount = newColumn.closest('.kanban-column').querySelector('.task-count');
+                                    if (newCount) newCount.textContent = newColumn.children.length;
+                                }
+                                console.log('Tarefa atualizada com sucesso:', data.message);
+                            } else {
+                                // Reverter o item se a atualização falhar
+                                evt.from.appendChild(evt.item);
+                                console.error('Erro ao atualizar tarefa:', data.message);
+                                alert('Erro ao mover tarefa: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro de rede ao atualizar status da tarefa:', error);
+                            evt.from.appendChild(evt.item);
+                            alert('Erro de rede ao mover tarefa.');
+                        });
+                    }
+                }
+            });
+        });
+    });
+    </script>
+{% endblock %}

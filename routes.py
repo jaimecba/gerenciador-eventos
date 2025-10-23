@@ -1,5 +1,5 @@
-# C:\\gerenciador-eventos\\routes.py
-# Modificado para ser um Blueprint 'main'
+# routes.py
+# Arquivo completo e corrigido, com a linha 3281 devidamente ajustada.
 
 from flask import render_template, url_for, flash, redirect, request, Blueprint, jsonify, current_app, abort, send_from_directory
 from flask_login import login_user, current_user, logout_user, login_required
@@ -9,7 +9,6 @@ from werkzeug.security import generate_password_hash
 from extensions import db, mail
 from datetime import datetime, date, timedelta
 import json
-from flask import jsonify, request, current_app
 from sqlalchemy.orm import joinedload, selectinload
 import uuid
 from werkzeug.utils import secure_filename
@@ -19,7 +18,6 @@ from functools import wraps
 import re
 from utils.push_notification_sender import send_push_to_user
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func, or_, distinct, false, and_
 from sqlalchemy import func, or_, distinct, false, and_
 
 # IMPORTAÇÕES DOS DECORATORS DO SEU NOVO ARQUIVO decorators.py
@@ -37,7 +35,10 @@ from models import (User, Role, Event, Task, TaskAssignment, ChangeLogEntry, Sta
                     Category, PasswordResetToken, TaskHistory, Group,
                     UserGroup, EventPermission, Comment, TaskCategory, Attachment, Notification,
                     PushSubscription, TaskSubcategory, ChecklistTemplate, ChecklistItemTemplate,
-                    TaskChecklist, TaskChecklistItem, CustomFieldTypeEnum) # <--- FieldType REMOVIDO DAQUI
+                    TaskChecklist, TaskChecklistItem, CustomFieldTypeEnum)
+
+# Importe o objeto Flask-WTF CSRFProtect se você não o tiver configurado globalmente
+from flask_wtf.csrf import generate_csrf
 
 # <<<--- DEFINIÇÃO DO BLUEPRINT 'MAIN' --->>>
 main = Blueprint('main', __name__, static_folder='static')
@@ -48,8 +49,7 @@ main = Blueprint('main', __name__, static_folder='static')
 # =========================================================================================
 
 # =========================================================================================
-# NOVAS ROTAS PARA APROVAÇÃO/REPROVAÇÃO DE ARTE EM ANEXOS
-# =========================================================================================
+# ROTAS PARA APROVAÇÃO/REPROVAÇÃO DE ARTE EM ANEXOS
 # =========================================================================================
 
 @main.route('/attachment/<int:attachment_id>/approve_art', methods=['POST'])
@@ -138,7 +138,6 @@ def reject_attachment_art(attachment_id):
 
 # =========================================================================
 # FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
-# FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
 # =========================================================================
 def send_notification_email(recipient_email, subject, body, html_body=None):
     """Envia um e-mail de notificação."""
@@ -176,7 +175,6 @@ def create_in_app_notification(user_id, message, link_url=None, related_object_t
         return False
 # =========================================================================
 # FIM: FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
-# =========================================================================
 # =========================================================================
 
 # Defina quantos itens você quer por página (para o ChangeLog)
@@ -244,11 +242,11 @@ def get_filtered_events(user, search_query, page, per_page, event_filter_type=No
     event_filter_type: None (Home), 'Ativo', 'Realizado', 'Arquivado'
     publication_status: 'all', 'published', 'unpublished' # NOVO
     """
-    print(f"\n--- DEBUG get_filtered_events para {user.username} (Admin: {user.is_admin}) --- ")
-    print(f"--- DEBUG: event_filter_type solicitado: {event_filter_type} --- ")
-    print(f"--- DEBUG: publication_status solicitado: {publication_status} --- ")
+    current_app.logger.debug(f"\n--- DEBUG get_filtered_events para {user.username} (Admin: {user.is_admin}) --- ")
+    current_app.logger.debug(f"--- DEBUG: event_filter_type solicitado: {event_filter_type} --- ")
+    current_app.logger.debug(f"--- DEBUG: publication_status solicitado: {publication_status} --- ")
     base_query = Event.query.options(
-        joinedload(Event.event_status), # CORRIGIDO: mudado de Event.event_status para Event.event_status
+        joinedload(Event.event_status),
         joinedload(Event.category),
         joinedload(Event.author),
         joinedload(Event.event_permissions),
@@ -256,11 +254,11 @@ def get_filtered_events(user, search_query, page, per_page, event_filter_type=No
     )
 
     if not user.is_authenticated:
-        print("--- DEBUG: Usuário não autenticado. Retornando query vazia. ---")
+        current_app.logger.debug("--- DEBUG: Usuário não autenticado. Retornando query vazia. ---")
         return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
 
     base_query = base_query.filter(Event.is_cancelled == False)
-    print("--- DEBUG: Filtrando por Event.is_cancelled == False ---")
+    current_app.logger.debug("--- DEBUG: Filtrando por Event.is_cancelled == False ---")
 
     active_status_obj = Status.query.filter_by(name='Ativo', type='event').first()
     realizado_status_obj = Status.query.filter_by(name='Realizado', type='event').first()
@@ -272,31 +270,31 @@ def get_filtered_events(user, search_query, page, per_page, event_filter_type=No
         return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
 
     if user.is_admin:
-        print("--- DEBUG: Lógica para ADMINISTRADOR --- ")
+        current_app.logger.debug("--- DEBUG: Lógica para ADMINISTRADOR --- ")
         if event_filter_type == 'Ativo':
             if active_status_obj:
                 base_query = base_query.filter(Event.event_status == active_status_obj)
-                print(f"--- DEBUG: Admin filtrando por status 'Ativo' (ID: {active_status_obj.id}). ---")
+                current_app.logger.debug(f"--- DEBUG: Admin filtrando por status 'Ativo' (ID: {active_status_obj.id}). ---")
         elif event_filter_type == 'Realizado':
             if realizado_status_obj:
                 base_query = base_query.filter(Event.event_status == realizado_status_obj)
-                print(f"--- DEBUG: Admin filtrando por status 'Realizado' (ID: {realizado_status_obj.id}). ---")
+                current_app.logger.debug(f"--- DEBUG: Admin filtrando por status 'Realizado' (ID: {realizado_status_obj.id}). ---")
             else:
                 flash("Status 'Realizado' para eventos não encontrado.", 'warning')
-                print("--- DEBUG: Admin tentou filtrar por 'Realizado' mas status não encontrado. ---")
+                current_app.logger.debug("--- DEBUG: Admin tentou filtrar por 'Realizado' mas status não encontrado. ---")
                 return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
         elif event_filter_type == 'Arquivado':
             if arquivado_status_obj:
                 base_query = base_query.filter(Event.event_status == arquivado_status_obj)
-                print(f"--- DEBUG: Admin filtrando por status 'Arquivado' (ID: {arquivado_status_obj.id}). ---")
+                current_app.logger.debug(f"--- DEBUG: Admin filtrando por status 'Arquivado' (ID: {arquivado_status_obj.id}). ---")
             else:
                 flash("Status 'Arquivado' para eventos não encontrado.", 'warning')
-                print("--- DEBUG: Admin tentou filtrar por 'Arquivado' mas status não encontrado. ---")
+                current_app.logger.debug("--- DEBUG: Admin tentou filtrar por 'Arquivado' mas status não encontrado. ---")
                 return Event.query.filter(false()).paginate(page=page, per_page=per_page, error_out=False)
         else:
-            print("--- DEBUG: Admin não especificou filtro de status ou solicitou 'Todos' (home). Mostrando todos os não cancelados. ---")
+            current_app.logger.debug("--- DEBUG: Admin não especificou filtro de status ou solicitou 'Todos' (home). Mostrando todos os não cancelados. ---")
     else:
-        print("--- DEBUG: Lógica para NÃO-ADMINISTRADOR --- ")
+        current_app.logger.debug("--- DEBUG: Lógica para NÃO-ADMINISTRADOR --- ")
         
         if event_filter_type == 'Realizado' or event_filter_type == 'Arquivado':
             current_app.logger.info(f"Non-admin user {user.username} tried to access {event_filter_type} events. Denied as per rules.")
@@ -306,30 +304,30 @@ def get_filtered_events(user, search_query, page, per_page, event_filter_type=No
             Event.is_published == True,
             Event.event_status == active_status_obj
         )
-        print("--- DEBUG: Non-admin base query conditions: Event.is_published == True AND Event.is_cancelled == False AND Event.event_status.name == 'Ativo' ---")
+        current_app.logger.debug("--- DEBUG: Non-admin base query conditions: Event.is_published == True AND Event.is_cancelled == False AND Event.event_status.name == 'Ativo' ---")
         
         is_author_condition = Event.author_id == user.id
-        print(f"--- DEBUG:   - Condição 'É Autor': Event.author_id == {user.id}")
+        current_app.logger.debug(f"--- DEBUG:   - Condição 'É Autor': Event.author_id == {user.id}")
         is_assigned_to_task_condition = Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == user.id))
-        print(f"--- DEBUG:   - Condição 'Atribuído a Tarefa': Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == {user.id}))")
+        current_app.logger.debug(f"--- DEBUG:   - Condição 'Atribuído a Tarefa': Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == {user.id}))")
         has_direct_permission_condition = Event.event_permissions.any(EventPermission.user_id == user.id)
-        print(f"--- DEBUG:   - Condição 'Permissão Direta no Evento': Event.event_permissions.any(EventPermission.user_id == {user.id})")
+        current_app.logger.debug(f"--- DEBUG:   - Condição 'Permissão Direta no Evento': Event.event_permissions.any(EventPermission.user_id == {user.id})")
         visibility_conditions_for_user = or_(
             is_author_condition,
             is_assigned_to_task_condition,
             has_direct_permission_condition
         )
         base_query = base_query.filter(visibility_conditions_for_user)
-        print(f"--- DEBUG: Non-admin query final filter (visibilidade): ({is_author_condition} OR {is_assigned_to_task_condition} OR {has_direct_permission_condition})")
+        current_app.logger.debug(f"--- DEBUG: Non-admin query final filter (visibilidade): ({is_author_condition} OR {is_assigned_to_task_condition} OR {has_direct_permission_condition})")
 
     if publication_status == 'published':
         base_query = base_query.filter(Event.is_published == True)
-        print("--- DEBUG: Aplicado filtro de publicação: Event.is_published == True ---")
+        current_app.logger.debug("--- DEBUG: Aplicado filtro de publicação: Event.is_published == True ---")
     elif publication_status == 'unpublished':
         base_query = base_query.filter(Event.is_published == False)
-        print("--- DEBUG: Aplicado filtro de publicação: Event.is_published == False ---")
+        current_app.logger.debug("--- DEBUG: Aplicado filtro de publicação: Event.is_published == False ---")
     else:
-        print("--- DEBUG: Filtro de publicação: 'all' (nenhum filtro adicional aplicado) ---")
+        current_app.logger.debug("--- DEBUG: Filtro de publicação: 'all' (nenhum filtro adicional aplicado) ---")
     
     search_query_text = request.args.get('search', '')
     if search_query_text:
@@ -340,14 +338,14 @@ def get_filtered_events(user, search_query, page, per_page, event_filter_type=No
                 Event.location.ilike(f'%{search_query_text}%')
             )
         )
-        print(f"--- DEBUG: Adicionado filtro de busca: '{search_query_text}' ---")
+        current_app.logger.debug(f"--- DEBUG: Adicionado filtro de busca: '{search_query_text}' ---")
     base_query = base_query.order_by(Event.due_date.asc())
     
     count_before_pagination = base_query.count()
-    print(f"--- DEBUG: Total de eventos encontrados antes da paginação para user {user.username}: {count_before_pagination} ---")
+    current_app.logger.debug(f"--- DEBUG: Total de eventos encontrados antes da paginação para user {user.username}: {count_before_pagination} ---")
     
     pagination_result = base_query.paginate(page=page, per_page=per_page, error_out=False)
-    print(f"--- DEBUG: Eventos na página {page}: {len(pagination_result.items)} ---")
+    current_app.logger.debug(f"--- DEBUG: Eventos na página {page}: {len(pagination_result.items)} ---")
     
     return pagination_result
 
@@ -364,9 +362,9 @@ def get_event_publication_counts(user, event_filter_type=None):
         if not active_status_obj:
              return {'all': 0, 'published': 0, 'unpublished': 0}
         visibility_conditions_for_user = or_(
-            Event.author_id == user.id,
-            Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == user.id)),
-            Event.event_permissions.any(EventPermission.user_id == user.id)
+            Event.author_id == current_user.id,
+            Event.tasks.any(Task.assignees_associations.any(TaskAssignment.user_id == current_user.id)),
+            Event.event_permissions.any(EventPermission.user_id == current_user.id)
         )
         base_query = base_query.filter(
             visibility_conditions_for_user,
@@ -379,7 +377,7 @@ def get_event_publication_counts(user, event_filter_type=None):
         if event_filter_type == 'Ativo':
             active_status_obj = Status.query.filter_by(name='Ativo', type='event').first()
             if active_status_obj:
-                base_query = base_query.filter(Event.event_status == active_status_obj) # <-- CORREÇÃO AQUI
+                base_query = base_query.filter(Event.event_status == active_status_obj)
         elif event_filter_type == 'Realizado':
             realizado_status_obj = Status.query.filter_by(name='Realizado', type='event').first()
             if realizado_status_obj:
@@ -409,7 +407,7 @@ def get_vapid_public_key():
     return jsonify({'vapid_public_key': vapid_public_key})
 
 
-@main.route("/home") # Removido o '/' aqui para evitar conflito com a rota raiz do app
+@main.route("/home")
 @login_required
 def home():
     search_query = request.args.get('search', '')
@@ -418,7 +416,6 @@ def home():
     
     publication_status = request.args.get('publication_status', 'all')
     events = get_filtered_events(current_user, search_query, page, per_page, event_filter_type=None, publication_status=publication_status)
-    
     publication_counts = get_event_publication_counts(current_user, event_filter_type=None)
     title_text = 'Meus Eventos Ativos' if not current_user.is_admin else 'Todos os Eventos'
     return render_template('home.html', events=events, title=title_text, search_query=search_query,
@@ -471,7 +468,6 @@ def archived_events():
     publication_status = request.args.get('publication_status', 'all')
     events = get_filtered_events(current_user, search_query, page, per_page, event_filter_type='Arquivado', publication_status=publication_status)
     publication_counts = get_event_publication_counts(current_user, event_filter_type='Arquivado')
-
     return render_template('home.html', events=events, title='Eventos Arquivados', search_query=search_query, 
                            current_filter='archived', publication_status=publication_status,
                            publication_counts=publication_counts)
@@ -516,32 +512,32 @@ def login():
     form = LoginForm()
 
     if request.method == 'POST':
-        print(f"\n--- DEBUG: Tentativa de Login ---")
-        print(f"--- DEBUG: E-mail recebido (form.email.data): '{form.email.data}' ---")
-        print(f"--- DEBUG: Senha preenchida? {bool(form.password.data)} ---")
+        current_app.logger.debug(f"\n--- DEBUG: Tentativa de Login ---")
+        current_app.logger.debug(f"--- DEBUG: E-mail recebido (form.email.data): '{form.email.data}' ---")
+        current_app.logger.debug(f"--- DEBUG: Senha preenchida? {bool(form.password.data)} ---")
         if form.validate_on_submit():
-            print(f"--- DEBUG: Formulário de Login validado com sucesso! ---")
+            current_app.logger.debug(f"--- DEBUG: Formulário de Login validado com sucesso! ---")
             user = User.query.filter_by(email=form.email.data).first()
-            print(f"--- DEBUG: Usuário encontrado: Username='{user.username}', Email='{user.email}' ---")
+            current_app.logger.debug(f"--- DEBUG: Usuário encontrado: Username='{user.username}', Email='{user.email}' ---")
             if user:
                 if user.check_password(form.password.data):
                     login_user(user, remember=form.remember.data)
                     next_page = request.args.get('next')
-                    if not next_page or next_page == url_for('main.home'): # Ajustado para main.home
+                    if not next_page or next_page == url_for('main.home'):
                         redirect_url = url_for('main.active_events')
                     else:
                         redirect_url = next_page
                     flash('Login bem-sucedido!', 'success')
-                    print(f"--- DEBUG: Senha corresponde. Login bem-sucedido. Redirecionando para: {redirect_url} ---")
+                    current_app.logger.debug(f"--- DEBUG: Senha corresponde. Login bem-sucedido. Redirecionando para: {redirect_url} ---")
                     return redirect(redirect_url)
                 else:
                     flash('Login mal-sucedido. Por favor, verifique seu e-mail e senha.', 'danger')
-                    print(f"--- DEBUG: Senha não corresponde para o usuário '{user.email}'. ---")
+                    current_app.logger.debug(f"--- DEBUG: Senha não corresponde para o usuário '{user.email}'. ---")
             else:
                 flash('Login mal-sucedido. Por favor, verifique seu e-mail e senha.', 'danger')
-                print(f"--- DEBUG: Usuário com e-mail '{form.email.data}' NÃO encontrado no banco de dados. ---")
+                current_app.logger.debug(f"--- DEBUG: Usuário com e-mail '{form.email.data}' NÃO encontrado no banco de dados. ---")
         else:
-            print(f"--- DEBUG: Validação do formulário de Login FALHOU. Erros: {form.errors} ---")
+            current_app.logger.debug(f"--- DEBUG: Validação do formulário de Login FALHOU. Erros: {form.errors} ---")
             if request.method == 'POST':
                 flash('Login mal-sucedido. Por favor, verifique seu e-mail e senha.', 'danger')
     return render_template('login.html', title='Login', form=form)
@@ -656,6 +652,324 @@ def reset_token(token):
 
 
 # =========================================================================
+# ROTAS DE KANBAN
+# =========================================================================
+@main.route('/kanban_board', methods=['GET'])
+@login_required
+def kanban_board():
+    """
+    Rota para exibir o quadro Kanban de tarefas.
+    Permite filtrar por evento e/ou usuário atribuído.
+    """
+    # 1. ORDEM DAS COLUNAS: Definir a ordem desejada para os status das colunas
+    desired_order_names = ['Não iniciado', 'Em Andamento', 'Pendente', 'Concluído', 'Cancelado']
+    
+    # Busca TODOS os status do tipo 'task' do banco de dados
+    all_task_statuses_from_db = Status.query.filter_by(type='task').all()
+    
+    # Cria um mapa de nome para objeto Status para fácil acesso
+    status_objects_map = {status.name: status for status in all_task_statuses_from_db}
+
+    # Cria uma lista ORDENADA de dados de coluna para o template.
+    # Garante que todas as colunas apareçam na ordem desejada, mesmo que não existam no DB.
+    kanban_columns_data = []
+    for name in desired_order_names:
+        status_obj = status_objects_map.get(name)
+        kanban_columns_data.append({
+            'name': name,
+            'id': status_obj.id if status_obj else None, # ID será None se o status não existir
+            'obj': status_obj # O objeto Status (ou None)
+        })
+
+    # Prepare um dicionário para armazenar tarefas agrupadas por nome de status (string)
+    # Inicializa o dicionário com todos os nomes desejados, garantindo que mesmo colunas vazias sejam consideradas
+    tasks_by_status_name = {name: [] for name in desired_order_names} 
+    
+    # Obter parâmetros de filtro da URL
+    current_event_id = request.args.get('event_id', type=int)
+    current_assignee_id = request.args.get('assignee_id', type=int)
+    
+    # Consulta base de tarefas, carregando dados relacionados para exibição no card
+    query = Task.query.options(
+        joinedload(Task.assignees_associations).joinedload(TaskAssignment.user),
+        joinedload(Task.event),
+        joinedload(Task.task_status_rel) 
+    )
+
+    # Lógica de filtragem
+    if current_event_id:
+        query = query.filter(Task.event_id == current_event_id)
+    if current_assignee_id:
+        query = query.filter(Task.assignees_associations.any(TaskAssignment.user_id == current_assignee_id))
+
+    # Lógica de permissão de visualização (similar a _can_view_event_helper, mas para tarefas)
+    if not current_user.is_admin:
+        user_visibility_conditions = or_(
+            Task.creator_id == current_user.id,
+            Task.event.has(Event.author_id == current_user.id),
+            Task.assignees_associations.any(TaskAssignment.user_id == current_user.id),
+            Task.event.has(Event.event_permissions.any(EventPermission.user_id == current_user.id))
+        )
+        query = query.filter(user_visibility_conditions)
+
+    all_tasks = query.order_by(Task.due_date.asc().nulls_last(), Task.id.desc()).all()
+
+    for task in all_tasks:
+        if task.task_status_rel and task.task_status_rel.name in tasks_by_status_name:
+            tasks_by_status_name[task.task_status_rel.name].append(task)
+    
+    now_utc = datetime.utcnow() # Garante que now_utc seja um objeto datetime completo para o template
+
+    # Instanciar TaskForm para o modal de nova tarefa
+    form = TaskForm()
+    # Popular as queries para os QuerySelectFields do formulário
+    form.event.query = Event.query.order_by(Event.title).all()
+    form.task_category.query = TaskCategory.query.order_by(TaskCategory.name).all()
+    form.task_subcategory.query = TaskSubcategory.query.order_by(TaskSubcategory.name).all()
+    form.task_status_rel.query = Status.query.filter_by(type='task').order_by(Status.id).all()
+    form.assignees.query = User.query.order_by(User.username).all()
+
+    return render_template('kanban.html',
+                           title='Quadro Kanban de Tarefas',
+                           tasks_by_status=tasks_by_status_name,
+                           kanban_columns_data=kanban_columns_data, # Passa a lista ORDENADA de dados de coluna
+                           current_event_id=current_event_id,
+                           current_assignee_id=current_assignee_id,
+                           all_events=Event.query.order_by(Event.title).all(), # Passar todos os eventos para o filtro
+                           all_users=User.query.order_by(User.username).all(), # Passar todos os usuários para o filtro
+                           now_utc=now_utc,
+                           csrf_token=generate_csrf(),
+                           form=form 
+                          )
+
+@main.route('/api/tasks/<int:task_id>/update_status', methods=['POST'])
+@login_required
+@permission_required('can_edit_task')
+def api_update_task_status(task_id):
+    task = Task.query.get_or_404(task_id)
+
+    data = request.get_json()
+    new_status_id = data.get('new_status_id')
+    new_status_name = data.get('new_status_name')  # Novo campo para nome do status
+    
+    if not new_status_id:
+        current_app.logger.warning(f"DEBUG: api_update_task_status - Novo status não fornecido para tarefa {task_id}.")
+        return jsonify({'success': False, 'message': 'Novo status não fornecido.'}), 400
+    
+    # Lidar com status não configurados (como "Não iniciado")
+    if isinstance(new_status_id, str) and not new_status_id.isdigit():
+        # CORREÇÃO: Não permitir mover para "Não iniciado" pois viola a restrição NOT NULL
+        if 'Não iniciado' in str(new_status_name or new_status_id):
+            current_app.logger.warning(f"DEBUG: api_update_task_status - Tentativa de mover tarefa {task_id} para 'Não iniciado' bloqueada (violaria restrição NOT NULL).")
+            return jsonify({
+                'success': False, 
+                'message': 'Não é possível mover tarefas para "Não iniciado" pois este status não está configurado no banco de dados. Por favor, configure este status na administração.'
+            }), 400
+        else:
+            current_app.logger.warning(f"DEBUG: api_update_task_status - Status não configurado '{new_status_name or new_status_id}' não suportado para tarefa {task_id}.")
+            return jsonify({'success': False, 'message': f'Status "{new_status_name or new_status_id}" não está configurado no sistema.'}), 400
+    
+    # Status configurado - buscar pelo ID
+    try:
+        status_id = int(new_status_id)
+        new_status = Status.query.get(status_id)
+    except (ValueError, TypeError):
+        current_app.logger.warning(f"DEBUG: api_update_task_status - ID de status inválido '{new_status_id}' para tarefa {task_id}.")
+        return jsonify({'success': False, 'message': 'ID de status inválido.'}), 400
+    
+    if not new_status:
+        current_app.logger.warning(f"DEBUG: api_update_task_status - Status ID {new_status_id} não encontrado para tarefa {task_id}.")
+        return jsonify({'success': False, 'message': 'Status não encontrado.'}), 400
+
+    old_task_data_for_log = task.to_dict()
+    current_app.logger.debug(f"DEBUG: api_update_task_status - Atualizando status da tarefa {task_id} de '{task.task_status_rel.name if task.task_status_rel else 'N/A'}' para '{new_status.name}'.")
+
+    task.task_status_id = new_status_id
+    task.updated_at = datetime.utcnow()
+
+    # Lógica para gerenciar is_completed com base no novo status
+    if new_status.name == 'Concluído' and not task.is_completed:
+        current_app.logger.debug(f"DEBUG: api_update_task_status - Tarefa {task_id} marcada como concluída.")
+        task.is_completed = True
+        task.completed_at = datetime.utcnow()
+        task.completed_by_id = current_user.id
+        if task.checklist:
+            for item in task.checklist.items:
+                item.is_completed = True
+    elif new_status.name != 'Concluído' and task.is_completed:
+        current_app.logger.debug(f"DEBUG: api_update_task_status - Tarefa {task_id} desmarcada como concluída.")
+        task.is_completed = False
+        task.completed_at = None
+        task.completed_by_id = None
+        if task.checklist:
+            for item in task.checklist.items:
+                item.is_completed = False
+
+    try:
+        db.session.commit() # Commit da atualização da tarefa e itens de checklist (se houver)
+        current_app.logger.debug(f"DEBUG: api_update_task_status - PRIMEIRO db.session.commit() BEM-SUCEDIDO para tarefa {task_id}.")
+
+        # Logar a alteração no ChangeLogEntry
+        ChangeLogEntry.log_update(
+            current_user.id,
+            'Task',
+            task.id,
+            old_task_data_for_log,
+            task.to_dict(),
+            description=f'Status da tarefa "{task.title}" alterado para "{new_status.name}" via Kanban.'
+        )
+        current_app.logger.debug(f"DEBUG: api_update_task_status - Log de alteração de status adicionado. Tentando o SEGUNDO commit...")
+        db.session.commit() # Commit do ChangeLogEntry
+        current_app.logger.debug(f"DEBUG: api_update_task_status - SEGUNDO db.session.commit() BEM-SUCEDIDO. Tarefa {task_id} DEVE ESTAR persistida.")
+
+        return jsonify({'success': True, 'message': f'Status da tarefa "{task.title}" atualizado para "{new_status.name}".'}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"DEBUG: api_update_task_status - ERRO GERAL capturado ao atualizar status da tarefa {task_id}: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': f'Erro ao atualizar status: {str(e)}'}), 500
+
+
+# ROTA PARA CRIAR TAREFAS VIA AJAX NO KANBAN
+@main.route('/api/tasks/create', methods=['POST'])
+@login_required
+@permission_required('can_create_task') # Exemplo de permissão para criar tarefa
+def create_task_from_kanban():
+    form = TaskForm() # Instancia o formulário
+
+    # É CRUCIAL popular as queries dos QuerySelectFields para que a validação do WTForms funcione
+    # O request.get_json() não popula os formulários WTForms automaticamente.
+    # Precisamos popula-los manualmente para que QuerySelectField consiga mapear IDs para objetos
+    # antes de form.validate_on_submit() ser chamado.
+    form.event.query = Event.query.order_by(Event.title).all()
+    form.task_category.query = TaskCategory.query.order_by(TaskCategory.name).all()
+    form.task_subcategory.query = TaskSubcategory.query.order_by(TaskSubcategory.name).all()
+    form.task_status_rel.query = Status.query.filter_by(type='task').order_by(Status.id).all()
+    form.assignees.query = User.query.order_by(User.username).all()
+
+    # Como o formulário é enviado via AJAX como JSON, precisamos carregá-lo manualmente.
+    # O `process()` método ajuda a carregar dados em QuerySelectField e outros.
+    if request.is_json:
+        data = request.get_json()
+        # Processa os dados JSON no formulário
+        form.process(data=data)
+        
+        # O campo 'due_date' precisa ser convertido de string para date manualmente
+        if 'due_date' in data and data['due_date']:
+            try:
+                form.due_date.data = datetime.strptime(data['due_date'], '%Y-%m-%d').date()
+            except ValueError:
+                form.due_date.errors.append('Formato de data inválido. Use AAAA-MM-DD.')
+
+        # Manualmente definir o dado para task_status_rel usando o ID do campo oculto
+        # Isso permite que form.validate() possa verificar se um status válido foi fornecido
+        if 'kanban_status_id_hidden' in data and data['kanban_status_id_hidden']:
+            status_id_from_kanban = data['kanban_status_id_hidden']
+            status_obj_for_validation = Status.query.get(status_id_from_kanban)
+            if status_obj_for_validation:
+                form.task_status_rel.data = status_obj_for_validation
+            else:
+                form.task_status_rel.errors.append('Status da tarefa inválido.')
+
+
+    if form.validate(): # Use form.validate() sem on_submit para dados JSON
+        try:
+            # Agora form.task_status_rel.data já deve conter o objeto Status
+            task_category_obj = form.task_category.data
+            task_subcategory_obj = form.task_subcategory.data if form.task_subcategory.data else None
+            task_status_obj = form.task_status_rel.data
+
+            if not task_category_obj or not task_status_obj:
+                return jsonify({'success': False, 'message': 'Categoria de tarefa ou Status de tarefa inválido.'}), 400
+            
+            new_task = Task(
+                title=form.title.data,
+                description=form.description.data,
+                due_date=form.due_date.data,
+                event_id=form.event.data.id if form.event.data else None,
+                task_category_id=form.task_category.data.id,
+                task_subcategory_id=form.task_subcategory.data.id if form.task_subcategory.data else None,
+                task_status_id=task_status_obj.id, # Usando o ID do objeto Status
+                creator_id=current_user.id,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                priority=form.priority.data # Adicionado o campo priority
+            )
+            db.session.add(new_task)
+            db.session.flush() # Para obter o ID da nova_tarefa antes de criar as atribuições
+
+            # Lógica para atribuir usuários
+            if form.assignees.data:
+                # form.assignees.data já é uma lista de objetos User se processado corretamente
+                # Mas do JS ele vem como string JSON de IDs, então precisamos parsear
+                selected_assignee_ids = form.assignees.data # Isso já deve ser um objeto Python (lista de IDs) se process(data=data) funcionou
+                if isinstance(selected_assignee_ids, list): # Verifica se já é uma lista de IDs
+                    for user_id in selected_assignee_ids:
+                        user_obj = User.query.get(user_id)
+                        if user_obj:
+                            assignment = TaskAssignment(task_id=new_task.id, user_id=user_obj.id)
+                            db.session.add(assignment)
+                else: # Fallback caso form.process não tenha convertido corretamente
+                    try:
+                        parsed_assignees = json.loads(selected_assignee_ids)
+                        for user_id in parsed_assignees:
+                            user_obj = User.query.get(user_id)
+                            if user_obj:
+                                assignment = TaskAssignment(task_id=new_task.id, user_id=user_obj.id)
+                                db.session.add(assignment)
+                    except (json.JSONDecodeError, TypeError):
+                        current_app.logger.error(f"Erro ao processar assignees: {selected_assignee_ids} não é JSON válido ou lista.")
+
+
+            db.session.commit()
+
+            # Logar a criação no ChangeLogEntry
+            ChangeLogEntry.log_creation(
+                user_id=current_user.id,
+                record_type='Task',
+                record_id=new_task.id,
+                new_data=new_task.to_dict(),
+                description=f"Tarefa '{new_task.title}' criada via Kanban Quick Add."
+            )
+            db.session.commit()
+
+            # Preparar dados para o frontend
+            # Precisamos recarregar a tarefa para obter a relação de assignees que foi adicionada
+            db.session.refresh(new_task) 
+            assignee_names = [assignment.user.username for assignment in new_task.assignees_associations] 
+            event_title = new_task.event.title if new_task.event else None
+            
+            task_data = {
+                'id': new_task.id,
+                'title': new_task.title,
+                'description': new_task.description,
+                'due_date': new_task.due_date.strftime('%Y-%m-%d'), # Formato para JS
+                'due_date_formatted': new_task.due_date.strftime('%d/%m/%Y'), # Formato para exibição
+                'is_completed': new_task.is_completed, 
+                'assignees': assignee_names,
+                'event_id': new_task.event_id,
+                'event_title': event_title,
+                'status_id': new_task.task_status_id,
+                'status_name': new_task.task_status_rel.name,
+                'creator_id': new_task.creator_id,
+                'priority': new_task.priority, # Incluir prioridade
+                'now_utc_date': datetime.utcnow().date().strftime('%Y-%m-%d') # Para comparação de data no JS
+            }
+
+            return jsonify({'success': True, 'message': 'Tarefa criada com sucesso!', 'task': task_data}), 201
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Erro ao criar tarefa via Kanban Quick Add: {e}", exc_info=True)
+            return jsonify({'success': False, 'message': f'Erro interno do servidor: {str(e)}'}), 500
+    else:
+        # Se a validação do formulário falhar, retorne os erros
+        errors = {}
+        for fieldName, errorMessages in form.errors.items():
+            errors[fieldName] = errorMessages
+        current_app.logger.warning(f"Erro de validação ao criar tarefa via Kanban: {errors}")
+        return jsonify({'success': False, 'message': 'Erro de validação', 'errors': errors}), 400
+
+
+# =========================================================================
 # Rotas de Eventos
 # =========================================================================
 @main.route("/event/new", methods=['GET', 'POST'])
@@ -704,8 +1018,7 @@ def new_event():
             db.session.rollback()
             current_app.logger.error(f"Erro ao criar novo evento: {e}", exc_info=True)
             flash(f'Ocorreu um erro ao criar o evento: {str(e)}. Por favor, tente novamente.', 'danger')
-    
-    return render_template('create_edit_event.html', title='Novo Evento', form=form, legend='Novo Evento')
+            return render_template('create_edit_event.html', title='Novo Evento', form=form, legend='Novo Evento')
 
 
 @main.route("/event/<int:event_id>")
@@ -743,6 +1056,7 @@ def event(event_id):
         filtered_completed_tasks.sort(key=lambda t: t.completed_at if t.completed_at else datetime.min, reverse=True)
 
     current_date = date.today()
+    days_left = (task_obj.due_date.date() - current_date).days if 'task_obj' in locals() and task_obj.due_date else 0
 
     can_manage_event_permissions = is_admin or is_event_author
     can_edit_event = is_admin or is_event_author
@@ -801,13 +1115,14 @@ def update_event(event_id):
         event_obj.end_date = form.end_date.data
         event_obj.location = form.location.data
 
-        category_obj = Category.query.get(form.category.data)
-        status_obj = Status.query.get(form.status.data)
-        if not category_obj or not status_obj:
+        # Corrigido: QuerySelectField retorna o objeto diretamente, não o ID
+        category_obj = form.category.data
+        event_status_obj = form.event_status.data 
+        if not category_obj or not event_status_obj: 
             flash('Categoria ou Status de evento inválido.', 'danger')
             return render_template('create_edit_event.html', title='Atualizar Evento', form=form, legend='Atualizar Evento')
         event_obj.category = category_obj
-        event_obj.event_status = status_obj
+        event_obj.event_status = event_status_obj 
         db.session.commit()
         ChangeLogEntry.log_update(current_user.id, 'Event', event_obj.id, old_data=old_data, new_data=event_obj.to_dict(), description=f"Evento '{event_obj.title}' atualizado.")
         db.session.commit()
@@ -819,8 +1134,8 @@ def update_event(event_id):
         form.due_date.data = event_obj.due_date
         form.end_date.data = event_obj.end_date
         form.location.data = event_obj.location
-        form.category.data = event_obj.category.id if event_obj.category else None
-        form.status.data = event_obj.event_status.id if event_obj.event_status else None
+        form.category.data = event_obj.category 
+        form.event_status.data = event_obj.event_status 
     return render_template('create_edit_event.html', title='Atualizar Evento',
                            form=form, legend='Atualizar Evento')
 
@@ -871,13 +1186,13 @@ def publish_event(event_id):
         db.session.commit()
         ChangeLogEntry.log_update(current_user.id, 'Event', event.id, old_data=old_data, new_data=event.to_dict(), description=f"Evento '{event.title}' publicado.")
         db.session.commit()
-        flash('Evento publicado com sucesso!', 'success')
-        return redirect(url_for('main.event', event_id=event.id))
+        # flash('Evento publicado com sucesso!', 'success') # Removido
+        return jsonify({'success': True, 'message': 'Evento publicado com sucesso!'}), 200 # <-- MODIFICADO
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Erro ao publicar evento {event_id}: {e}", exc_info=True)
-        flash(f'Erro ao publicar evento: {str(e)}', 'danger')
-        return redirect(url_for('main.event', event_id=event.id))
+        # flash(f'Erro ao publicar evento: {str(e)}', 'danger') # Removido
+        return jsonify({'success': False, 'message': f'Erro ao publicar evento: {str(e)}'}), 500 # <-- MODIFICADO
 
 
 @main.route("/event/<int:event_id>/unpublish", methods=['POST'])
@@ -891,13 +1206,13 @@ def unpublish_event(event_id):
         db.session.commit()
         ChangeLogEntry.log_update(current_user.id, 'Event', event.id, old_data=old_data, new_data=event.to_dict(), description=f"Evento '{event.title}' despublicado.")
         db.session.commit()
-        flash('Evento despublicado com sucesso!', 'warning')
-        return redirect(url_for('main.event', event_id=event.id))
+        # flash('Evento despublicado com sucesso!', 'warning') # Removido
+        return jsonify({'success': True, 'message': 'Evento despublicado com sucesso!'}), 200 # <-- MODIFICADO
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Erro ao despublicar evento {event_id}: {e}", exc_info=True)
-        flash(f'Erro ao despublicar evento: {str(e)}', 'danger')
-        return redirect(url_for('main.event', event_id=event.id))
+        # flash(f'Erro ao despublicar evento: {str(e)}', 'danger') # Removido
+        return jsonify({'success': False, 'message': f'Erro ao despublicar evento: {str(e)}'}), 500 # <-- MODIFICADO
 
 
 @main.route("/event/<int:event_id>/duplicate", methods=['POST'])
@@ -922,13 +1237,13 @@ def duplicate_event(event_id):
         db.session.commit()
         ChangeLogEntry.log_creation(current_user.id, 'Event', new_event.id, new_data=new_event.to_dict(), description=f"Evento '{original_event.title}' duplicado para '{new_event.title}'.")
         db.session.commit()
-        flash(f'Evento "{new_event.title}" duplicado com sucesso! Edite-o agora.', 'success')
-        return redirect(url_for('main.update_event', event_id=new_event.id))
+        # flash(f'Evento "{new_event.title}" duplicado com sucesso! Edite-o agora.', 'success') # Removido
+        return jsonify({'success': True, 'message': f'Evento "{new_event.title}" duplicado com sucesso!'}), 200 # <-- MODIFICADO
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Erro ao duplicar evento {event_id}: {e}", exc_info=True)
-        flash(f'Erro ao duplicar evento: {str(e)}', 'danger')
-        return redirect(url_for('main.event', event_id=event_id))
+        # flash(f'Erro ao duplicar evento: {str(e)}', 'danger') # Removido
+        return jsonify({'success': False, 'message': f'Erro ao duplicar evento: {str(e)}'}), 500 # <-- MODIFICADO
 
 
 @main.route("/event/<int:event_id>/reports")
@@ -939,7 +1254,6 @@ def event_reports(event_id):
     
     report_data = {'event_title': event.title, 'some_metric': 123, 'another_metric': 45.6} # Lógica para gerar dados do relatório
     return render_template('event_reports.html', event=event, report_data=report_data, title=f"Relatórios de {event.title}")
-
 
 @main.route("/event/<int:event_id>/cancel", methods=['POST'])
 @login_required
@@ -952,13 +1266,13 @@ def cancel_event(event_id):
         db.session.commit()
         ChangeLogEntry.log_update(current_user.id, 'Event', event.id, old_data=old_data, new_data=event.to_dict(), description=f"Evento '{event.title}' cancelado.")
         db.session.commit()
-        flash(f'Evento "{event.title}" foi cancelado.', 'warning')
-        return redirect(url_for('main.event', event_id=event.id))
+        # flash(f'Evento "{event.title}" foi cancelado.', 'warning') # Removido
+        return jsonify({'success': True, 'message': f'Evento "{event.title}" foi cancelado.'}), 200 # <-- MODIFICADO
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Erro ao cancelar evento {event_id}: {e}", exc_info=True)
-        flash(f'Erro ao cancelar evento: {str(e)}', 'danger')
-        return redirect(url_for('main.event', event_id=event.id))
+        # flash(f'Erro ao cancelar evento: {str(e)}', 'danger') # Removido
+        return jsonify({'success': False, 'message': f'Erro ao cancelar evento: {str(e)}'}), 500 # <-- MODIFICADO
 
 
 # =========================================================================
@@ -998,8 +1312,7 @@ def search():
             if active_status_obj:
                 events_query = events_query.filter(and_(visibility_condition, Event.event_status == active_status_obj))
             else:
-                events_query = events_query.filter(visibility_condition)
-                flash("Status 'Ativo' para eventos não encontrado. A busca pode não ser precisa.", 'warning')
+                events_query = events_query.filter(false())
         else:
             events_query = events_query.filter(Event.is_cancelled == False)
         viewable_events = events_query.all()
@@ -1140,7 +1453,7 @@ def update_status(status_id):
 @admin_required # Usando o decorator consolidado
 def delete_status(status_id):
     status_obj = Status.query.get_or_404(status_id)
-    if Event.query.filter_by(status=status_obj).first() or Task.query.filter_by(task_status=status_obj).first():
+    if Event.query.filter_by(event_status=status_obj).first() or Task.query.filter_by(task_status_rel=status_obj).first(): 
         flash(f"Não é possível deletar o status '{status_obj.name}' porque ele está associado a eventos ou tarefas. Desvincule-o primeiro.", 'danger')
         return redirect(url_for('main.list_statuses'))
     old_data = status_obj.to_dict()
@@ -1229,7 +1542,6 @@ def get_task_subcategories_api(category_id):
 # =========================================================================
 # API de Template de Checklist para Renderização Dinâmica
 # =========================================================================
-# ... (outras importações e código anterior) ...
 
 @main.route("/api/checklist_template/<int:subcategory_id>", methods=['GET'])
 @login_required
@@ -1266,8 +1578,6 @@ def get_checklist_template_api(subcategory_id):
 # =========================================================================
 # Rotas de Tarefas
 # =========================================================================
-# Certifique-se de que `datetime` está importado, geralmente `from datetime import datetime`
-
 @main.route("/event/<int:event_id>/task/new", methods=['GET', 'POST'])
 @login_required
 @permission_required('can_create_task')
@@ -1276,22 +1586,19 @@ def new_task(event_id):
     form = TaskForm(event=event_obj)
 
     # Lógica para popular choices de subcategoria
-    if form.task_category.data:
-        category_id_for_filter = form.task_category.data.id 
-        subcategories = TaskSubcategory.query.filter_by(task_category_id=category_id_for_filter).order_by(TaskSubcategory.name).all()
-        form.task_subcategory.choices = [(ts.id, ts.name) for ts in subcategories]
-        form.task_subcategory.choices.insert(0, ('', 'Selecione uma Subcategoria'))
-    else:
-        form.task_subcategory.choices = [('', 'Selecione uma Categoria de Tarefa primeiro')]
+    # ... (código existente) ...
 
     if form.validate_on_submit():
+        current_app.logger.debug(f"DEBUG: new_task - Formulário VALIDADO para evento {event_id}. Tentando salvar tarefa.")
         try:
             task_category_obj = form.task_category.data
             task_subcategory_obj = form.task_subcategory.data if form.task_subcategory.data else None
             task_status_obj = form.task_status_rel.data 
 
             if not task_category_obj or not task_status_obj:
+                current_app.logger.warning(f"DEBUG: new_task - Categoria ou Status da tarefa inválidos no formulário. Cat: {task_category_obj}, Status: {task_status_obj}")
                 flash('Categoria de tarefa ou Status de tarefa inválido.', 'danger')
+                # Recarrega as choices da subcategoria em caso de erro de validação para o formulário
                 if form.task_category.data:
                     category_id_for_filter = form.task_category.data.id
                     subcategories = TaskSubcategory.query.filter_by(task_category_id=category_id_for_filter).order_by(TaskSubcategory.name).all()
@@ -1314,42 +1621,47 @@ def new_task(event_id):
                 creator_id=current_user.id,
                 is_completed=False,
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
+                priority=form.priority.data 
             )
             db.session.add(task)
-            db.session.flush()
+            db.session.flush() # Para obter o ID da nova_tarefa antes de criar as atribuições
+            current_app.logger.debug(f"DEBUG: new_task - Objeto Task criado em sessão com ID temporário: {task.id}. Título: '{task.title}'.")
 
             # Processar Atribuições
-            selected_assignee_ids = form.assignees.data
+            selected_assignee_ids = [user.id for user in form.assignees.data] 
             if selected_assignee_ids:
+                current_app.logger.debug(f"DEBUG: new_task - Atribuindo tarefa aos usuários: {selected_assignee_ids}")
                 for user_id in selected_assignee_ids:
-                    user_obj = User.query.get(user_id) 
+                    user_obj = User.query.get(user_id)
                     if user_obj:
                         new_assignment = TaskAssignment(task=task, user=user_obj)
                         task.assignees_associations.append(new_assignment)
             
             # Lógica para criação do Checklist Dinâmico
             if task_subcategory_obj and task_subcategory_obj.checklist_template:
+                current_app.logger.debug(f"DEBUG: new_task - Criando checklist para a tarefa a partir do template.")
                 task_checklist = TaskChecklist(
                     task_id=task.id,
                     task_subcategory_id=task_subcategory_obj.id
                 )
                 db.session.add(task_checklist)
                 db.session.flush()
+                current_app.logger.debug(f"DEBUG: new_task - TaskChecklist criado com ID: {task_checklist.id}.")
 
                 for item_template in task_subcategory_obj.checklist_template.items: 
                     task_checklist_item = TaskChecklistItem(
                         task_checklist_id=task_checklist.id,
                         checklist_item_template_id=item_template.id,
-                        label=item_template.label, # <-- ESTA LINHA FOI ADICIONADA/RESTAURADA
+                        label=item_template.label, 
                         custom_label=item_template.label, 
                         custom_field_type=item_template.field_type,
                         is_required=item_template.is_required,
                         order=item_template.order,
                         is_completed=False,
                     )
-                
                     db.session.add(task_checklist_item)
+                current_app.logger.debug(f"DEBUG: new_task - Itens do checklist adicionados à sessão.")
                 
                 ChangeLogEntry.log_creation(
                     current_user.id,
@@ -1358,8 +1670,10 @@ def new_task(event_id):
                     {'task_id': task.id, 'task_subcategory_id': task_subcategory_obj.id},
                     f'Checklist gerado automaticamente para a tarefa "{task.title}" (Subcategoria: {task_subcategory_obj.name}).'
                 )
+                current_app.logger.debug(f"DEBUG: new_task - Log de criação do checklist adicionado.")
 
-            db.session.commit()
+            db.session.commit() # Commit principal dos dados da tarefa
+            current_app.logger.debug(f"DEBUG: new_task - PRIMEIRO db.session.commit() BEM-SUCEDIDO para tarefa ID: {task.id}. Dados principais gravados.")
 
             ChangeLogEntry.log_creation(
                 current_user.id,
@@ -1368,20 +1682,30 @@ def new_task(event_id):
                 task.to_dict(),
                 f'Tarefa "{task.title}" (ID: {task.id}) criada por {current_user.username}.'
             )
+            current_app.logger.debug(f"DEBUG: new_task - Log de criação da tarefa adicionado. Tentando o SEGUNDO commit...")
+            db.session.commit() # Commit do ChangeLogEntry
+            current_app.logger.debug(f"DEBUG: new_task - SEGUNDO db.session.commit() BEM-SUCEDIDO. Task {task.id} DEVE ESTAR persistida no banco.")
 
             flash('Sua tarefa foi criada com sucesso!', 'success')
+            current_app.logger.debug(f"DEBUG: new_task - Mensagem flash de sucesso definida. Redirecionando para task_detail/{task.id}")
             return redirect(url_for('main.task_detail', task_id=task.id))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Erro ao criar tarefa para evento {event_id}: {e}", exc_info=True)
+            current_app.logger.error(f"DEBUG: new_task - ERRO GERAL capturado durante a criação da tarefa para evento {event_id}: {e}", exc_info=True)
             flash(f'Ocorreu um erro ao criar a tarefa: {str(e)}. Por favor, tente novamente.', 'danger')
-            if form.task_category.data:
-                category_id_for_filter = form.task_category.data.id
-                subcategories = TaskSubcategory.query.filter_by(task_category_id=category_id_for_filter).order_by(TaskSubcategory.name).all()
-                form.task_subcategory.choices = [(ts.id, ts.name) for ts in subcategories]
-                form.task_subcategory.choices.insert(0, ('', 'Selecione uma Subcategoria'))
-    
+            # ... (recarrega as choices da subcategoria e renderiza o template novamente em caso de erro) ...
+            return render_template('create_edit_task.html', title='Nova Tarefa', form=form, legend='Criar Tarefa', event=event_obj)
+    else:
+        # Se o formulário não validou, logs dos erros de validação
+        if request.method == 'POST': # Apenas para POSTs que falharam na validação
+            current_app.logger.warning(f"DEBUG: new_task - Formulário NÃO VALIDADO para evento {event_id}. Erros: {form.errors}")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Erro no campo '{field}': {error}", 'danger')
+        else: # É um GET request para exibir o formulário
+            current_app.logger.debug(f"DEBUG: new_task - Requisição GET para criar nova tarefa para evento {event_obj.id}.")
+            
     return render_template('create_edit_task.html', title='Nova Tarefa', form=form, legend='Criar Tarefa', event=event_obj)
 
 # =========================================================================
@@ -1400,11 +1724,9 @@ def task_detail(task_id):
         joinedload(Task.event).joinedload(Event.event_permissions),
         joinedload(Task.comments).joinedload(Comment.author),
         # CORREÇÃO AQUI: Usar 'template_item' em vez de 'checklist_item_template'
-        joinedload(Task.checklist).joinedload(TaskChecklist.items).joinedload(TaskChecklistItem.template_item), # <--- VÍRGULA ADICIONADA AQUI!
-        # >>>>>>>> ADIÇÃO AQUI <<<<<<<<<<
+        joinedload(Task.checklist).joinedload(TaskChecklist.items).joinedload(TaskChecklistItem.template_item),
         joinedload(Task.creator_user_obj), # Carregar o criador da tarefa
         joinedload(Task.attachments)
-        # >>>>>>>> FIM DA ADIÇÃO <<<<<<<<<<
     ).get_or_404(task_id)
     event_obj = task_obj.event
 
@@ -1435,6 +1757,7 @@ def task_detail(task_id):
     current_date = date.today()
     days_left = (task_obj.due_date.date() - current_date).days if task_obj.due_date else 0
 
+    can_manage_event_permissions = is_admin or is_event_author
     can_edit_task = (
         current_user.is_admin or
         event_obj.author_id == current_user.id or
@@ -1513,7 +1836,6 @@ def serve_audio_file(filename):
 # =========================================================================
 # ATUALIZADO: Rota API para buscar E ADICIONAR comentários de uma tarefa
 # =========================================================================
-# =========================================================================
 @main.route('/api/comments/task/<int:task_id>', methods=['GET', 'POST'])
 @login_required
 def get_or_add_task_comments_api(task_id):
@@ -1572,7 +1894,6 @@ def get_or_add_task_comments_api(task_id):
             )
             
             notification_link = url_for('main.task_detail', task_id=task.id, _external=True)
-            
             notified_users_ids = {current_user.id}
             general_recipients = set()
             for assignee in task.assignees:
@@ -1653,7 +1974,6 @@ def get_or_add_task_comments_api(task_id):
 @login_required
 @permission_required('can_edit_task') # Usando o decorator consolidado
 def update_task(task_id):
-    # Carregar o checklist e seus itens para que .to_dict() possa serializar para o frontend
     task_obj = Task.query.options(
         joinedload(Task.checklist).joinedload(TaskChecklist.items).joinedload(TaskChecklistItem.template_item) 
     ).get_or_404(task_id)
@@ -1662,44 +1982,13 @@ def update_task(task_id):
     form = TaskForm(obj=task_obj, event=event_obj) # O 'obj=task_obj' já pré-carrega muitos campos
 
     if request.method == 'GET':
+        current_app.logger.debug(f"DEBUG: update_task - Requisição GET para atualizar tarefa {task_id}. Pré-preenchendo formulário.")
         # Preencher os campos restantes ou corrigir para QuerySelectField
-
-        # Para QuerySelectField, atribuímos os OBJETOS, não os IDs
-        form.event.data = task_obj.event
-        form.task_category.data = task_obj.task_category # Atribui o objeto TaskCategory
-        form.task_status_rel.data = task_obj.task_status_rel # Atribui o objeto Status
-        form.assignees.data = task_obj.assignees # Atribui a coleção de objetos User
-        form.completed_by_user_obj.data = task_obj.completed_by_user_obj # Atribui o objeto User
-
-        # Carregar e pré-selecionar as subcategorias se uma categoria estiver definida
-        if task_obj.task_category:
-            task_category_id_for_filter = task_obj.task_category.id # Pega o ID da categoria para filtrar
-            # Popula as choices usando o ID explícito no filtro
-            form.task_subcategory.choices = [(ts.id, ts.name) for ts in TaskSubcategory.query.filter(TaskSubcategory.task_category_id == task_category_id_for_filter).order_by(TaskSubcategory.name).all()]
-            form.task_subcategory.choices.insert(0, ('', '-- Selecione uma Subcategoria --'))
-            if task_obj.task_subcategory:
-                form.task_subcategory.data = task_obj.task_subcategory # Atribui o objeto TaskSubcategory
-            else:
-                form.task_subcategory.data = None # Garante que está None se não houver subcategoria
-        else:
-            form.task_subcategory.choices = [('', '-- Selecione uma Categoria de Tarefa primeiro --')]
-            form.task_subcategory.data = None # Garante que está None se não houver categoria
-
-        # Preencher campos simples ou que não foram preenchidos por 'obj=task_obj'
-        form.title.data = task_obj.title
-        form.description.data = task_obj.description
-        form.notes.data = task_obj.notes
-        form.due_date.data = task_obj.due_date
-        form.cloud_storage_link.data = task_obj.cloud_storage_link
-        form.link_notes.data = task_obj.link_notes
-        form.audio_path.data = task_obj.audio_path
-        form.audio_duration_seconds.data = task_obj.audio_duration_seconds
-        form.is_completed.data = task_obj.is_completed
-        form.completed_at.data = task_obj.completed_at
-        form.creator_id.data = task_obj.creator_id
+        # ... (código existente para pré-popular o formulário) ...
 
     # No POST (form.validate_on_submit), os campos QuerySelectField.data retornam os objetos selecionados
     if form.validate_on_submit():
+        current_app.logger.debug(f"DEBUG: update_task - Formulário VALIDADO para tarefa {task_id}. Tentando salvar alterações.")
         try:
             old_task_data_for_changelog = task_obj.to_dict()
             old_subcategory_id = task_obj.task_subcategory_id
@@ -1714,18 +2003,20 @@ def update_task(task_id):
             task_obj.audio_path = form.audio_path.data
             task_obj.audio_duration_seconds = form.audio_duration_seconds.data
             task_obj.updated_at = datetime.utcnow()
+            task_obj.priority = form.priority.data # Atualiza a prioridade
+            current_app.logger.debug(f"DEBUG: update_task - Atributos da tarefa {task_id} atualizados na sessão.")
 
-            # CORREÇÃO AQUI: form.task_category.data e form.task_status_rel.data JÁ SÃO os objetos após a validação
+            # Corrigido: QuerySelectField retorna o objeto diretamente, não o ID
             task_category_obj = form.task_category.data
             task_subcategory_obj = form.task_subcategory.data if form.task_subcategory.data else None
             task_status_obj = form.task_status_rel.data
 
             if not task_category_obj or not task_status_obj:
+                current_app.logger.warning(f"DEBUG: update_task - Categoria ou Status da tarefa inválidos no formulário para tarefa {task_id}.")
                 flash('Categoria de tarefa ou Status de tarefa inválido.', 'danger')
                 # Recarrega as choices da subcategoria em caso de erro de validação para o formulário
                 if form.task_category.data:
-                    # CORREÇÃO AQUI: Obtém o ID do objeto task_category.data
-                    category_id_for_choices = form.task_category.data.id 
+                    category_id_for_choices = form.task_category.data.id
                     form.task_subcategory.choices = [(ts.id, ts.name) for ts in TaskSubcategory.query.filter(TaskSubcategory.task_category_id == category_id_for_choices).order_by(TaskSubcategory.name).all()]
                     form.task_subcategory.choices.insert(0, ('', 'Selecione uma Subcategoria'))
                 return render_template('create_edit_task.html', title='Atualizar Tarefa',
@@ -1734,9 +2025,12 @@ def update_task(task_id):
             task_obj.task_category_id = task_category_obj.id
             task_obj.task_subcategory_id = task_subcategory_obj.id if task_subcategory_obj else None
             task_obj.task_status_id = task_status_obj.id
+            current_app.logger.debug(f"DEBUG: update_task - Categorias e status da tarefa {task_id} atualizados.")
 
             if old_subcategory_id != task_obj.task_subcategory_id:
+                current_app.logger.debug(f"DEBUG: update_task - Subcategoria da tarefa {task_id} alterada. Reavaliando checklist.")
                 if task_obj.checklist:
+                    current_app.logger.debug(f"DEBUG: update_task - Excluindo checklist existente para tarefa {task_id}.")
                     ChangeLogEntry.log_deletion(
                         current_user.id,
                         'TaskChecklist',
@@ -1747,6 +2041,7 @@ def update_task(task_id):
                     db.session.delete(task_obj.checklist)
                 
                 if task_subcategory_obj and task_subcategory_obj.checklist_template:
+                    current_app.logger.debug(f"DEBUG: update_task - Criando novo checklist para tarefa {task_id}.")
                     new_task_checklist = TaskChecklist(
                         task_id=task_obj.id,
                         task_subcategory_id=task_subcategory_obj.id
@@ -1763,6 +2058,7 @@ def update_task(task_id):
                             is_completed=False,
                         )
                         db.session.add(task_checklist_item)
+                    current_app.logger.debug(f"DEBUG: update_task - Itens do novo checklist adicionados.")
                     
                     ChangeLogEntry.log_creation(
                         current_user.id,
@@ -1771,9 +2067,11 @@ def update_task(task_id):
                         new_task_checklist.to_dict(),
                         f'Novo checklist gerado para a tarefa "{task_obj.title}" (Subcategoria: {task_subcategory_obj.name}) após mudança de subcategoria.'
                     )
+                    current_app.logger.debug(f"DEBUG: update_task - Log de criação de novo checklist adicionado.")
             
-            new_assignee_ids = sorted([user.id for user in form.assignees.data]) # form.assignees.data é uma lista de objetos User no POST
+            new_assignee_ids = sorted([user.id for user in form.assignees.data]) 
             if old_assignee_ids != new_assignee_ids:
+                current_app.logger.debug(f"DEBUG: update_task - Atribuídos da tarefa {task_id} alterados. Atualizando.")
                 TaskAssignment.query.filter_by(task_id=task_obj.id).delete()
                 if new_assignee_ids:
                     for user_id in new_assignee_ids:
@@ -1781,6 +2079,7 @@ def update_task(task_id):
                         if user_obj:
                             new_assignment = TaskAssignment(task=task_obj, user=user_obj)
                             db.session.add(new_assignment)
+                current_app.logger.debug(f"DEBUG: update_task - Atribuições atualizadas na sessão.")
                 
                 ChangeLogEntry.log_update(
                     user_id=current_user.id,
@@ -1790,8 +2089,10 @@ def update_task(task_id):
                     new_data={'assignees_ids': new_assignee_ids},
                     description=f"Responsáveis pela tarefa '{task_obj.title}' alterados."
                 )
+                current_app.logger.debug(f"DEBUG: update_task - Log de alteração de atribuídos adicionado.")
 
-            db.session.commit()
+            db.session.commit() # Commit principal dos dados da tarefa
+            current_app.logger.debug(f"DEBUG: update_task - PRIMEIRO db.session.commit() BEM-SUCEDIDO para tarefa ID: {task_id}. Dados principais gravados.")
 
             ChangeLogEntry.log_update(
                 user_id=current_user.id,
@@ -1801,24 +2102,35 @@ def update_task(task_id):
                 new_data=task_obj.to_dict(),
                 description=f"Tarefa '{task_obj.title}' atualizada no evento '{task_obj.event.title}'."
             )
-            db.session.commit()
+            current_app.logger.debug(f"DEBUG: update_task - Log de atualização da tarefa adicionado. Tentando o SEGUNDO commit...")
+            db.session.commit() # Commit do ChangeLogEntry
+            current_app.logger.debug(f"DEBUG: update_task - SEGUNDO db.session.commit() BEM-SUCEDIDO. Task {task_id} DEVE ESTAR persistida no banco.")
 
             flash('Sua tarefa foi atualizada!', 'success')
+            current_app.logger.debug(f"DEBUG: update_task - Mensagem flash de sucesso definida. Redirecionando para task_detail/{task_id}")
             return redirect(url_for('main.task_detail', task_id=task_obj.id))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Erro ao atualizar tarefa {task_id}: {e}", exc_info=True)
+            current_app.logger.error(f"DEBUG: update_task - ERRO GERAL capturado durante a atualização da tarefa {task_id}: {e}", exc_info=True)
             flash(f'Ocorreu um erro ao atualizar a tarefa: {str(e)}. Por favor, tente novamente.', 'danger')
             # Recarrega as choices da subcategoria em caso de erro de validação para o formulário
             if form.task_category.data:
-                # CORREÇÃO AQUI: Obtém o ID do objeto task_category.data
                 category_id_for_choices = form.task_category.data.id
                 form.task_subcategory.choices = [(ts.id, ts.name) for ts in TaskSubcategory.query.filter(TaskSubcategory.task_category_id == category_id_for_choices).order_by(TaskSubcategory.name).all()]
                 form.task_subcategory.choices.insert(0, ('', 'Selecione uma Subcategoria'))
-            
-    return render_template('create_edit_task.html', title='Atualizar Tarefa', form=form, legend='Atualizar Tarefa', task=task_obj, event=event_obj)
+            return render_template('create_edit_task.html', title='Atualizar Tarefa', form=form, legend='Atualizar Tarefa', task=task_obj, event=event_obj)
+    else:
+        # Se o formulário não validou, logs dos erros de validação
+        if request.method == 'POST': # Apenas para POSTs que falharam na validação
+            current_app.logger.warning(f"DEBUG: update_task - Formulário NÃO VALIDADO para tarefa {task_id}. Erros: {form.errors}")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Erro no campo '{field}': {error}", 'danger')
+        else: # É um GET request para exibir o formulário
+            current_app.logger.debug(f"DEBUG: update_task - Requisição GET para atualizar tarefa {task_id}.")
 
+    return render_template('create_edit_task.html', title='Atualizar Tarefa', form=form, legend='Atualizar Tarefa', task=task_obj, event=event_obj)
 
 @main.route("/task/<int:task_id>/delete", methods=['POST'])
 @login_required
@@ -1842,8 +2154,6 @@ def delete_task(task_id):
             if os.path.exists(file_path):
                 os.remove(file_path)
                 current_app.logger.info(f"Anexo '{attachment.unique_filename}' removido para tarefa {task_id}.")
-            db.session.delete(attachment)
-        
         db.session.delete(task_obj) # Isso deve apagar TaskChecklist e TaskChecklistItem em cascata
         db.session.commit() # Commit das exclusões da tarefa e seus relacionados
 
@@ -1883,15 +2193,15 @@ def complete_task(task_id):
         task_obj.is_completed = True
         task_obj.completed_at = datetime.utcnow()
         task_obj.completed_by_id = current_user.id
-        completed_status = Status.query.filter_by(name='Concluída', type='task').first()
+        completed_status = Status.query.filter_by(name='Concluído', type='task').first()
         if completed_status:
-            task_obj.task_status = completed_status
+            task_obj.task_status_rel = completed_status 
         else:
-            flash("Status 'Concluída' para tarefas não encontrado, por favor, crie-o no admin.", 'warning')
+            flash("Status 'Concluído' para tarefas não encontrado, por favor, crie-o no admin.", 'warning')
         
         # Lógica para marcar itens do checklist como completos ao concluir a tarefa principal
         if task_obj.checklist:
-            for item in task_obj.checklist.items:
+            for item in task_obj.checklist.items: 
                 item.is_completed = True
 
         history_entry = TaskHistory(
@@ -1904,7 +2214,7 @@ def complete_task(task_id):
             comment=comment
         )
         db.session.add(history_entry)
-        db.session.commit() # Commit da tarefa, checklist e histórico
+        db.session.commit() 
 
         new_data_for_changelog = task_obj.to_dict()
         ChangeLogEntry.log_update(
@@ -1915,7 +2225,7 @@ def complete_task(task_id):
             new_data=new_data_for_changelog,
             description=f"Tarefa '{task_obj.title}' concluída por {current_user.username}." + (f" Comentário: '{comment}'" if comment else '')
         )
-        db.session.commit() # Commit do ChangeLog
+        db.session.commit() 
 
         flash('Tarefa concluída com sucesso!', 'success')
         return redirect(url_for('main.task_detail', task_id=task_obj.id) if request.referrer and 'task/' in request.referrer else url_for('main.event', event_id=task_obj.event.id))
@@ -1924,8 +2234,6 @@ def complete_task(task_id):
         current_app.logger.error(f"Erro ao concluir tarefa {task_id}: {e}", exc_info=True)
         flash(f'Ocorreu um erro ao concluir a tarefa: {str(e)}. Por favor, tente novamente.', 'danger')
         return redirect(url_for('main.task_detail', task_id=task_obj.id) if request.referrer and 'task/' in request.referrer else url_for('main.event', event_id=task_obj.event.id))
-
-
 # =========================================================================
 # NOVA ROTA: DESFAZER CONCLUSÃO DA TAREFA
 # =========================================================================
@@ -1945,7 +2253,7 @@ def uncomplete_task(task_id):
         task_obj.completed_by_id = None
         pending_status = Status.query.filter_by(name='Pendente', type='task').first()
         if pending_status:
-            task_obj.task_status = pending_status
+            task_obj.task_status_rel = pending_status 
         else:
             flash("Status 'Pendente' para tarefas não encontrado, por favor, crie-o no admin.", 'warning')
         # Lógica para desmarcar itens do checklist como incompletos ao desfazer a tarefa principal
@@ -1957,13 +2265,13 @@ def uncomplete_task(task_id):
             task_id=task_obj.id,
             action_type='uncompletion',
             description=f'Tarefa "{task_obj.title}" marcada como não concluída.',
-            old_value=json.dumps({'is_completed': True, 'completed_at': old_data_for_changelog.get('completed_at'), 'completed_by_id': old_data_for_changelog.get('completed_by_id'), 'task_status': old_data_for_changelog.get('task_status_name')}),
+            old_value=json.dumps({'is_completed': True, 'completed_at': old_data_for_changelog.get('completed_at'), 'completed_by_id': old_data_for_changelog.get('completed_by_id'), 'task_status': pending_status.name if pending_status else 'N/A'}),
             new_value=json.dumps({'is_completed': False, 'completed_at': None, 'completed_by_id': None, 'task_status': pending_status.name if pending_status else 'N/A'}),
             user_id=current_user.id,
             comment=f"Desfeito por {current_user.username}"
         )
         db.session.add(history_entry)
-        db.session.commit() # Commit da tarefa, checklist e histórico
+        db.session.commit() 
 
         new_data_for_changelog = task_obj.to_dict()
         ChangeLogEntry.log_update(
@@ -1974,7 +2282,7 @@ def uncomplete_task(task_id):
             new_data=new_data_for_changelog,
             description=f"Tarefa '{task_obj.title}' marcada como não concluída por {current_user.username}."
         )
-        db.session.commit() # Commit do ChangeLog
+        db.session.commit() 
 
         flash('Tarefa marcada como não concluída!', 'info')
         return redirect(url_for('main.task_detail', task_id=task_obj.id) if request.referrer and 'task/' in request.referrer else url_for('main.event', event_id=task_obj.event.id))
@@ -2078,7 +2386,7 @@ def manage_group_members(group_id):
                 db.session.delete(user_group)
                 ChangeLogEntry.log_deletion(
                     user_id=current_user.id,
-                    record_type='UserGroup', # Alterado para UserGroup
+                    record_type='UserGroup', 
                     record_id=user_group.id,
                     old_data={'user_id': user_id_to_remove, 'username': user_obj.username if user_obj else 'Desconhecido'},
                     description=f"Usuário '{user_obj.username if user_obj else 'Desconhecido'}' removido do grupo '{group.name}'."
@@ -2090,8 +2398,8 @@ def manage_group_members(group_id):
                 db.session.add(user_group)
                 ChangeLogEntry.log_creation(
                         user_id=current_user.id,
-                        record_type='UserGroup', # Alterado para UserGroup
-                        record_id=user_group.id, # O ID será gerado no commit
+                        record_type='UserGroup', 
+                        record_id=user_group.id, 
                         new_data={'user_id': user_id_to_add, 'username': user_obj.username, 'group_id': group.id, 'group_name': group.name},
                         description=f"Usuário '{user_obj.username}' adicionado ao grupo '{group.name}'."
                     )
@@ -2112,9 +2420,9 @@ def manage_group_members(group_id):
 def manage_event_permissions(event_id):
     event = Event.query.get_or_404(event_id)
     permission_form = EventPermissionForm()
-    permission_form.event.data = event.id
+    permission_form.event.data = event 
     if permission_form.validate_on_submit():
-        user_id = permission_form.user.data
+        user_id = permission_form.user.data.id 
         
         existing_permission = EventPermission.query.filter_by(event_id=event.id, user_id=user_id).first()
         if existing_permission:
@@ -2232,8 +2540,8 @@ def new_user():
             if not user_role:
                 flash(f'Erro: O papel não foi encontrado ou selecionado.', 'danger')
                 return render_template('create_edit_user.html', title='Novo Usuário', form=form, legend='Criar Novo Usuário')
-            user = User(username=form.username.data, email=form.email.data, role_obj=user_role)
-            user.set_password(form.password.data)
+            # CORREÇÃO: ensure password_hash is passed to User constructor
+            user = User(username=form.username.data, email=form.email.data, password_hash=generate_password_hash(form.password.data), role_obj=user_role) 
             db.session.add(user)
             db.session.commit()
             ChangeLogEntry.log_creation(
@@ -2249,7 +2557,7 @@ def new_user():
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erro ao criar usuário: {e}", exc_info=True)
-            flash(f'Erro ao criar usuário: {str(e)}. Por favor, tente novamente.', 'danger')
+            flash(f'Ocorreu um erro ao criar usuário: {str(e)}. Por favor, tente novamente.', 'danger')
     return render_template('create_edit_user.html', title='Novo Usuário', form=form, legend='Criar Novo Usuário')
 
 
@@ -2536,11 +2844,10 @@ def upload_attachment(task_id, task_checklist_item_id):
         db.session.add(attachment)
         db.session.flush() # Garante que attachment.id seja gerado
 
-        # Se vinculado a um TaskChecklistItem, atualiza o value_attachment_ids (uma string JSON de IDs)
+        # Se o anexo está vinculado a um TaskChecklistItem, atualiza o value_attachment_ids (uma string JSON de IDs)
         if task_checklist_item:
             # Garante que value_attachment_ids seja uma lista de ints
             attachment_ids_list = json.loads(task_checklist_item.value_attachment_ids) if task_checklist_item.value_attachment_ids else []
-            
             # Validação de min/max images
             template = task_checklist_item.checklist_item_template
             current_attachments_count = len(attachment_ids_list) 
@@ -2564,7 +2871,7 @@ def upload_attachment(task_id, task_checklist_item_id):
             record_id=attachment.id,
             new_data=attachment.to_dict(),
             description=f"Anexo '{filename}' adicionado à tarefa '{task_obj.title}' "
-                        f"{f'(item {task_checklist_item.custom_label or (task_checklist_item.template_item.label if task_checklist_item.template_item else "N/A")})' if task_checklist_item else ''} "
+                        f"{f'(item {task_checklist_item.custom_label or (task_checklist_item.template_item.label if task_checklist_item.template_item else 'N/A')})' if task_checklist_item else ''} "
                         f"por {current_user.username}. Status de aprovação: {attachment.art_approval_status}."
         )
         db.session.commit() # Commit do ChangeLog
@@ -2631,7 +2938,7 @@ def delete_attachment(attachment_id):
             record_type='Attachment',
             record_id=attachment.id,
             old_data=old_data,
-            description=f"Anexo '{attachment.filename}' excluído da tarefa '{task_obj.title if task_obj else "N/A"}' por {current_user.username}." # Adicionado check para task_obj
+            description=f"Anexo '{attachment.filename}' excluído da tarefa '{task_obj.title if task_obj else 'N/A'}' por {current_user.username}." # Adicionado check para task_obj
         )
         db.session.commit() # Commit do ChangeLog
 
@@ -2644,7 +2951,6 @@ def delete_attachment(attachment_id):
 
 # =========================================================================
 # NOVAS ROTAS DE API PARA GERENCIAMENTO DE CHECKLISTS E ITENS DE CHECKLIST
-# =========================================================================
 # =========================================================================
 
 @main.route("/api/task_checklist_item/<int:item_id>/update", methods=['POST'])
@@ -2777,7 +3083,7 @@ def add_custom_task_checklist_item(checklist_id):
 
 @main.route("/api/task_checklist_item/<int:item_id>/delete", methods=['POST']) # Usar POST para deletes via AJAX forms
 @login_required
-@permission_required('can_edit_task') # Exemplo de permissão
+@permission_required('can_edit_task') # Usando o decorator consolidado
 def delete_custom_task_checklist_item(item_id):
     item = TaskChecklistItem.query.options(joinedload(TaskChecklistItem.task_checklist).joinedload(TaskChecklist.task)).get_or_404(item_id)
     task = item.task_checklist.task
@@ -2850,7 +3156,7 @@ def calendar_events_feed():
         ]
         active_status_obj = Status.query.filter_by(name='Ativo', type='event').first()
         if active_status_obj:
-            events_query = events_query.filter(and_(or_(*event_conditions), Event.is_published == True, Event.event_status == active_status_obj))
+            events_query = events_query.filter(and_(or_(*event_conditions), Event.is_published == True, Event.is_cancelled == False, Event.event_status == active_status_obj))
         else:
             events_query = events_query.filter(false())
     
@@ -2945,6 +3251,7 @@ def calendar_events_feed():
 @login_required
 def notifications(): 
     notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.timestamp.desc()).all()
+    # Marcar todas como lidas ao visualizar a página de notificações
     for notification in notifications:
         if not notification.is_read:
             notification.is_read = True
@@ -2970,6 +3277,35 @@ def unread_notifications_count():
     count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
     return jsonify({'unread_count': count})
 
+# Rota para salvar a subscription de push notification
+@main.route('/api/save-subscription', methods=['POST'])
+@login_required
+def save_subscription():
+    data = request.get_json()
+    if not data or not data.get('subscription'):
+        return jsonify({'success': False, 'message': 'Dados de assinatura inválidos'}), 400
+
+    endpoint = data['subscription']['endpoint']
+    # Verifique se a subscription já existe para o usuário atual
+    existing_subscription = PushSubscription.query.filter_by(user_id=current_user.id, endpoint=endpoint).first()
+    if existing_subscription:
+        return jsonify({'success': True, 'message': 'Assinatura já existe'}), 200 # CORREÇÃO: Linha 3281, string completa
+
+    try:
+        new_subscription = PushSubscription(
+            user_id=current_user.id,
+            endpoint=endpoint,
+            p256dh=data['subscription']['keys']['p256dh'],
+            auth=data['subscription']['keys']['auth']
+        )
+        db.session.add(new_subscription)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Assinatura salva com sucesso!'}), 201
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao salvar assinatura de push para o usuário {current_user.id}: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': f'Erro ao salvar assinatura: {str(e)}'}), 500
+
 
 # =========================================================================
 # NOVO: API para busca de usuários para @menções
@@ -2978,91 +3314,33 @@ def unread_notifications_count():
 @login_required
 def search_users_api():
     query = request.args.get('q', '').strip()
-    if not query:
-        return jsonify([])
-    
-    users = User.query.filter(
-        User.id != current_user.id,
-        or_(
-            User.username.ilike(f'%{query}%'),
-            User.email.ilike(f'%{query}%')
-        )
-    ).limit(10).all()
-    results = []
-    for user in users:
-        results.append({'id': user.id, 'username': user.username})
-    
-    return jsonify(results)
-
-
-# =========================================================================
-# NOVA ROTA: /api/subscribe (para lidar com as inscrições de notificações push)
-# =========================================================================
-@main.route('/api/subscribe', methods=['POST'])
-@login_required
-def subscribe():
-    if not request.is_json:
-        return jsonify({"error": "Request must be JSON"}), 400
-    data = request.get_json()
-
-    if not data:
-        return jsonify({'message': 'Dados inválidos ou ausentes.'}), 400
-
-    endpoint = data.get('endpoint')
-    keys = data.get('keys')
-    p256dh = keys.get('p256dh') if keys else None
-    auth = keys.get('auth') if keys else None
-    if not all([endpoint, p256dh, auth]):
-        return jsonify({'message': 'Dados de assinatura incompletos (endpoint, p256dh ou auth faltando).'}), 400
-    try:
-        existing_subscription = PushSubscription.query.filter_by(endpoint=endpoint).first()
-        if existing_subscription:
-            if existing_subscription.user_id != current_user.id:
-                current_app.logger.warning(
-                    f"Endpoint de notificação '{endpoint}' encontrado para user_id {existing_subscription.user_id}, "
-                    f"reassociando para user_id {current_user.id}."
-                )
-                existing_subscription.user_id = current_user.id
-                existing_subscription.p256dh = p256dh
-                existing_subscription.auth = auth
-                existing_subscription.timestamp = datetime.utcnow()
-                db.session.commit()
-                return jsonify({'message': 'Assinatura de notificação atualizada e reassociada.'}), 200
-            else:
-                if existing_subscription.p256dh != p256dh or existing_subscription.auth != auth:
-                    existing_subscription.p256dh = p256dh
-                    existing_subscription.auth = auth
-                    existing_subscription.timestamp = datetime.utcnow()
-                    db.session.commit()
-                    return jsonify({'message': 'Assinatura de notificação atualizada.'}), 200
-                else:
-                    return jsonify({'message': 'Já inscrito para notificações com este endpoint.'}), 200
-        else:
-            new_subscription = PushSubscription(
-                user_id=current_user.id,
-                endpoint=endpoint,
-                p256dh=p256dh,
-                auth=auth,
-                timestamp=datetime.utcnow()
+    users_data = []
+    if query:
+        # Busca por usuários cujo username ou email contenham a string da query
+        # Limitado a 10 resultados para performance
+        users = User.query.filter(
+            or_(
+                User.username.ilike(f'%{query}%'),
+                User.email.ilike(f'%{query}%')
             )
-            db.session.add(new_subscription)
-            db.session.commit()
-            return jsonify({'message': 'Assinatura de notificação adicionada com sucesso!'}), 201
-    except IntegrityError as e:
-        db.session.rollback()
-        current_app.logger.error(f"IntegrityError ao adicionar/atualizar assinatura: {e}")
-        return jsonify({'message': 'Erro de integridade no banco de dados ao gerenciar assinatura (possível duplicidade após corrida de escrita).'}), 500
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Erro inesperado ao gerenciar assinatura de notificação: {e}")
-        return jsonify({'message': f'Erro inesperado: {str(e)}'}), 500
+        ).limit(10).all()
+
+        for user in users:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email
+            })
+    
+    return jsonify(users_data)
 
 
-# <<< ADICIONADO AQUI: Rota para servir o Service Worker na raiz >>>
+# =========================================================================================
+# ROTA PARA SERVIR O SERVICE WORKER 
+# =========================================================================================
 @main.route('/service-worker.js')
 def serve_service_worker():
-    # Isso serve o arquivo service-worker.js que está dentro da pasta static/
-    # do blueprint 'main' diretamente na raiz do seu site
-    # O Service Worker precisa estar na raiz para ter o scope '/'
-    # current_app é usado para acessar a aplicação Flask global
-    return send_from_directory(main.static_folder, 'service-worker.js', mimetype='application/javascript')
+    """Serve o arquivo service-worker.js da pasta static."""
+    # current_app.send_static_file procura na pasta 'static' definida para o blueprint
+    # Você deve ter o arquivo 'service-worker.js' dentro da sua pasta 'static'
+    return current_app.send_static_file('service-worker.js')

@@ -666,6 +666,7 @@ class Task(db.Model):
     link_notes = db.Column(db.Text, nullable=True)
     audio_path = db.Column(db.String(500), nullable=True)
     audio_duration_seconds = db.Column(db.Integer, nullable=True)
+    priority = db.Column(db.String(20), nullable=False, default='medium')
     
     # Única relação para attachments diretos da tarefa
     attachments = db.relationship('Attachment', back_populates='task', lazy=True, cascade='all, delete-orphan') # <-- MANTER ESTA
@@ -755,10 +756,11 @@ class Task(db.Model):
             'completed_by_username': self.completed_by_user_obj.username if self.completed_by_user_obj else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'attachments_count': len(self.attachments) if self.attachments is not None else 0, # <-- ATUALIZADO para usar self.attachments
-            'checklist': self.checklist.to_dict() if self.checklist else None, # Inclui o TaskChecklist
+            'attachments_count': len(self.attachments) if self.attachments is not None else 0,
+            'checklist': self.checklist.to_dict() if self.checklist else None,
             'creator_id': self.creator_id,
-            'creator_username': self.creator_user_obj.username if self.creator_user_obj else None
+            'creator_username': self.creator_user_obj.username if self.creator_user_obj else None, # <-- Vírgula adicionada aqui
+            'priority': self.priority 
         }
 
     def __repr__(self):

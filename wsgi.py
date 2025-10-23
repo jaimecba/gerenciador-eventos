@@ -10,6 +10,7 @@ from flask_admin.contrib.sqla.fields import QuerySelectField
 from flask_admin.babel import gettext
 from dotenv import load_dotenv
 import os
+import logging
 import secrets
 from datetime import datetime, timedelta, date
 from uuid import uuid4
@@ -887,6 +888,8 @@ def create_app():
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key'
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['DEBUG'] = True # Define o modo debug para o Flask
+    app.logger.setLevel(logging.DEBUG) # Configura o logger para mostrar mensagens de DEBUG
 
     # Configurações de Email
     app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')

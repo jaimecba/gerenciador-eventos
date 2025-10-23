@@ -12,14 +12,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     {# Link para o Font Awesome para ícones (versão 5.15.4 para compatibilidade com os exemplos) #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    {# REMOVIDO: Link para Phosphor Icons - usaremos Font Awesome Free por enquanto #}
-    {# <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/webfont@1.1.8/dist/index.min.css"> #}
     {# NOVO: Link para o Select2 CSS #}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     {# NOVO: Link para o tema Bootstrap 5 do Select2 (opcional, mas recomendado para consistência visual) #}
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-    
-    {# REMOVIDO: FullCalendar CSS separado, pois já está incluído no index.global.min.js #}
     
     {# NOVO: Import da fonte Roboto Condensed do Google Fonts #}
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
@@ -56,6 +52,11 @@
                         </a>
                     </li>
                     {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.kanban_board') }}" target="_top">
+                                <i class="fas fa-columns me-1"></i> Kanban {# AJUSTE: Link para o Kanban #}
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link fs-6 text-primary" href="{{ url_for('main.calendar_view') }}" target="_top">
                                 <i class="fas fa-calendar-alt me-1"></i> Calendário
@@ -111,11 +112,12 @@
         </div>
     </nav>
     <div class="container-fluid mt-4">
-        <div class="content-wrapper">
+        {# AJUSTE: Container para as mensagens Flash (do Flask e JS) #}
+        <div class="flash-messages-container position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 1060;">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div class="row">
-                        <div class="col-12 flash-messages-container">
+                        <div class="col-12">
                             {% for category, message in messages %}
                                 <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
                                     {{ message }}
@@ -126,6 +128,10 @@
                     </div>
                 {% endif %}
             {% endwith %}
+        </div>
+        {# FIM DO AJUSTE PARA MENSAGENS FLASH #}
+
+        <div class="content-wrapper">
             {% block content %}{% endblock %}
         </div>
     </div>
@@ -136,6 +142,7 @@
             </span>
         </div>
     </footer>
+    {# jQuery deve ser carregado antes de Bootstrap JS e Select2 #}
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -143,7 +150,6 @@
     
     {# FullCalendar JS (global bundle) - USANDO UNPKG.COM COMO ALTERNATIVA #}
     <script src='https://unpkg.com/fullcalendar@6.1.11/index.global.min.js'></script>
-    {# REMOVIDO: FullCalendar Locales JS, pois já está incluído no index.global.min.js #}
     
     {# --- INÍCIO DA ADIÇÃO DO FLATPCIKR JS --- #}
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -151,8 +157,12 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     {# --- FIM DA ADIÇÃO DO FLATPCIKR JS --- #}
 
+    {# INCLUSÃO DO SORTABLE.JS AQUI #}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // AJUSTE: Inicialização global de tooltips
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl)
@@ -160,59 +170,127 @@
         });
     </script>
     {% block scripts %}
-    {# SEU SCRIPT PARA O CONTADOR DE NOTIFICAÇÕES #}
+    {# O kanban.html terá seus scripts aqui, incluindo a Sortable.js e a lógica do Drag & Drop #}
+    {# Seus scripts específicos de cada página serão renderizados aqui #}
+    {% endblock %}
+
+    {# NOVO: Script para registro do Service Worker e notificações PUSH #}
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            function updateUnreadNotificationsCount() {
-                fetch('{{ url_for('main.unread_notifications_count') }}')
-                    .then(response => {
-                        if (!response.ok) {
-                            return Promise.reject('Erro ou não autenticado.');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        const badge = document.getElementById('unread-notifications-badge');
-                        if (badge) {
-                            if (data.unread_count > 0) {
-                                badge.textContent = data.unread_count;
-                                badge.removeAttribute('hidden');
-                            } else {
-                                badge.setAttribute('hidden', '');
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        const badge = document.getElementById('unread-notifications-badge');
-                        if (badge) {
-                            badge.setAttribute('hidden', '');
-                        }
-                    });
+        // Função utilitária para converter chave VAPID
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
             }
-            updateUnreadNotificationsCount();
-            setInterval(updateUnreadNotificationsCount, 30000); 
-        });
-    </script>
-    {# NOVO: Registro do Service Worker #}
-    <script>
+            return outputArray;
+        }
+
+        async function subscribeUserToPush() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                console.warn('Service Worker ou Push API não suportados neste navegador.');
+                // showFlashMessage('Seu navegador não suporta notificações push. Algumas funcionalidades podem estar limitadas.', 'warning');
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                let subscription = await registration.pushManager.getSubscription();
+
+                if (subscription) {
+                    console.log('Usuário já inscrito para push notifications:', subscription);
+                    // Opcional: reenviar subscription para o backend para garantir que esteja atualizada
+                    await sendSubscriptionToServer(subscription);
+                } else {
+                    console.log('Obtendo chave VAPID pública...');
+                    const response = await fetch('{{ url_for("main.get_vapid_public_key") }}');
+                    if (!response.ok) {
+                        throw new Error('Falha ao obter chave VAPID pública do servidor.');
+                    }
+                    const data = await response.json();
+                    const vapidPublicKey = data.vapid_public_key;
+
+                    if (!vapidPublicKey) {
+                        throw new Error('Chave pública VAPID não configurada no servidor.');
+                    }
+
+                    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+                    console.log('Tentando subscrever para notificações push...');
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedVapidKey
+                    });
+                    console.log('Usuário inscrito com sucesso:', subscription);
+                    await sendSubscriptionToServer(subscription);
+                }
+            } catch (error) {
+                console.error('Falha ao subscrever usuário para push notifications:', error);
+                // Disparar uma mensagem flash para o usuário
+                const flashMessagesContainer = document.querySelector('.flash-messages-container');
+                if (flashMessagesContainer) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                    alertDiv.setAttribute('role', 'alert');
+                    alertDiv.innerHTML = `Não foi possível ativar as notificações: ${error.message || error}. Por favor, verifique as permissões do navegador e tente novamente.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+                    flashMessagesContainer.prepend(alertDiv);
+                }
+            }
+        }
+
+        async function sendSubscriptionToServer(subscription) {
+            console.log('Enviando assinatura para o servidor...');
+            try {
+                const response = await fetch('{{ url_for("main.save_subscription") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}' // CORREÇÃO: Usar csrf_token como variável
+                    },
+                    body: JSON.stringify({ subscription: subscription.toJSON() })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    console.log('Assinatura salva/atualizada no servidor.');
+                } else {
+                    console.error('Falha ao salvar/atualizar assinatura no servidor:', data.message);
+                }
+            } catch (error) {
+                console.error('Erro de rede ao enviar assinatura ao servidor:', error);
+            }
+        }
+
+        // Registrar Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('{{ url_for("main.serve_service_worker") }}', { scope: '/' })
                     .then(function(registration) {
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        // Tentar subscrever para push notifications APÓS o SW estar registrado
+                        subscribeUserToPush(); 
                     }, function(err) {
                         console.log('ServiceWorker registration failed: ', err);
+                        const flashMessagesContainer = document.querySelector('.flash-messages-container');
+                        if (flashMessagesContainer) {
+                            const alertDiv = document.createElement('div');
+                            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                            alertDiv.setAttribute('role', 'alert');
+                            alertDiv.innerHTML = `Não foi possível registrar o Service Worker (necessário para notificações). Erro: ${err.message || err}. Por favor, tente novamente mais tarde.
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+                            flashMessagesContainer.prepend(alertDiv);
+                        }
                     });
             });
+        } else {
+            console.warn('Navegador não suporta Service Workers.');
         }
     </script>
-    {# NOVO: Inclusão e chamada do script de notificações PUSH #}
-    <script src="{{ url_for('main.static', filename='js/push_notifications.js') }}"></script>
-    <script>
-        window.addEventListener('load', () => {
-            subscribeUserToPush();
-        });
-    </script>
-{% endblock %}
 </body>
 </html>

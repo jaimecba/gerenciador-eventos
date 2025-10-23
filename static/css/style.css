@@ -21,20 +21,19 @@ body {
     line-height: 1.6;
     background-color: #f4f4f4; /* Mantido seu fundo de corpo existente */
 }
+
 /* ------------------------------------------------------------- */
 /* Ajustes para o Wrapper do Conteúdo Principal */
 /* Controla a largura máxima e centraliza o conteúdo em todas as páginas */
 /* ------------------------------------------------------------- */
 .main-content-wrapper {
-/* ------------------------------------------------------------- */
-.main-content-wrapper {
-    /* **MODIFICAÇÃO ANTERIOR (MANTIDA):** De 1200px para 100% para permitir largura total */
     max-width: 100%; /* ORIGINAL: 1200px; - ALTERADO para ocupar 100% da largura disponível */
     margin-left: auto; /* Centraliza o wrapper horizontalmente */
     margin-right: auto; /* Centraliza o wrapper horizontalmente */
     padding-left: 1.5rem; /* Espaçamento interno nas laterais para evitar que o conteúdo "cole" nas bordas */
     padding-right: 1.5rem; /* Para evitar que o conteúdo cole nas bordas da tela */
 }
+
 /* Ajustes de responsividade para o wrapper em telas menores */
 @media (max-width: 767.98px) { /* Para telas menores que 768px (sm e xs) */
     .main-content-wrapper {
@@ -44,12 +43,8 @@ body {
 }
 
 /* IMPORTANTE: Esta regra .container existente tem um max-width de 800px e outros estilos.
-}
-
-/* IMPORTANTE: Esta regra .container existente tem um max-width de 800px e outros estilos.
    Ela provavelmente é usada para elementos específicos (como formulários de login/registro)
-   e NÃO interfere com o novo layout da página principal (que usa .main-content-wrapper).
-   Não a removemos, pois ela tem uma função específica no seu projeto. */
+   e NÃO interfere com o novo layout da página principal (que usa .main-content-wrapper). */
 .container {
     max-width: 800px; /* **MANTIDO ORIGINALMENTE:** Esta regra continua a limitar elementos com a classe '.container' */
     margin: 50px auto;
@@ -74,12 +69,6 @@ form {
 label {
     margin-bottom: 5px;
     font-weight: bold;
-}
-
-input, textarea {
-    margin-bottom: 15px;
-    padding: 10px;
-    border: 1px solid #ddd;
 }
 
 input, textarea {
@@ -116,8 +105,7 @@ button:hover {
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05); /* Sombra suave para destacar o cartão */
     margin-bottom: 2rem; /* Espaço abaixo do formulário */
 }
-margin-bottom: 2rem; /* Espaço abaixo do formulário */
-}
+
 /* Título/Legenda do formulário */
 legend.border-bottom {
     font-size: 2rem; /* Tamanho da fonte maior para o título */
@@ -128,15 +116,16 @@ legend.border-bottom {
     margin-bottom: 2rem; /* Espaço abaixo da legenda e da linha */
     text-align: center; /* Centraliza o título */
 }
+
 /* Rótulos dos campos específicos de formulário */
 .form-control-label {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     font-weight: 500; /* Seminegrito para destaque */
     color: #343a40; /* Cor de texto principal */
     margin-bottom: 0.5rem; /* Espaço abaixo do rótulo */
-margin-bottom: 0.5rem; /* Espaço abaixo do rótulo */
     display: block; /* Garante que o rótulo ocupe sua própria linha */
 }
+
 /* Mensagens de erro */
 .text-danger {
     font-size: 0.875rem; /* Tamanho de fonte padrão para mensagens pequenas */
@@ -148,10 +137,11 @@ margin-bottom: 0.5rem; /* Espaço abaixo do rótulo */
     border-radius: 0.25rem; /* Bordas levemente arredondadas */
     border: 1px solid rgba(220, 53, 69, 0.2); /* Borda sutil de erro */
 }
+
 /* Campos de texto (inputs) com a classe form-control */
 .form-control {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-font-size: 1.1rem; /* Um pouco maior para melhor legibilidade */
+    font-size: 1.1rem; /* Um pouco maior para melhor legibilidade */
     padding: 0.75rem 1rem; /* Preenchimento interno adequado */
     border: 1px solid #ced4da; /* Borda padrão */
     border-radius: 0.5rem; /* Bordas arredondadas */
@@ -164,13 +154,13 @@ font-size: 1.1rem; /* Um pouco maior para melhor legibilidade */
     box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); /* Sombra de foco na cor de acento */
     outline: none; /* Remove o outline padrão do navegador */
 }
+
 /* Botão de submit com a classe btn-outline-info */
 .btn-outline-info {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     font-weight: 600; /* Mais encorpado */
     font-size: 1.1rem; /* Um pouco maior */
     padding: 0.75rem 1.5rem; /* Preenchimento adequado */
-padding: 0.75rem 1.5rem; /* Preenchimento adequado */
     border-radius: 0.5rem; /* Bordas arredondadas */
     transition: all 0.2s ease-in-out; /* Transição suave para hover */
     margin-top: 1.5rem; /* Espaço acima do botão */
@@ -186,12 +176,11 @@ padding: 0.75rem 1.5rem; /* Preenchimento adequado */
     box-shadow: 0 0.2rem 0.5rem rgba(0, 0, 0, 0.2); /* Sombra sutil ao passar o mouse */
     outline: none; /* Garante que não haja outline duplicado */
 }
+
 @media (max-width: 767.98px) { /* Para telas menores que 768px (sm e xs) */
     .content-section {
         padding: 1.5rem; /* Reduz o padding em telas menores */
         border-radius: 0.5rem; /* Bordas um pouco menos arredondadas */
-    }
-border-radius: 0.5rem; /* Bordas um pouco menos arredondadas */
     }
     legend.border-bottom {
         font-size: 1.5rem; /* Reduz o tamanho do título */
@@ -236,11 +225,6 @@ a:hover {
     border-radius: 4px;
     font-weight: bold;
 }
-padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 4px;
-    font-weight: bold;
-}
 .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 .flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
@@ -260,8 +244,6 @@ padding: 10px;
     transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
-.custom-btn-hover:hover {
-    transform: translateY(-2px); /* Levanta o botão ligeiramente */
 .custom-btn-hover:hover {
     transform: translateY(-2px); /* Levanta o botão ligeiramente */
     box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1) !important; /* Sombra sutil */
@@ -284,7 +266,6 @@ padding: 10px;
 .bg-pure-green { background-color: #008000 !important; }
 .bg-urgency-orange { background-color: #FF4500 !important; }
 .bg-warning { background-color: #FFD700 !important; }
-.bg-warning { background-color: #FFD700 !important; }
 
 /* NOVAS CLASSES DE COR PARA O TEXTO DO PRAZO (adicionadas por solicitação) */
 .text-overdue-red { color: #FF0000 !important; }
@@ -306,16 +287,13 @@ padding: 10px;
 .fa-xs {
     font-size: 12px !important; /* Garante 12px para ícones Font Awesome extra small */
 }
+
 /* NOVO: Estilos para os cards de tarefas para torná-los compactos */
 .task-card {
     background-color: white;
     border: 1px solid #dee2e6;
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     transition: all 0.2s ease-in-out;
-    height: 100%;
-}
-.task-card:hover {
-transition: all 0.2s ease-in-out;
     height: 100%;
 }
 .task-card:hover {
@@ -355,14 +333,265 @@ transition: all 0.2s ease-in-out;
     border-left: 5px solid #008000;
 }
 .task-card.status-border-urgent {
-border-left: 5px solid #008000;
-}
-.task-card.status-border-urgent {
     border-left: 5px solid #FF4500;
 }
 .task-card.status-border-alert {
     border-left: 5px solid #FFD700;
 }
+
+/* ========================================================== */
+/* ESTILOS ESPECÍFICOS PARA O QUADRO KANBAN */
+/* ========================================================== */
+
+/* Container principal do Kanban - permite rolagem horizontal */
+.kanban-board {
+    display: flex !important; /* Para que as colunas fiquem lado a lado */
+    flex-wrap: nowrap !important; /* Impede que as colunas quebrem para a linha de baixo */
+    overflow-x: auto; /* Adiciona rolagem horizontal se houver muitas colunas */
+    -webkit-overflow-scrolling: touch; /* Melhora a rolagem em dispositivos de toque */
+    padding-bottom: 1rem; /* Espaço para a barra de rolagem horizontal */
+    gap: 1rem; /* Espaçamento entre as colunas */
+    min-height: calc(100vh - 200px); /* Altura mínima para ocupar a tela */
+}
+
+/* Cada coluna do Kanban */
+.kanban-column {
+    flex-shrink: 0 !important; /* Impede que as colunas encolham */
+    width: 320px; /* Largura fixa para cada coluna - ligeiramente maior para mais conteúdo */
+    background-color: #f8f9fa; /* Fundo cinza claro para a coluna */
+    border-radius: 12px; /* Bordas arredondadas modernas */
+    padding: 1rem; /* Preenchimento interno */
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 220px); /* Ajusta a altura da coluna à altura da viewport */
+    border: 1px solid #e9ecef; /* Borda sutil */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave */
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.kanban-column:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Sombra mais pronunciada no hover */
+}
+
+/* Cabeçalho da coluna */
+.kanban-column-header {
+    text-align: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky; /* Mantém o cabeçalho visível ao rolar a coluna */
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 2; /* Garante que o cabeçalho fique acima dos cards ao rolar */
+}
+
+.kanban-column-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Corpo da coluna onde ficam os cards */
+.kanban-column-body {
+    flex-grow: 1; /* Permite que o corpo da coluna ocupe o espaço restante */
+    overflow-y: auto; /* Adiciona rolagem vertical se houver muitos cards */
+    min-height: 100px; /* Altura mínima para permitir arrastar e soltar em colunas vazias */
+    padding-right: 4px; /* Pequeno espaço para a barra de rolagem */
+}
+
+/* Estilização da barra de rolagem para o corpo da coluna */
+.kanban-column-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.kanban-column-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.kanban-column-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.kanban-column-body::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Cards individuais das tarefas no Kanban */
+.kanban-card {
+    cursor: grab; /* Indica que o item é arrastável */
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease-in-out; /* Transição suave ao passar o mouse */
+    margin-bottom: 0.75rem; /* Espaço entre os cards */
+}
+
+.kanban-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Sombra mais pronunciada no hover */
+    transform: translateY(-2px); /* Efeito de levantar no hover */
+    border-color: #007bff; /* Borda azul no hover */
+}
+
+.kanban-card:active {
+    cursor: grabbing; /* Muda o cursor quando está sendo arrastado */
+}
+
+/* Conteúdo interno dos cards */
+.kanban-card .card-body {
+    padding: 0.875rem; /* Padding ligeiramente reduzido para compactar */
+}
+
+.kanban-card .card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #343a40;
+    line-height: 1.3;
+}
+
+.kanban-card .card-title a {
+    color: #343a40;
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+.kanban-card .card-title a:hover {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.kanban-card .card-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.4rem;
+    line-height: 1.4;
+}
+
+.kanban-card .card-text:last-child {
+    margin-bottom: 0;
+}
+
+/* Badges dentro dos cards do Kanban */
+.kanban-card .badge {
+    font-size: 0.7rem;
+    padding: 0.25em 0.5em;
+    margin-left: 0.25rem;
+}
+
+/* Ícones dentro dos cards */
+.kanban-card .fas,
+.kanban-card .far {
+    margin-right: 0.4rem;
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+/* Estilos para a biblioteca Sortable.js durante o arrastar e soltar */
+.kanban-card.sortable-chosen {
+    opacity: 0.6; /* Card fica semitransparente ao ser escolhido */
+    transform: rotate(2deg); /* Leve rotação para indicar que está sendo arrastado */
+}
+
+.kanban-card.sortable-ghost {
+    background-color: #e9ecef; /* Cor de fundo para o "fantasma" do card */
+    border: 2px dashed #adb5bd; /* Borda tracejada */
+    opacity: 0.8;
+}
+
+.kanban-card.sortable-drag {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); /* Sombra pronunciada durante o arraste */
+    transform: rotate(3deg) scale(1.02); /* Rotação e escala ligeiramente maior */
+    z-index: 1000; /* Garante que fique acima de outros elementos */
+}
+
+/* Ajustes responsivos para o Kanban */
+@media (max-width: 991.98px) {
+    .kanban-column {
+        width: 280px; /* Largura ligeiramente menor para colunas em tablets */
+        margin-right: 0.75rem; /* Espaçamento menor entre colunas */
+    }
+    
+    .kanban-column-header h4 {
+        font-size: 1rem; /* Título ligeiramente menor */
+    }
+}
+
+@media (max-width: 767.98px) {
+    .kanban-board {
+        padding-bottom: 0.5rem;
+        gap: 0.75rem; /* Reduz o gap entre colunas */
+    }
+    
+    .kanban-column {
+        width: 260px; /* Largura ainda menor para mobile */
+        padding: 0.75rem; /* Padding reduzido */
+        max-height: calc(100vh - 180px); /* Ajusta altura para mobile */
+    }
+    
+    .kanban-column-header {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .kanban-column-header h4 {
+        font-size: 0.9rem;
+    }
+    
+    .kanban-card {
+        margin-bottom: 0.5rem; /* Menos espaço entre cards em mobile */
+    }
+    
+    .kanban-card .card-body {
+        padding: 0.75rem; /* Padding ainda menor para mobile */
+    }
+    
+    .kanban-card .card-title {
+        font-size: 0.9rem;
+    }
+    
+    .kanban-card .card-text {
+        font-size: 0.75rem;
+    }
+}
+
+/* Estilos para quando não há cards em uma coluna */
+.kanban-column-body:empty::before {
+    content: "Arraste tarefas aqui";
+    display: block;
+    text-align: center;
+    color: #adb5bd;
+    font-style: italic;
+    padding: 2rem 1rem;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+
+/* Animação suave para quando cards são adicionados/removidos */
+.kanban-card {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================================== */
+/* FIM DOS ESTILOS ESPECÍFICOS PARA O QUADRO KANBAN */
+/* ========================================================== */
 
 /* ========================================================== */
 /* NOVOS ESTILOS PARA A PÁGINA DE CHANGELOG (COM MODAL) - AJUSTADO */
@@ -392,10 +621,6 @@ border-left: 5px solid #008000;
     min-width: 130px;
     white-space: nowrap;
 }
-width: 130px;
-    min-width: 130px;
-    white-space: nowrap;
-}
 
 .table-responsive .changelog-table th:nth-child(2),
 .table-responsive .changelog-table td:nth-child(2) {
@@ -415,10 +640,6 @@ width: 130px;
     min-width: 110px;
 }
 .table-responsive .changelog-table th:nth-child(5),
-width: 120px;
-    min-width: 120px;
-}
-.table-responsive .changelog-table th:nth-child(5),
 .table-responsive .changelog-table td:nth-child(5) {
     width: 60px;
     min-width: 60px;
@@ -431,10 +652,6 @@ width: 120px;
     width: auto;
     min-width: 200px;
     max-width: 350px;
-}
-
-.table-responsive .changelog-table th:nth-child(7),
-max-width: 350px;
 }
 
 .table-responsive .changelog-table th:nth-child(7),
@@ -454,7 +671,7 @@ max-width: 350px;
     .table-responsive .changelog-table th:nth-child(3), .table-responsive .changelog-table td:nth-child(3),
     .table-responsive .changelog-table th:nth-child(4), .table-responsive .changelog-table td:nth-child(4),
     .table-responsive .changelog-table th:nth-child(5), .table-responsive .changelog-table td:nth-child(5),
-.table-responsive .changelog-table th:nth-child(7), .table-responsive .changelog-table td:nth-child(7) {
+    .table-responsive .changelog-table th:nth-child(7), .table-responsive .changelog-table td:nth-child(7) {
         white-space: normal;
         width: auto;
         min-width: auto;
@@ -495,7 +712,6 @@ max-width: 350px;
 }
 
 /* ------------------------------------------- */
-/* Otimização de Tabela para Gerenciar Usuários - AJUSTADO */
 /* Otimização de Tabela para Gerenciar Usuários - AJUSTADO */
 /* ------------------------------------------- */
 
@@ -543,10 +759,6 @@ max-width: 350px;
     min-width: 120px;
 }
 .user-data-table th:nth-child(5),
-width: 120px;
-    min-width: 120px;
-}
-.user-data-table th:nth-child(5),
 .user-data-table td:nth-child(5) {
     width: 140px;
     min-width: 140px;
@@ -585,9 +797,6 @@ width: 120px;
     font-size: calc(0.875rem * 0.8);
     line-height: 1;
     display: inline-flex;
-font-size: calc(0.875rem * 0.8);
-    line-height: 1;
-    display: inline-flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
@@ -607,8 +816,7 @@ font-size: calc(0.875rem * 0.8);
     align-items: center; /* Alinha verticalmente ícone e texto */
     white-space: nowrap; /* Impede a quebra de linha DENTRO do link, permitindo que a navbar colapse */
 }
-/* Alinha ícone e texto na mesma linha para brand e dropdown items */
-}
+
 /* Alinha ícone e texto na mesma linha para brand e dropdown items */
 .navbar-brand,
 .dropdown-item {
@@ -632,7 +840,6 @@ font-size: calc(0.875rem * 0.8);
 }
 /* No breakpoint 'lg' (991.98px) e abaixo, remove o margin-left extra do botão Sair para comprimir */
 @media (max-width: 991.98px) {
-@media (max-width: 991.98px) {
     .navbar-nav.ms-auto .nav-item .btn {
         margin-left: 0 !important; /* Sobrescreve ms-lg-2 do Bootstrap para telas menores */
     }
@@ -652,9 +859,6 @@ font-size: calc(0.875rem * 0.8);
 }
 /* -- Estilos para os Cards de Tarefas (Task Cards) -- */
 /* Já tem o height: 100% definido acima, que é o que precisamos */
-/* .task-card .card-body já tem height: 100% definido acima */
-
-.task-card .card-title {
 /* .task-card .card-body já tem height: 100% definido acima */
 
 .task-card .card-title {
@@ -680,10 +884,6 @@ font-size: calc(0.875rem * 0.8);
 
 /* -- Estilo para Truncamento de Descrição e Notas -- */
 .task-text-truncate {
-}
-
-/* -- Estilo para Truncamento de Descrição e Notas -- */
-.task-text-truncate {
     white-space: nowrap; /* Impede a quebra de linha */
     overflow: hidden; /* Esconde o conteúdo que excede a largura */
     text-overflow: ellipsis; /* Adiciona reticências ao final */
@@ -703,7 +903,6 @@ font-size: calc(0.875rem * 0.8);
 }
 /* -- Estilo para Botão de Link de Armazenamento -- */
 .task-card .btn.btn-outline-secondary.btn-sm {
-.task-card .btn.btn-outline-secondary.btn-sm {
     padding: .25rem .5rem; /* Ajuste se preferir mais preenchimento para o ícone */
 }
 /* -- ESTILOS ATUALIZADOS para Botões de Ação da Tarefa (Detalhes, Editar, Excluir) -- */
@@ -719,7 +918,6 @@ font-size: calc(0.875rem * 0.8);
     vertical-align: middle; /* Alinha o elemento ao meio da linha */
     line-height: 1; /* Garante que a altura da linha não cause desalinhamento */
     box-sizing: border-box; /* Assegura que padding e border sejam incluídos na largura/altura */
-box-sizing: border-box; /* Assegura que padding e border sejam incluídos na largura/altura */
     text-decoration: none; /* Remove sublinhado padrão de links, se aplicável */
 }
 /* Garante que o ícone em si também não tenha comportamentos de alinhamento indesejados */
@@ -740,9 +938,6 @@ box-sizing: border-box; /* Assegura que padding e border sejam incluídos na lar
 .audio-player-display {
     margin-top: 0.5rem !important;
     margin-bottom: 0.5rem !important;
-}
-.audio-player-display label {
-margin-bottom: 0.5rem !important;
 }
 .audio-player-display label {
     /* Remover font-size: 0.85em; pois agora text-size-12px no HTML controla */
@@ -766,7 +961,6 @@ margin-bottom: 0.5rem !important;
 /* Ajuste para botões que contêm apenas um ícone e precisam ser mais compactos */
 .btn-compact-icon {
     padding: 0.25rem 0.45rem !important; /* Reduz o padding horizontal e vertical */
-padding: 0.25rem 0.45rem !important; /* Reduz o padding horizontal e vertical */
     line-height: 1 !important;          /* Garante que a altura seja mínima */
     font-size: 0.75rem !important;      /* Força o tamanho da fonte do ícone */
 }
@@ -785,15 +979,12 @@ padding: 0.25rem 0.45rem !important; /* Reduz o padding horizontal e vertical */
     padding: 0 !important;
     margin: 0 !important;
     height: auto !important; /* Allow height to adjust to icon size */
-margin: 0 !important;
-    height: auto !important; /* Reset min-height */
 }
 
 /* Target inner containers that might hold background/border color */
 .fc-daygrid-event .fc-event-start,
 .fc-daygrid-event .fc-event-end,
 .fc-daygrid-event .fc-event-time,
-.fc-daygrid-event .fc-event-title,
 .fc-daygrid-event .fc-event-title-wrap,
 .fc-daygrid-event .fc-event-main,
 .fc-daygrid-event .fc-event-main-harness,
@@ -809,8 +1000,6 @@ margin: 0 !important;
 }
 
 /* Make sure the internal content wrapper is also transparent and properly aligned */
-.fc-event-display-wrapper {
-    display: flex !important;
 .fc-event-display-wrapper {
     display: flex !important;
     justify-content: center !important;
@@ -835,7 +1024,6 @@ margin: 0 !important;
 .fc-event-display-wrapper .fas { /* Seleciona especificamente a classe Font Awesome */
     /* Para corrigir ícones empilhados: torná-los inline-block */
     display: inline-block !important; /* CRUCIAL para layout horizontal */
-display: inline-block !important; /* CRUCIAL para layout horizontal */
     vertical-align: middle !important; /* Alinha-os bem se tiverem tamanhos diferentes */
 
     font-family: 'Font Awesome 5 Free' !important; /* GARANTE a aplicação da fonte Font Awesome */
@@ -857,7 +1045,6 @@ display: inline-block !important; /* CRUCIAL para layout horizontal */
 
 /* Cores específicas para ícones de Tarefa e Evento */
 .fc-event-display-wrapper .fc-event-task-icon {
-.fc-event-display-wrapper .fc-event-task-icon {
     color: var(--task-icon-primary-color) !important;
 }
 
@@ -877,8 +1064,6 @@ display: inline-block !important; /* CRUCIAL para layout horizontal */
 
 /* ========================================================== */
 /* ESTILOS PARA MOBILE (max-width: 991.98px) - ATUALIZADO */
-/* ========================================================== */
-@media (max-width: 991.98px) {
 /* ========================================================== */
 @media (max-width: 991.98px) {
     /* Título principal da página do calendário */
@@ -910,10 +1095,6 @@ display: inline-block !important; /* CRUCIAL para layout horizontal */
 
     .fc-toolbar-chunk {
         width: 100% !important;
-}
-
-    .fc-toolbar-chunk {
-        width: 100% !important;
         margin-bottom: 0.5rem !important;
         display: flex !important;
         align-items: center !important;
@@ -938,9 +1119,6 @@ display: inline-block !important; /* CRUCIAL para layout horizontal */
     }
 
     /* Número do dia na célula do calendário */
-}
-
-    /* Número do dia na célula do calendário */
     .fc-daygrid-day-number { font-size: 0.8em !important; }
     .fc-daygrid-event-harness { height: auto !important; min-height: 20px !important; }
     .fc-daygrid-day-events { padding-top: 0 !important; padding-bottom: 0 !important; }
@@ -956,8 +1134,6 @@ display: inline-block !important; /* CRUCIAL para layout horizontal */
     }
     .fc-list-event-title-link:hover {
         text-decoration: underline; /* Adiciona sublinhado ao passar o mouse */
-    }
-text-decoration: underline; /* Adiciona sublinhado ao passar o mouse */
     }
     /* Estilos para o container do título na lista, para garantir flexibilidade em mobile */
     .fc-list-event-title {
@@ -977,7 +1153,6 @@ text-decoration: underline; /* Adiciona sublinhado ao passar o mouse */
     }
 }
 /* ========================================================== */
-/* ESTILOS PARA DESKTOP (min-width: 992px) - ATUALIZADO */
 /* ESTILOS PARA DESKTOP (min-width: 992px) - ATUALIZADO */
 /* ========================================================== */
 @media (min-width: 992px) {
@@ -1005,9 +1180,6 @@ text-decoration: underline; /* Adiciona sublinhado ao passar o mouse */
         align-items: center !important;
         padding: 0 !important;
     }
-align-items: center !important;
-        padding: 0 !important;
-    }
     .fc-toolbar-chunk:first-child { /* prev, next, today buttons */
         order: 0 !important;
         justify-content: flex-start !important;
@@ -1029,8 +1201,6 @@ align-items: center !important;
     /* Contêiner principal do calendário */
     #calendar-container-wrapper {
         width: 100%;
-        margin-top: 1rem; /* Espaço após o dropdown */
-width: 100%;
         margin-top: 1rem; /* Espaço após o dropdown */
         align-items: flex-start; /* Alinha o calendário no topo */
     }
@@ -1055,8 +1225,6 @@ width: 100%;
 #mentions-suggestions {
     /* z-index: 1050; /* Um pouco mais alto que modais (1040) se necessário */
 }
-/* z-index: 1050; /* Um pouco mais alto que modais (1040) se necessário */
-}
 
 /* Custom CSS para o destaque de menções nos comentários EXIBIDOS */
 .mention-highlight {
@@ -1078,10 +1246,6 @@ width: 100%;
 
 /* Para o dropdown do filtro de publicação */
 .form-select.compact-input {
-}
-
-/* Para o dropdown do filtro de publicação */
-.form-select.compact-input {
     font-size: 11px;
     height: calc(1.5em + .5rem + 2px); /* Ajusta a altura para ser mais compacta, Bootstrap padrão form-select-sm tem 1.5em + .5rem + 2px */
     padding: .25rem .5rem; /* Reduz o padding interno */
@@ -1095,7 +1259,7 @@ width: 100%;
     font-size: 11px !important;
     text-transform: uppercase; /* Converte a visualização para maiúsculas */
     font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-white-space: nowrap; /* Previne quebra de linha */
+    white-space: nowrap; /* Previne quebra de linha */
     overflow: hidden;    /* Esconde o texto que excede */
     text-overflow: ellipsis; /* Adiciona '...' ao texto truncado */
     max-width: 100%; /* Garante que o overflow/ellipsis funcione */
@@ -1113,7 +1277,6 @@ white-space: nowrap; /* Previne quebra de linha */
 .badge.compact-text {
     font-size: 10px; /* Um pouco menor para badges */
     padding: .2em .4em; /* Ajusta o padding para o tamanho menor da fonte */
-padding: .2em .4em; /* Ajusta o padding para o tamanho menor da fonte */
     text-transform: uppercase; /* Converte a visualização para maiúsculas */
     font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }

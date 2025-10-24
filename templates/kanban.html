@@ -729,6 +729,91 @@
                 }
             });
         });
+
+        // ========================================================
+        // FUNCIONALIDADE DE EXPANSÃO MOBILE
+        // ========================================================
+        
+        // Funcionalidade de expansão apenas em mobile
+        function initMobileKanban() {
+            if (window.innerWidth <= 767) {
+                // Inicializa todos os cards como compactos
+                document.querySelectorAll('.kanban-card').forEach(card => {
+                    card.classList.add('compact');
+                    
+                    // Marca textos que devem ser collapsible
+                    const cardTexts = card.querySelectorAll('.card-text');
+                    cardTexts.forEach((text, index) => {
+                        if (index === 0) {
+                            // Primeiro card-text (prazo) sempre visível
+                            text.classList.add('always-visible');
+                        } else {
+                            // Outros detalhes são collapsible
+                            text.classList.add('collapsible');
+                        }
+                    });
+                    
+                    // Remove listener anterior se existir
+                    card.removeEventListener('click', cardClickHandler);
+                    
+                    // Adiciona evento de clique
+                    card.addEventListener('click', cardClickHandler);
+                });
+            }
+        }
+        
+        // Handler para clique nos cards
+        function cardClickHandler(e) {
+            // Previne que cliques em links ativem a expansão
+            if (e.target.tagName === 'A' || e.target.closest('a')) return;
+            
+            // Toggle entre compact e expanded
+            if (this.classList.contains('compact')) {
+                this.classList.remove('compact');
+                this.classList.add('expanded');
+            } else {
+                this.classList.remove('expanded');
+                this.classList.add('compact');
+            }
+        }
+        
+        // Função para limpar classes mobile
+        function cleanMobileClasses() {
+            document.querySelectorAll('.kanban-card').forEach(card => {
+                card.classList.remove('compact', 'expanded');
+                card.querySelectorAll('.card-text').forEach(text => {
+                    text.classList.remove('always-visible', 'collapsible');
+                });
+                card.removeEventListener('click', cardClickHandler);
+            });
+        }
+        
+        // Inicializa na carga da página
+        initMobileKanban();
+        
+        // Reaplica a funcionalidade se a tela for redimensionada
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 767) {
+                // Remove classes de mobile se voltar para desktop
+                cleanMobileClasses();
+            } else {
+                // Reaplica mobile se voltar para mobile
+                cleanMobileClasses();
+                initMobileKanban();
+            }
+        });
+
+        // ========================================================
+        // TOOLTIPS (se necessário)
+        // ========================================================
+        
+        // Inicializa tooltips do Bootstrap se existirem
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        if (tooltipTriggerList.length > 0) {
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
     });
     </script>
 {% endblock %}

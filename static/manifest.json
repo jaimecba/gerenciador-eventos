@@ -1,15 +1,57 @@
 {
-  "name": "Gerenciador de Eventos e Tarefas",
-  "short_name": "Gestor G&T",
-  "description": "Aplicativo para gerenciar eventos e tarefas com notificações.",
-  "start_url": "/",
+  "name": "Gerenciador de Eventos Flexx",
+  "short_name": "FlexxEventos",
+  "description": "Gerencie seus eventos e tarefas de forma eficiente com o Gerenciador de Eventos da Flexx Tecnologia e Softwares.",
+  "start_url": "/home",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
-  "theme_color": "#007bff",
+  "theme_color": "#206bc4",
   "icons": [
+    {
+      "src": "/static/images/icon-48x48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
     {
       "src": "/static/images/icon-192x192.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-256x256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-384x384.png",
+      "sizes": "384x384",
       "type": "image/png"
     },
     {
@@ -17,5 +59,22 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/static/images/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Visualização Desktop do Kanban"
+    },
+    {
+      "src": "/static/images/screenshot-mobile.png",
+      "sizes": "384x640",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Visualização Mobile do Kanban"
+    }
+  ],
+  "gcm_sender_id": "682317279751"
 }

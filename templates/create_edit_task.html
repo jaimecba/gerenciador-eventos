@@ -1,8 +1,7 @@
-{# C:\gerenciador-eventos\templates\create_edit_task.html #}
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid mt-4"> {# MODIFICADO: De 'container' para 'container-fluid' #}
+<div class="container-fluid mt-4">
     {# Breadcrumb #}
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -15,7 +14,7 @@
     </nav>
 
     <div class="row justify-content-center">
-        <div class="col-lg-10 col-md-12 mx-auto"> {# MODIFICADO: De 'col-md-8' para 'col-lg-10 col-md-12 mx-auto' #}
+        <div class="col-lg-10 col-md-12 mx-auto">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">{{ legend }}</h5>
@@ -24,6 +23,20 @@
                     <form method="POST" enctype="multipart/form-data">
                         {{ form.hidden_tag() }}
                         
+                        {# Campo de Evento (se a tarefa não estiver vinculada a um evento específico) #}
+                        {% if not event %}
+                        <div class="mb-3">
+                            {{ form.event.label(class="form-label") }}
+                            {# ID compatível com a inicialização global no base.html: $('#event').select2() #}
+                            {{ form.event(class="form-select form-select-sm select2-event", id="event") }}
+                            {% if form.event.errors %}
+                                {% for error in form.event.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
                         {# Campos da Tarefa #}
                         <div class="mb-3">
                             {{ form.title.label(class="form-label") }}
@@ -53,9 +66,18 @@
                             {% endif %}
                         </div>
                         <div class="mb-3">
+                            {{ form.priority.label(class="form-label") }}
+                            {{ form.priority(class="form-select form-select-sm") }}
+                            {% if form.priority.errors %}
+                                {% for error in form.priority.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
                             {{ form.due_date.label(class="form-label") }}
-                            {# CORRIGIDO: type="text" e adicionado id="due_date_picker" #}
-                            {{ form.due_date(class="form-control form-control-sm", type="text", id="due_date_picker") }}
+                            {# ID compatível com a inicialização global no base.html: flatpickr("#due_date") #}
+                            {{ form.due_date(class="form-control form-control-sm", type="text", id="due_date") }}
                             {% if form.due_date.errors %}
                                 {% for error in form.due_date.errors %}
                                     <div class="text-danger">{{ error }}</div>
@@ -66,7 +88,8 @@
                         {# Campo TaskCategory #}
                         <div class="mb-3">
                             {{ form.task_category.label(class="form-label") }}
-                            {{ form.task_category(class="form-select form-select-sm", id="task_category_select") }}
+                            {# ID compatível com a inicialização global no base.html: $('#task_category').select2() #}
+                            {{ form.task_category(class="form-select form-select-sm", id="task_category") }}
                             {% if form.task_category.errors %}
                                 {% for error in form.task_category.errors %}
                                     <div class="text-danger">{{ error }}</div>
@@ -77,7 +100,8 @@
                         {# CAMPO: TaskSubcategory (dropdown dinâmico) #}
                         <div class="mb-3">
                             {{ form.task_subcategory.label(class="form-label") }}
-                            {{ form.task_subcategory(class="form-select form-select-sm", id="task_subcategory_select", disabled=true) }}
+                            {# ID compatível com a inicialização global no base.html: $('#task_subcategory').select2() #}
+                            {{ form.task_subcategory(class="form-select form-select-sm", id="task_subcategory") }}
                             {% if form.task_subcategory.errors %}
                                 {% for error in form.task_subcategory.errors %}
                                     <div class="text-danger">{{ error }}</div>
@@ -88,7 +112,7 @@
                         {# Campo TaskStatus #}
                         <div class="mb-3">
                             {{ form.task_status_rel.label(class="form-label") }}
-                            {# ADICIONADO id="status" para o Select2 #}
+                            {# ID compatível com a inicialização global no base.html: $('#status').select2() #}
                             {{ form.task_status_rel(class="form-select form-select-sm", id="status") }}
                             {% if form.task_status_rel.errors %}
                                 {% for error in form.task_status_rel.errors %}
@@ -100,7 +124,8 @@
                         {# Campo Assignees #}
                         <div class="mb-3">
                             {{ form.assignees.label(class="form-label") }}
-                            {{ form.assignees(class="form-select form-select-sm", multiple="multiple") }}
+                            {# ID compatível com a inicialização global no base.html: $('#assignees').select2() #}
+                            {{ form.assignees(class="form-select form-select-sm", multiple="multiple", id="assignees") }}
                             {% if form.assignees.errors %}
                                 {% for error in form.assignees.errors %}
                                     <div class="text-danger">{{ error }}</div>
@@ -139,9 +164,13 @@
                         {# Seção de Áudio #}
                         <div class="mb-3 border rounded p-3 bg-light">
                             <h6>Instruções de Áudio</h6>
+                            {# Campo oculto para audio_path e audio_duration_seconds #}
+                            {{ form.audio_path(type="hidden") }}
+                            {{ form.audio_duration_seconds(type="hidden") }}
+
                             {% if task and task.audio_path %}
                                 <div id="audio-player-container" class="mb-3">
-                                    <audio controls style="width: 100%;">
+                                    <audio id="existing-audio-player" controls style="width: 100%;">
                                         <source src="{{ url_for('main.serve_audio_file', filename=task.audio_path) }}" type="audio/webm">
                                         Seu navegador não suporta o elemento de áudio.
                                     </audio>
@@ -165,13 +194,16 @@
                         </div>
                         {# Fim Seção de Áudio #}
 
+                        {# Nota sobre Anexos #}
+                        <div class="alert alert-info small mt-3" role="alert">
+                            O upload de arquivos e imagens é gerenciado na página de detalhes da tarefa, após a tarefa ser criada ou atualizada.
+                        </div>
+
                         {# Botões de Ação #}
-                        {{ form.submit(class="btn btn-primary btn-sm") }}
-                        {% if event %}
-                            <a href="{{ url_for('main.event', event_id=event.id) }}" class="btn btn-outline-secondary btn-sm mt-3 ms-2"><i class="fas fa-arrow-left"></i> Voltar para o Evento</a>
-                        {% else %}
-                            <a href="{{ url_for('main.home') }}" class="btn btn-outline-secondary btn-sm mt-3 ms-2"><i class="fas fa-arrow-left"></i> Voltar</a>
-                        {% endif %}
+                        <div class="mt-4 text-end">
+                            <a href="{{ url_for('main.event', event_id=event.id) if event else url_for('main.home') }}" class="btn btn-outline-secondary btn-sm me-2"><i class="fas fa-arrow-left"></i> Voltar</a>
+                            {{ form.submit(class="btn btn-primary btn-sm") }}
+                        </div>
                     </form>
                 </div>
             </div>
@@ -183,66 +215,27 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("DOM totalmente carregado. Tentando inicializar Flatpickr e outros scripts...");
+        console.log("create_edit_task.html: DOM totalmente carregado. Inicializando scripts específicos da página...");
 
-        // Flatpickr Initialization
-        flatpickr("#due_date_picker", {
-            enableTime: true,
-            noCalendar: false,
-            dateFormat: "d/m/Y H:i",
-            time_24hr: true,
-            locale: "pt" // Certifique-se de que o locale pt.js foi carregado no base.html
-        });
+        // As inicializações de Flatpickr e Select2 para os campos de formulário
+        // estão agora no base.html para garantir consistência global.
+        // Apenas scripts específicos desta página ficam aqui.
 
-        // Seu código jQuery movido para dentro do DOMContentLoaded
-        // Pois $(document).ready() espera pelo mesmo evento.
-        
-        // Inicializa o Select2 para o campo de atribuídos
-        $('#assignees').select2({
-            placeholder: "Selecione os usuários atribuídos",
-            allowClear: true,
-            theme: "bootstrap-5"
-        });
-
-        // Inicializa o Select2 para o campo de categoria de tarefa
-        $('#task_category_select').select2({
-            placeholder: "Selecione uma categoria",
-            allowClear: true,
-            theme: "bootstrap-5"
-        });
-
-        // Inicializa o Select2 para o campo de subcategoria de tarefa
-        $('#task_subcategory_select').select2({
-            placeholder: "Selecione uma subcategoria",
-            allowClear: true,
-            theme: "bootstrap-5"
-        });
-
-        // Inicializa o Select2 para o campo de status
-        $('#status').select2({
-            placeholder: "Selecione um status",
-            allowClear: true,
-            theme: "bootstrap-5"
-        });
-
-        // =========================================================================================
-        // Lógica de Checklist Dinâmico
-        // =========================================================================================
-        const taskCategorySelect = $('#task_category_select');
-        const taskSubcategorySelect = $('#task_subcategory_select');
+        // Lógica de Checklist Dinâmico e Subcategorias
+        const taskCategorySelect = $('#task_category'); // Agora usa ID padrão, pois base.html inicializa #task_category
+        const taskSubcategorySelect = $('#task_subcategory'); // Agora usa ID padrão, pois base.html inicializa #task_subcategory
         const dynamicChecklistContainer = $('#dynamic-checklist-container');
         const checklistPlaceholder = $('#checklist-placeholder');
 
-        // Captura itens de checklist de tarefa existentes se no modo de edição
         const existingTask = {% if task %}{{ task.to_dict() | tojson | safe }}{% else %}null{% endif %};
         const existingChecklistItems = existingTask && existingTask.checklist && existingTask.checklist.items ? existingTask.checklist.items : [];
         console.log("Existing Task Checklist Items:", existingChecklistItems);
 
-
         function fetchSubcategories(categoryId, selectedSubcategoryId = null) {
             if (!categoryId) {
                 taskSubcategorySelect.empty().append('<option value="">Selecione uma Categoria de Tarefa primeiro</option>').prop('disabled', true);
-                dynamicChecklistContainer.empty().append(checklistPlaceholder); // Limpa e mostra placeholder
+                dynamicChecklistContainer.empty().append(checklistPlaceholder);
+                taskSubcategorySelect.trigger('change'); // Atualiza Select2
                 return;
             }
 
@@ -258,24 +251,24 @@
                     taskSubcategorySelect.prop('disabled', false);
 
                     if (selectedSubcategoryId) {
-                        taskSubcategorySelect.val(selectedSubcategoryId).trigger('change'); // Trigger change to load checklist
+                        taskSubcategorySelect.val(selectedSubcategoryId).trigger('change');
                     } else if (taskSubcategorySelect.val()) {
-                        taskSubcategorySelect.trigger('change'); // If already had a value (e.g. from form post), trigger to load checklist
+                        taskSubcategorySelect.trigger('change');
                     } else {
-                        dynamicChecklistContainer.empty().append(checklistPlaceholder); // Limpa e mostra placeholder
+                        dynamicChecklistContainer.empty().append(checklistPlaceholder);
                     }
                 },
                 error: function(xhr, status, error) {
                     console.error('Erro ao carregar subcategorias:', error);
                     taskSubcategorySelect.empty().append('<option value="">Erro ao carregar subcategorias</option>');
                     taskSubcategorySelect.prop('disabled', false);
-                    flashMessage('Erro ao carregar subcategorias.', 'danger');
+                    showFlashMessage('Erro ao carregar subcategorias.', 'danger'); 
                 }
             });
         }
 
         function fetchAndRenderChecklist(subcategoryId) {
-            dynamicChecklistContainer.empty(); // Limpa o contêiner atual do checklist
+            dynamicChecklistContainer.empty();
             if (!subcategoryId) {
                 dynamicChecklistContainer.append(checklistPlaceholder);
                 return;
@@ -287,20 +280,15 @@
                 url: `/api/checklist_template/${subcategoryId}`,
                 method: 'GET',
                 success: function(response) {
-                    dynamicChecklistContainer.empty(); // Limpa a mensagem de carregamento
+                    dynamicChecklistContainer.empty();
                     if (response.items && response.items.length > 0) {
-                        response.items.sort((a, b) => a.order - b.order); // Garante a ordenação
+                        response.items.sort((a, b) => a.order - b.order);
                         $.each(response.items, function(index, item) {
                             createChecklistField(item);
                         });
-                        // Ativar listeners para exclusão de imagens após renderizar
-                        dynamicChecklistContainer.on('click', '.delete-checklist-image', function() {
+                        dynamicChecklistContainer.off('click', '.delete-checklist-image').on('click', '.delete-checklist-image', function() {
                             const attachmentId = $(this).data('attachment-id');
-                            const parentCol = $(this).closest('.col');
-                            // Implementar lógica de exclusão de imagem via AJAX aqui
-                            console.log('Excluir imagem com ID:', attachmentId);
-                            
-                            flashMessage('A funcionalidade de exclusão de imagem ainda não está implementada. (ID: ' + attachmentId + ')', 'info');
+                            showFlashMessage('A funcionalidade de exclusão de imagem do checklist ainda não está implementada nesta tela. (ID: ' + attachmentId + ')', 'info');
                         });
                     } else {
                         dynamicChecklistContainer.append('<p class="text-muted small">Nenhum checklist configurado para esta subcategoria.</p>');
@@ -309,26 +297,23 @@
                 error: function(xhr, status, error) {
                     console.error('Erro ao carregar checklist:', error);
                     dynamicChecklistContainer.empty().append('<p class="text-danger small">Erro ao carregar checklist.</p>');
-                    flashMessage('Erro ao carregar checklist.', 'danger');
+                    showFlashMessage('Erro ao carregar checklist.', 'danger');
                 }
             });
         }
 
-        // Helper para criar os campos de input do checklist
         function createChecklistField(item) {
             const fieldId = `checklist_item_${item.id}`;
-            const fieldName = `checklist_item_value_${item.id}`; // Nome para enviar no formulário
+            const fieldName = `checklist_item_value_${item.id}`;
             const isRequired = item.is_required ? 'required' : '';
             let requiredIndicator = item.is_required ? '<span class="text-danger">*</span>' : '';
 
             let inputHtml = '';
             let value = '';
 
-            // Tenta encontrar o valor existente para este item (se estiver no modo de edição)
             const existingItem = existingChecklistItems.find(eItem => eItem.checklist_item_template_id === item.id);
 
             if (existingItem) {
-                // Mapeia o tipo de campo para a propriedade `value_` correta
                 switch (item.field_type) {
                     case 'TEXT':
                     case 'REFERENCE_BIBLICA':
@@ -337,21 +322,19 @@
                         value = existingItem.value_text || '';
                         break;
                     case 'DATE':
-                        value = existingItem.value_date ? existingItem.value_date.split('T')[0] : ''; // assume formato ISO
+                        value = existingItem.value_date ? existingItem.value_date.split('T')[0] : '';
                         break;
                     case 'TIME':
                         value = existingItem.value_time || '';
                         break;
                     case 'DATETIME':
-                        value = existingItem.value_datetime ? existingItem.value_datetime.substring(0, 16) : ''; // assume formato ISO para datetime-local
+                        value = existingItem.value_datetime ? existingItem.value_datetime.substring(0, 16) : '';
                         break;
                     case 'NUMBER':
                         value = existingItem.value_number || '';
                         break;
-                    // BOOLEAN, IMAGE, FILE, SELECT não têm um 'value' simples aqui
                 }
             }
-
 
             switch (item.field_type) {
                 case 'TEXT':
@@ -375,7 +358,6 @@
                     inputHtml = `<input type="number" id="${fieldId}" name="${fieldName}" class="form-control form-control-sm" placeholder="${item.placeholder || 'Digite um número'}" value="${value}" ${isRequired}>`;
                     break;
                 case 'BOOLEAN':
-                    // existingItem.value_boolean deve ser um booleano
                     const isChecked = existingItem && existingItem.value_boolean ? 'checked' : '';
                     inputHtml = `
                         <div class="form-check form-switch">
@@ -383,8 +365,7 @@
                             <label class="form-check-label" for="${fieldId}">${item.label}</label>
                         </div>
                     `;
-                    // Como o label já está no input, remove do span principal
-                    requiredIndicator = ''; // Remove o indicador de requerido duplicado
+                    requiredIndicator = '';
                     break;
                 case 'IMAGE':
                 case 'FILE':
@@ -439,8 +420,6 @@
                 `);
             }
 
-
-            // Lógica para exibir imagens/arquivos existentes (se for tipo IMAGE ou FILE)
             if ((item.field_type === 'IMAGE' || item.field_type === 'FILE') && existingItem && existingItem.attachments && existingItem.attachments.length > 0) {
                 const filesContainer = $(`#uploaded-files-container-${item.id}`);
                 existingItem.attachments.forEach(attachment => {
@@ -448,7 +427,6 @@
                     if (attachment.mimetype.startsWith('image/')) {
                         filePreview = `<img src="${attachment.public_url}" class="img-thumbnail" alt="${attachment.filename}" style="width: 100%; height: 100px; object-fit: cover;">`;
                     } else {
-                        // Ícone genérico para outros tipos de arquivo
                         filePreview = `<div class="d-flex align-items-center justify-content-center border rounded" style="width: 100%; height: 100px;">
                                             <i class="fas fa-file fa-3x text-muted"></i>
                                         </div>
@@ -458,7 +436,7 @@
                         <div class="col">
                             <div class="position-relative">
                                 ${filePreview}
-                                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 delete-checklist-image" data-attachment-id="${attachment.id}" aria-label="Remover arquivo">
+                                <button type="button" id="delete-checklist-attachment-${attachment.id}" class="btn btn-danger btn-sm position-absolute top-0 end-0 delete-checklist-image" data-attachment-id="${attachment.id}" aria-label="Remover arquivo">
                                     &times;
                                 </button>
                             </div>
@@ -468,41 +446,35 @@
             }
         }
 
-        // Event listener para mudança na categoria principal
         taskCategorySelect.on('change', function() {
             const selectedCategoryId = $(this).val();
             fetchSubcategories(selectedCategoryId);
         });
 
-        // Event listener para mudança na subcategoria
         taskSubcategorySelect.on('change', function() {
             const selectedSubcategoryId = $(this).val();
             fetchAndRenderChecklist(selectedSubcategoryId);
         });
 
         // Inicialização: Se a categoria já estiver selecionada no carregamento da página (modo de edição ou erro de validação)
-        // Dispara a busca de subcategorias e, consequentemente, a busca e renderização do checklist.
-        if (taskCategorySelect.val()) {
-            const initialCategoryId = taskCategorySelect.val();
-            const initialSubcategoryId = taskSubcategorySelect.val(); // Captura o valor inicial da subcategoria
+        const initialCategoryId = taskCategorySelect.val();
+        const initialSubcategoryId = '{{ form.task_subcategory.data.id if form.task_subcategory.data else '' }}';
+        if (initialCategoryId) {
             fetchSubcategories(initialCategoryId, initialSubcategoryId);
         } else {
-            // Garante que o placeholder do checklist esteja visível se nada estiver selecionado
             dynamicChecklistContainer.empty().append(checklistPlaceholder);
         }
-
-        // =========================================================================================
-        // Lógica de Gravação de Áudio (mantida do seu anexo original)
-        // =========================================================================================
+        
+        // Lógica de Gravação de Áudio
         const startRecordBtn = $('#start-record-btn');
         const stopRecordBtn = $('#stop-record-btn');
         const recordingStatus = $('#recording-status');
         const recordedAudioContainer = $('#recorded-audio-container');
-        const recordedAudio = $('#recorded-audio')[0]; // Pega o elemento DOM nativo
+        const recordedAudio = $('#recorded-audio')[0];
         const uploadAudioBtn = $('#upload-audio-btn');
         const discardAudioBtn = $('#discard-audio-btn');
-        const audioPlayerContainer = $('#audio-player-container');
-        const deleteAudioBtn = $('#delete-audio-btn');
+        const audioPlayerContainer = $('#audio-player-container'); // Container do player de áudio existente
+        const deleteAudioBtn = $('#delete-audio-btn'); // Botão de excluir áudio existente
         const noAudioMessage = $('#no-audio-message');
 
         let mediaRecorder;
@@ -511,17 +483,14 @@
         let audioDurationSeconds = 0;
         let recordingStartTime;
 
-        // Função auxiliar para exibir mensagens flash
-        function flashMessage(message, category) {
-            // CORRIGIDO: Adiciona a mensagem flash ao .container-fluid (geralmente do base.html)
-            var alertHtml = `<div class="alert alert-${category} alert-dismissible fade show" role="alert">
-                                ${message}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                             </div>`;
-            $('.container-fluid').prepend(alertHtml); // Adiciona a mensagem no topo do container-fluid
-            setTimeout(function() {
-                $('.alert').alert('close'); // Fecha automaticamente após 5 segundos
-            }, 5000);
+        // Verifica o suporte à API de mídia e habilita o botão de gravação
+        if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+            recordingStatus.text("Seu navegador não suporta gravação de áudio.");
+            startRecordBtn.prop('disabled', true);
+            showFlashMessage('Seu navegador não suporta a gravação de áudio.', 'warning');
+        } else {
+            startRecordBtn.prop('disabled', false); // Habilita o botão de gravação se suportado
+            recordingStatus.text("Clique em Gravar para iniciar.");
         }
 
         startRecordBtn.on('click', async () => {
@@ -549,76 +518,83 @@
                 recordingStatus.text('Gravando...');
                 startRecordBtn.prop('disabled', true);
                 stopRecordBtn.prop('disabled', false);
-                recordedAudioContainer.hide(); // Esconde player anterior se houver
+                recordedAudioContainer.hide();
                 if (audioPlayerContainer.length) audioPlayerContainer.hide(); // Esconde player de áudio existente
                 if (noAudioMessage.length) noAudioMessage.hide(); // Esconde mensagem de "nenhum áudio"
+                uploadAudioBtn.prop('disabled', false); // Habilita botões de upload/descartar
+                discardAudioBtn.prop('disabled', false);
             } catch (err) {
                 console.error('Erro ao acessar o microfone:', err);
                 recordingStatus.text('Erro ao acessar o microfone.');
-                flashMessage('Erro ao acessar o microfone. Verifique as permissões do navegador.', 'danger');
+                showFlashMessage('Erro ao acessar o microfone. Verifique as permissões do navegador.', 'danger');
+                startRecordBtn.prop('disabled', false); // Reabilita o botão de gravação
             }
         });
 
         stopRecordBtn.on('click', () => {
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
-                audioDurationSeconds = Math.round((Date.now() - recordingStartTime) / 1000); // Duração em segundos
+                audioDurationSeconds = Math.round((Date.now() - recordingStartTime) / 1000);
                 startRecordBtn.prop('disabled', false);
                 stopRecordBtn.prop('disabled', true);
-                flashMessage('Gravação concluída. Clique em Salvar Áudio para anexar.', 'info');
+                showFlashMessage('Gravação concluída. Clique em Salvar Áudio para anexar.', 'info');
             }
         });
 
-        uploadAudioBtn.on('click', () => {
+        uploadAudioBtn.on('click', async () => {
             if (audioBlob) {
                 const formData = new FormData();
                 formData.append('audio_file', audioBlob, 'gravacao.webm');
                 formData.append('duration_seconds', audioDurationSeconds);
 
-                const taskId = {{ task.id if task else 'null' }}; // Pega o ID da tarefa, se existir
-                if (!taskId) {
-                    flashMessage('Erro: Não é possível salvar o áudio sem uma tarefa existente. Salve a tarefa primeiro.', 'danger');
-                    return;
-                }
+                const taskId = {{ task.id if task else 'null' }};
+                const uploadUrl = `/api/task/${taskId || 0}/upload_audio`; 
+                
+                try {
+                    uploadAudioBtn.prop('disabled', true).text('Salvando...');
+                    discardAudioBtn.prop('disabled', true);
+                    
+                    const response = await fetch(uploadUrl, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}' // CSRF token é crucial aqui
+                        }
+                    });
+                    const result = await response.json();
 
-                $.ajax({
-                    url: `{{ url_for('main.upload_task_audio', task_id=task.id if task else 0) }}`, // Usa url_for para URL correta
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    beforeSend: function() {
-                        uploadAudioBtn.prop('disabled', true).text('Salvando...');
-                        discardAudioBtn.prop('disabled', true);
-                    },
-                    success: function(response) {
-                        flashMessage(response.message, 'success');
-                        // Atualiza o player de áudio existente com o novo áudio
-                        const newAudioSrc = response.audio_url_base;
-                        let existingAudioPlayerSource = audioPlayerContainer.find('audio source');
-                        if (existingAudioPlayerSource.length) {
-                            existingAudioPlayerSource.attr('src', newAudioSrc);
-                            audioPlayerContainer.find('audio')[0].load(); // Recarrega o player
-                            audioPlayerContainer.find('#existing-audio-duration').text(`${Math.floor(audioDurationSeconds / 60)}:${('0' + (audioDurationSeconds % 60)).slice(-2)}`);
+                    if (response.ok && result.success) {
+                        showFlashMessage(result.message, 'success');
+                        // Atualiza os campos ocultos do formulário
+                        $('#audio_path').val(result.audio_filename);
+                        $('#audio_duration_seconds').val(audioDurationSeconds);
+
+                        // Atualiza o player de áudio existente (se for um update)
+                        if (audioPlayerContainer.length) {
+                            $('#existing-audio-player').attr('src', result.audio_url_base);
+                            $('#existing-audio-player')[0].load();
+                            $('#existing-audio-duration').text(`${Math.floor(audioDurationSeconds / 60)}:${('0' + (audioDurationSeconds % 60)).slice(-2)}`);
                             audioPlayerContainer.show();
                             noAudioMessage.hide();
-                        } else { // Se não havia player, cria um (útil para novas tarefas)
-                            location.reload(); // Recarrega a página para exibir o player
+                        } else {
+                            // Se não havia player, recarrega a página para exibir o player de áudio existente
+                            location.reload(); 
                         }
                         recordedAudioContainer.hide();
-                        uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
-                        discardAudioBtn.prop('disabled', false);
-                    },
-                    error: function(xhr) {
-                        const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao salvar o áudio.';
-                        flashMessage(errorMessage, 'danger');
-                        console.error('Erro no upload de áudio:', xhr);
-                        uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
-                        discardAudioBtn.prop('disabled', false);
+                    } else {
+                        const errorMessage = result.message || 'Erro ao salvar o áudio.';
+                        showFlashMessage(errorMessage, 'danger');
+                        console.error('Erro no upload de áudio:', result);
                     }
-                });
+                } catch (error) {
+                    showFlashMessage('Erro de rede ao salvar o áudio.', 'danger');
+                    console.error('Erro de rede no upload de áudio:', error);
+                } finally {
+                    uploadAudioBtn.prop('disabled', false).text('Salvar Áudio');
+                    discardAudioBtn.prop('disabled', false);
+                }
             } else {
-                flashMessage('Nenhum áudio gravado para salvar.', 'warning');
+                showFlashMessage('Nenhum áudio gravado para salvar.', 'warning');
             }
         });
 
@@ -630,46 +606,67 @@
             recordingStatus.text('');
             startRecordBtn.prop('disabled', false);
             stopRecordBtn.prop('disabled', true);
-            if (audioPlayerContainer.length && audioPlayerContainer.find('audio source').attr('src')) {
+            // Reabilita os botões de upload/descartar
+            uploadAudioBtn.prop('disabled', true);
+            discardAudioBtn.prop('disabled', true);
+
+            if (audioPlayerContainer.length && $('#existing-audio-player').attr('src')) {
                 audioPlayerContainer.show(); // Mostra o player de áudio existente de volta
             } else {
                 noAudioMessage.show(); // Mostra a mensagem de "nenhum áudio" de volta
             }
-            flashMessage('Gravação descartada.', 'info');
+            showFlashMessage('Gravação descartada.', 'info');
         });
 
-        deleteAudioBtn.on('click', () => {
+        deleteAudioBtn.on('click', async () => {
             if (confirm('Tem certeza que deseja excluir o áudio existente? Esta ação não pode ser desfeita.')) {
                 const taskId = {{ task.id if task else 'null' }};
                 if (!taskId) {
-                    flashMessage('Erro: Não há tarefa associada para excluir o áudio.', 'danger');
+                    showFlashMessage('Erro: Não há tarefa associada para excluir o áudio.', 'danger');
                     return;
                 }
+                
+                try {
+                    deleteAudioBtn.prop('disabled', true).text('Excluindo...');
+                    
+                    const response = await fetch(`/api/task/${taskId}/delete_audio`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}' // CSRF token é crucial aqui
+                        }
+                    });
+                    const result = await response.json();
 
-                $.ajax({
-                    url: `{{ url_for('main.delete_task_audio', task_id=task.id if task else 0) }}`, // Usa url_for para URL correta
-                    type: 'DELETE',
-                    beforeSend: function() {
-                        deleteAudioBtn.prop('disabled', true).text('Excluindo...');
-                    },
-                    success: function(response) {
-                        flashMessage(response.message, 'success');
+                    if (response.ok && result.message === 'Áudio removido com sucesso!') {
+                        showFlashMessage(result.message, 'success');
                         audioPlayerContainer.hide();
                         noAudioMessage.show();
-                        deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
                         // Opcional: remover o atributo src do player de áudio
-                        audioPlayerContainer.find('audio source').attr('src', '');
-                        audioPlayerContainer.find('audio')[0].load();
-                    },
-                    error: function(xhr) {
-                        const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao excluir o áudio.';
-                        flashMessage(errorMessage, 'danger');
-                        console.error('Erro na exclusão de áudio:', xhr);
-                        deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
+                        $('#existing-audio-player').attr('src', '');
+                        $('#existing-audio-player')[0].load();
+                        // Limpa os campos ocultos do formulário
+                        $('#audio_path').val('');
+                        $('#audio_duration_seconds').val('');
+                    } else {
+                        const errorMessage = result.message || 'Erro ao excluir o áudio.';
+                        showFlashMessage(errorMessage, 'danger');
+                        console.error('Erro na exclusão de áudio:', result);
                     }
-                });
+                } catch (error) {
+                    showFlashMessage('Erro de rede ao excluir o áudio.', 'danger');
+                    console.error('Erro de rede na exclusão de áudio:', error);
+                } finally {
+                    deleteAudioBtn.prop('disabled', false).text('Excluir Áudio Existente');
+                }
             }
         });
+
+        // Função auxiliar para formatar duração (usada também pelo áudio existente)
+        function formatDuration(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
     });
 </script>
 {% endblock scripts %}

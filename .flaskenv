@@ -13,9 +13,10 @@ DATABASE_URL=postgresql://flask_user:minhasenha@localhost:5432/gerenciador_event
 # --- Configurações de E-mail para Teste Local ---
 MAIL_SERVER='smtp.gmail.com'
 MAIL_PORT=587
-MAIL_USE_TLS='True'
-EMAIL_USER='gerenciador.eventos@grandetemplo.com.br'
-EMAIL_PASS='lrjrnyyjekfoyinh' # <--- AGORA DEFINIDA COM A SENHA DO APLICATIVO
+MAIL_USE_TLS=True                               # <--- CORRIGIDO: Agora é um booleano True
+MAIL_USE_SSL=False                              # <--- ADICIONADO: Garante que SSL esteja desativado se TLS for True
+MAIL_USERNAME='gerenciador.eventos@grandetemplo.com.br' # <--- CORRIGIDO: Renomeado de EMAI
+MAIL_PASSWORD='qhbusbchlrfzdipr'                # <--- CORRIGIDO
 MAIL_DEFAULT_SENDER='gerenciador.eventos@grandetemplo.com.br' # <--- SUBSTITUA com seu e-mail real
 
 

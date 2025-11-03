@@ -60,7 +60,7 @@ def approve_attachment_art(attachment_id):
     Rota para aprovar a arte de um anexo.
     Requer permissão can_approve_art.
     """
-    attachment = Attachment.query.get_or_404(attachment_id)
+    attachment = Attachment.query.options(joinedload(Attachment.task).joinedload(Task.event).joinedload(Event.author), joinedload(Attachment.uploader)).get_or_404(attachment_id)
 
     feedback_data = request.get_json()
     art_feedback = feedback_data.get('feedback', '').strip()
@@ -75,6 +75,45 @@ def approve_attachment_art(attachment_id):
     try:
         db.session.add(attachment) # Add if it's not already tracked or state changed
         db.session.commit()
+
+        # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+        recipients_art_approval = set()
+        
+        # Notificar o uploader do anexo (se diferente do aprovador)
+        uploader = attachment.uploader 
+        if uploader and uploader.id != current_user.id:
+            recipients_art_approval.add(uploader)
+            
+        # Notificar o autor do evento ao qual a tarefa do anexo pertence (se houver e não for o uploader ou o aprovador)
+        if attachment.task and attachment.task.event and attachment.task.event.author:
+            event_author = attachment.task.event.author
+            if event_author.id != current_user.id and (not uploader or event_author.id != uploader.id):
+                recipients_art_approval.add(event_author)
+        
+        message_template = f"A arte do anexo '{attachment.filename}' (tarefa '{attachment.task.title if attachment.task else 'N/A'}') foi **APROVADA** por {current_user.username}."
+        link_url = url_for('main.task_detail', task_id=attachment.task.id, _external=True) if attachment.task else None
+
+        for user_to_notify in recipients_art_approval:
+            create_in_app_notification(
+                user_id=user_to_notify.id,
+                message=message_template,
+                link_url=link_url,
+                related_object_type='Attachment',
+                related_object_id=attachment.id
+            )
+            send_push_to_user(
+                user_id=user_to_notify.id,
+                message_payload={
+                    'title': f"Arte Aprovada: {attachment.filename}",
+                    'body': message_template,
+                    'url': link_url,
+                    'type': 'attachment_approval',
+                    'attachment_id': attachment.id,
+                    'task_id': attachment.task.id if attachment.task else None,
+                    'event_id': attachment.task.event.id if attachment.task and attachment.task.event else None
+                }
+            )
+        # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
 
         ChangeLogEntry.log_update(
             user_id=current_user.id,
@@ -102,7 +141,7 @@ def reject_attachment_art(attachment_id):
     Rota para reprovar a arte de um anexo.
     Requer permissão can_approve_art.
     """
-    attachment = Attachment.query.get_or_404(attachment_id)
+    attachment = Attachment.query.options(joinedload(Attachment.task).joinedload(Task.event).joinedload(Event.author), joinedload(Attachment.uploader)).get_or_404(attachment_id)
 
     feedback_data = request.get_json()
     art_feedback = feedback_data.get('feedback', '').strip()
@@ -117,6 +156,47 @@ def reject_attachment_art(attachment_id):
     try:
         db.session.add(attachment)
         db.session.commit()
+
+        # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+        recipients_art_rejection = set()
+        
+        # Notificar o uploader do anexo (se diferente do reprovador)
+        uploader = attachment.uploader 
+        if uploader and uploader.id != current_user.id:
+            recipients_art_rejection.add(uploader)
+            
+        # Notificar o autor do evento ao qual a tarefa do anexo pertence (se houver e não for o uploader ou o reprovador)
+        if attachment.task and attachment.task.event and attachment.task.event.author:
+            event_author = attachment.task.event.author
+            if event_author.id != current_user.id and (not uploader or event_author.id != uploader.id):
+                recipients_art_rejection.add(event_author)
+        
+        message_template = f"A arte do anexo '{attachment.filename}' (tarefa '{attachment.task.title if attachment.task else 'N/A'}') foi **REPROVADA** por {current_user.username}."
+        if attachment.art_feedback:
+            message_template += f" Feedback: {attachment.art_feedback}"
+        link_url = url_for('main.task_detail', task_id=attachment.task.id, _external=True) if attachment.task else None
+
+        for user_to_notify in recipients_art_rejection:
+            create_in_app_notification(
+                user_id=user_to_notify.id,
+                message=message_template,
+                link_url=link_url,
+                related_object_type='Attachment',
+                related_object_id=attachment.id
+            )
+            send_push_to_user(
+                user_id=user_to_notify.id,
+                message_payload={
+                    'title': f"Arte Reprovada: {attachment.filename}",
+                    'body': message_template,
+                    'url': link_url,
+                    'type': 'attachment_rejection',
+                    'attachment_id': attachment.id,
+                    'task_id': attachment.task.id if attachment.task else None,
+                    'event_id': attachment.task.event.id if attachment.task and attachment.task.event else None
+                }
+            )
+        # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
 
         ChangeLogEntry.log_update(
             user_id=current_user.id,
@@ -173,6 +253,60 @@ def create_in_app_notification(user_id, message, link_url=None, related_object_t
         db.session.rollback() # Rollback para a notificação em caso de erro
         current_app.logger.error(f"Erro ao criar notificação in-app para user {user_id}: {e}", exc_info=True)
         return False
+
+# NOVO: Função auxiliar para envio de notificações (in-app e push) para múltiplos usuários sobre tarefas
+def _notify_users_about_task(users_to_notify, message_template, task, action_type, current_editor_id=None):
+    """
+    Envia notificações in-app e push para uma lista de usuários sobre uma tarefa.
+    Args:
+        users_to_notify (list): Lista de objetos User a serem notificados.
+        message_template (str): String formatada para a mensagem (e.g., "Sua tarefa '{task_title}' foi atualizada.").
+        task (Task): O objeto Task relevante.
+        action_type (str): Tipo da ação (e.g., 'task_assigned', 'task_updated', 'task_completed').
+        current_editor_id (int, optional): ID do usuário que fez a alteração, para evitar notificá-lo novamente.
+    """
+    if not users_to_notify:
+        return # Não há usuários para notificar
+
+    event_title = task.event.title if task.event else "Evento não especificado"
+    task_url = url_for('main.task_detail', task_id=task.id, _external=True)
+
+    # Use um set para evitar notificar o mesmo usuário múltiplas vezes e o editor
+    processed_users_ids = set()
+    if current_editor_id:
+        processed_users_ids.add(current_editor_id)
+
+    for user in users_to_notify:
+        if user.id not in processed_users_ids:
+            full_message = message_template.format(task_title=task.title, event_title=event_title)
+            title_push = f"Tarefa {action_type.replace('_', ' ').title()}: {task.title}"
+            body_push = full_message
+
+            # Notificação in-app
+            create_in_app_notification(
+                user_id=user.id,
+                message=full_message,
+                link_url=task_url,
+                related_object_type='Task',
+                related_object_id=task.id
+            )
+
+            # Notificação Push
+            send_push_to_user(
+                user_id=user.id,
+                message_payload={
+                    'title': title_push,
+                    'body': body_push,
+                    'url': task_url,
+                    'type': action_type,
+                    'task_id': task.id,
+                    'event_id': task.event.id if task.event else None
+                }
+            )
+            processed_users_ids.add(user.id)
+    current_app.logger.debug(f"Notificações de tarefa {task.id} ({action_type}) enviadas para {len(users_to_notify)} usuários (excluindo editor {current_editor_id}).")
+
+
 # =========================================================================
 # FIM: FUNÇÕES AUXILIARES DE NOTIFICAÇÃO
 # =========================================================================
@@ -746,7 +880,7 @@ def kanban_board():
 @login_required
 @permission_required('can_edit_task')
 def api_update_task_status(task_id):
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.options(joinedload(Task.assignees_associations).joinedload(TaskAssignment.user), joinedload(Task.event).joinedload(Event.author), joinedload(Task.creator_user_obj)).get_or_404(task_id)
 
     data = request.get_json()
     new_status_id = data.get('new_status_id')
@@ -808,6 +942,22 @@ def api_update_task_status(task_id):
     try:
         db.session.commit() # Commit da atualização da tarefa e itens de checklist (se houver)
         current_app.logger.debug(f"DEBUG: api_update_task_status - PRIMEIRO db.session.commit() BEM-SUCEDIDO para tarefa {task_id}.")
+
+        # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+        recipients = set(task.assignees) # Adiciona todos os atribuídos
+        if task.creator_user_obj:
+            recipients.add(task.creator_user_obj) # Adiciona o criador da tarefa
+        if task.event and task.event.author:
+            recipients.add(task.event.author) # Adiciona o autor do evento
+
+        _notify_users_about_task(
+            users_to_notify=list(recipients),
+            message_template=f"O status da tarefa '{{task_title}}' em '{{event_title}}' foi alterado para '{new_status.name}'.",
+            task=task,
+            action_type='status_updated',
+            current_editor_id=current_user.id
+        )
+        # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
 
         # Logar a alteração no ChangeLogEntry
         ChangeLogEntry.log_update(
@@ -876,7 +1026,7 @@ def create_task_from_kanban():
             # Agora form.task_status_rel.data já deve conter o objeto Status
             task_category_obj = form.task_category.data
             task_subcategory_obj = form.task_subcategory.data if form.task_subcategory.data else None
-            task_status_obj = form.task_status_rel.data
+            task_status_obj = form.task_status_rel.data 
 
             if not task_category_obj or not task_status_obj:
                 return jsonify({'success': False, 'message': 'Categoria de tarefa ou Status de tarefa inválido.'}), 400
@@ -921,6 +1071,29 @@ def create_task_from_kanban():
 
 
             db.session.commit()
+
+            # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+            # Notificar os usuários atribuídos
+            _notify_users_about_task(
+                users_to_notify=new_task.assignees,
+                message_template="Você foi atribuído à tarefa '{task_title}' no evento '{event_title}'.",
+                task=new_task,
+                action_type='task_assigned',
+                current_editor_id=current_user.id
+            )
+
+            # Notificar o autor do evento (se diferente do criador da tarefa e não for um dos atribuídos)
+            if new_task.event and new_task.event.author_id != current_user.id:
+                event_author = new_task.event.author
+                if event_author and event_author.id not in [u.id for u in new_task.assignees]:
+                    _notify_users_about_task(
+                        users_to_notify=[event_author],
+                        message_template="Uma nova tarefa '{task_title}' foi criada no seu evento '{event_title}'.",
+                        task=new_task,
+                        action_type='task_created_in_event',
+                        current_editor_id=current_user.id
+                    )
+            # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
 
             # Logar a criação no ChangeLogEntry
             ChangeLogEntry.log_creation(
@@ -992,7 +1165,6 @@ def new_event():
             if not category_obj:
                 flash('Por favor, selecione uma Categoria válida.', 'danger')
                 return render_template('create_edit_event.html', title='Novo Evento', form=form, legend='Novo Evento')
-            
             if not event_status_obj:
                 flash('Por favor, selecione um Status de Evento válido.', 'danger')
                 return render_template('create_edit_event.html', title='Novo Evento', form=form, legend='Novo Evento')
@@ -1056,7 +1228,8 @@ def event(event_id):
         filtered_completed_tasks.sort(key=lambda t: t.completed_at if t.completed_at else datetime.min, reverse=True)
 
     current_date = date.today()
-    days_left = (task_obj.due_date.date() - current_date).days if 'task_obj' in locals() and task_obj.due_date else 0
+    # Ajustado: task_obj não está definido aqui. Removendo a linha problemática.
+    # days_left = (task_obj.due_date.date() - current_date).days if 'task_obj' in locals() and task_obj.due_date else 0
 
     can_manage_event_permissions = is_admin or is_event_author
     can_edit_event = is_admin or is_event_author
@@ -1120,7 +1293,7 @@ def update_event(event_id):
         event_status_obj = form.event_status.data 
         if not category_obj or not event_status_obj: 
             flash('Categoria ou Status de evento inválido.', 'danger')
-            return render_template('create_edit_event.html', title='Atualizar Evento', form=form, legend='Atualizar Evento')
+            return render_template('create_edit_event.html', title='Novo Evento', form=form, legend='Novo Evento')
         event_obj.category = category_obj
         event_obj.event_status = event_status_obj 
         db.session.commit()
@@ -1629,7 +1802,7 @@ def new_task(event_id):
             current_app.logger.debug(f"DEBUG: new_task - Objeto Task criado em sessão com ID temporário: {task.id}. Título: '{task.title}'.")
 
             # Processar Atribuições
-            selected_assignee_ids = [user.id for user in form.assignees.data] 
+            selected_assignee_ids = [user.id for user in form.assignees.data]
             if selected_assignee_ids:
                 current_app.logger.debug(f"DEBUG: new_task - Atribuindo tarefa aos usuários: {selected_assignee_ids}")
                 for user_id in selected_assignee_ids:
@@ -1674,6 +1847,29 @@ def new_task(event_id):
 
             db.session.commit() # Commit principal dos dados da tarefa
             current_app.logger.debug(f"DEBUG: new_task - PRIMEIRO db.session.commit() BEM-SUCEDIDO para tarefa ID: {task.id}. Dados principais gravados.")
+
+            # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+            # Notificar os usuários atribuídos
+            _notify_users_about_task(
+                users_to_notify=task.assignees, # O relacionamento 'assignees' da tarefa
+                message_template="Você foi atribuído à tarefa '{task_title}' no evento '{event_title}'.",
+                task=task,
+                action_type='task_assigned',
+                current_editor_id=current_user.id
+            )
+
+            # Notificar o autor do evento (se diferente do criador da tarefa e não for um dos atribuídos)
+            if task.event and task.event.author_id != current_user.id:
+                event_author = task.event.author
+                if event_author and event_author.id not in [u.id for u in task.assignees]:
+                    _notify_users_about_task(
+                        users_to_notify=[event_author],
+                        message_template="Uma nova tarefa '{task_title}' foi criada no seu evento '{event_title}'.",
+                        task=task,
+                        action_type='task_created_in_event',
+                        current_editor_id=current_user.id
+                    )
+            # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
 
             ChangeLogEntry.log_creation(
                 current_user.id,
@@ -1755,6 +1951,7 @@ def task_detail(task_id):
         filtered_completed_tasks.sort(key=lambda t: t.completed_at if t.completed_at else datetime.min, reverse=True)
 
     current_date = date.today()
+    # A variável 'task_obj' existe no escopo da função, mas 'days_left' precisa ser calculada com base nela.
     days_left = (task_obj.due_date.date() - current_date).days if task_obj.due_date else 0
 
     can_manage_event_permissions = is_admin or is_event_author
@@ -1915,15 +2112,17 @@ def get_or_add_task_comments_api(task_id):
                     related_object_type='Task',
                     related_object_id=task.id
                 )
-                push_payload = {
-                    'body': comment_notification_message,
-                    'title': f'Novo Comentário na Tarefa: {task.title}',
-                    'url': notification_link,
-                    'type': 'new_comment',
-                    'task_id': task.id,
-                    'event_id': task.event.id
-                }
-                send_push_to_user(recipient.id, push_payload)
+                send_push_to_user(
+                    user_id=recipient.id,
+                    message_payload={
+                        'body': comment_notification_message,
+                        'title': f'Novo Comentário na Tarefa: {task.title}',
+                        'url': notification_link,
+                        'type': 'new_comment',
+                        'task_id': task.id,
+                        'event_id': task.event.id
+                    }
+                )
             
             mentioned_usernames = re.findall(r'@(\w+)', comment_text)
             for username in set(mentioned_usernames):
@@ -1943,15 +2142,17 @@ def get_or_add_task_comments_api(task_id):
                     email_body = f"Olá {mentioned_user.username},\n\n{current_user.username} mencionou você no comentário da tarefa '{task.title}' do evento '{task.event.title}'.\n\nComentário: {comment_text}\n\nPara ver o comentário e a tarefa, clique aqui: {notification_link}\n\nAtenciosamente,\nSua Equipe de Gerenciamento de Eventos"
                     send_notification_email(mentioned_user.email, email_subject, email_body)
 
-                    push_payload = {
-                        'body': mention_message,
-                        'title': f'Você foi Mencionado na Tarefa: {task.title}',
-                        'url': notification_link,
-                        'type': 'task_mention',
-                        'task_id': task.id,
-                        'event_id': task.event.id
-                    }
-                    send_push_to_user(mentioned_user.id, push_payload)
+                    send_push_to_user(
+                        user_id=mentioned_user.id,
+                        message_payload={
+                            'body': mention_message,
+                            'title': f'Você foi Mencionado na Tarefa: {task.title}',
+                            'url': notification_link,
+                            'type': 'task_mention',
+                            'task_id': task.id,
+                            'event_id': task.event.id
+                        }
+                    )
                     
                     notified_users_ids.add(mentioned_user.id)
             db.session.commit()
@@ -1975,25 +2176,25 @@ def get_or_add_task_comments_api(task_id):
 @permission_required('can_edit_task') # Usando o decorator consolidado
 def update_task(task_id):
     task_obj = Task.query.options(
-        joinedload(Task.checklist).joinedload(TaskChecklist.items).joinedload(TaskChecklistItem.template_item) 
+        joinedload(Task.checklist).joinedload(TaskChecklist.items).joinedload(TaskChecklistItem.template_item),
+        joinedload(Task.assignees_associations).joinedload(TaskAssignment.user),
+        joinedload(Task.creator_user_obj), # Carregar o criador para notificações
+        joinedload(Task.event).joinedload(Event.author), # Carregar o autor do evento para notificações
+        joinedload(Task.task_status_rel) # Carregar o status da tarefa para obter o nome
     ).get_or_404(task_id)
     event_obj = task_obj.event
 
-    form = TaskForm(obj=task_obj, event=event_obj) # O 'obj=task_obj' já pré-carrega muitos campos
+    old_task_data_for_changelog = task_obj.to_dict()
+    old_subcategory_id = task_obj.task_subcategory_id
+    old_assignee_ids = {u.id for u in task_obj.assignees} # Guardar IDs dos antigos atribuídos
+    old_status_id = task_obj.task_status_id # Guardar ID do status antigo
 
-    if request.method == 'GET':
-        current_app.logger.debug(f"DEBUG: update_task - Requisição GET para atualizar tarefa {task_id}. Pré-preenchendo formulário.")
-        # Preencher os campos restantes ou corrigir para QuerySelectField
-        # ... (código existente para pré-popular o formulário) ...
+    form = TaskForm(obj=task_obj, event=event_obj) # O 'obj=task_obj' já pré-carrega muitos campos
 
     # No POST (form.validate_on_submit), os campos QuerySelectField.data retornam os objetos selecionados
     if form.validate_on_submit():
         current_app.logger.debug(f"DEBUG: update_task - Formulário VALIDADO para tarefa {task_id}. Tentando salvar alterações.")
         try:
-            old_task_data_for_changelog = task_obj.to_dict()
-            old_subcategory_id = task_obj.task_subcategory_id
-            old_assignee_ids = sorted([u.id for u in task_obj.assignees])
-
             task_obj.title = form.title.data
             task_obj.description = form.description.data
             task_obj.notes = form.notes.data
@@ -2005,7 +2206,6 @@ def update_task(task_id):
             task_obj.updated_at = datetime.utcnow()
             task_obj.priority = form.priority.data # Atualiza a prioridade
             current_app.logger.debug(f"DEBUG: update_task - Atributos da tarefa {task_id} atualizados na sessão.")
-
             # Corrigido: QuerySelectField retorna o objeto diretamente, não o ID
             task_category_obj = form.task_category.data
             task_subcategory_obj = form.task_subcategory.data if form.task_subcategory.data else None
@@ -2026,7 +2226,6 @@ def update_task(task_id):
             task_obj.task_subcategory_id = task_subcategory_obj.id if task_subcategory_obj else None
             task_obj.task_status_id = task_status_obj.id
             current_app.logger.debug(f"DEBUG: update_task - Categorias e status da tarefa {task_id} atualizados.")
-
             if old_subcategory_id != task_obj.task_subcategory_id:
                 current_app.logger.debug(f"DEBUG: update_task - Subcategoria da tarefa {task_id} alterada. Reavaliando checklist.")
                 if task_obj.checklist:
@@ -2069,30 +2268,109 @@ def update_task(task_id):
                     )
                     current_app.logger.debug(f"DEBUG: update_task - Log de criação de novo checklist adicionado.")
             
-            new_assignee_ids = sorted([user.id for user in form.assignees.data]) 
+            new_assignee_ids = {u.id for u in form.assignees.data}
+            added_assignees_ids = new_assignee_ids - old_assignee_ids
+            removed_assignees_ids = old_assignee_ids - new_assignee_ids
+            
             if old_assignee_ids != new_assignee_ids:
                 current_app.logger.debug(f"DEBUG: update_task - Atribuídos da tarefa {task_id} alterados. Atualizando.")
                 TaskAssignment.query.filter_by(task_id=task_obj.id).delete()
-                if new_assignee_ids:
-                    for user_id in new_assignee_ids:
-                        user_obj = User.query.get(user_id)
-                        if user_obj:
-                            new_assignment = TaskAssignment(task=task_obj, user=user_obj)
-                            db.session.add(new_assignment)
+                for user_id in new_assignee_ids:
+                    user_obj = User.query.get(user_id)
+                    if user_obj:
+                        new_assignment = TaskAssignment(task=task_obj, user=user_obj)
+                        db.session.add(new_assignment)
                 current_app.logger.debug(f"DEBUG: update_task - Atribuições atualizadas na sessão.")
                 
                 ChangeLogEntry.log_update(
                     user_id=current_user.id,
                     record_type='Task',
                     record_id=task_obj.id,
-                    old_data={'assignees_ids': old_assignee_ids},
-                    new_data={'assignees_ids': new_assignee_ids},
+                    old_data={'assignees_ids': list(old_assignee_ids)}, # Convert to list for JSON serialization
+                    new_data={'assignees_ids': list(new_assignee_ids)}, # Convert to list for JSON serialization
                     description=f"Responsáveis pela tarefa '{task_obj.title}' alterados."
                 )
                 current_app.logger.debug(f"DEBUG: update_task - Log de alteração de atribuídos adicionado.")
 
             db.session.commit() # Commit principal dos dados da tarefa
             current_app.logger.debug(f"DEBUG: update_task - PRIMEIRO db.session.commit() BEM-SUCEDIDO para tarefa ID: {task_id}. Dados principais gravados.")
+
+            # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+            # Notificar os usuários recém-adicionados
+            for user_id in added_assignees_ids:
+                assignee = User.query.get(user_id)
+                if assignee:
+                    _notify_users_about_task(
+                        users_to_notify=[assignee],
+                        message_template="Você foi **atribuído** à tarefa '{task_title}' no evento '{event_title}'.",
+                        task=task_obj,
+                        action_type='task_assigned',
+                        current_editor_id=current_user.id
+                    )
+            
+            # Notificar os usuários removidos (opcional)
+            for user_id in removed_assignees_ids:
+                removed_user = User.query.get(user_id)
+                if removed_user:
+                    _notify_users_about_task(
+                        users_to_notify=[removed_user],
+                        message_template="Você foi **removido** da tarefa '{task_title}' no evento '{event_title}'.",
+                        task=task_obj,
+                        action_type='task_unassigned',
+                        current_editor_id=current_user.id
+                    )
+
+            # Notificar sobre mudança de status (se o status realmente mudou)
+            if task_obj.task_status_id != old_status_id:
+                recipients_status_change = set(task_obj.assignees) # Adiciona todos os atribuídos
+                if task_obj.creator_user_obj:
+                    recipients_status_change.add(task_obj.creator_user_obj) # Adiciona o criador da tarefa
+                if task_obj.event and task_obj.event.author:
+                    recipients_status_change.add(task_obj.event.author) # Adiciona o autor do evento
+                
+                _notify_users_about_task(
+                    users_to_notify=list(recipients_status_change),
+                    message_template=f"O status da tarefa '{{task_title}}' em '{{event_title}}' foi alterado para '{task_obj.task_status_rel.name}'.",
+                    task=task_obj,
+                    action_type='status_updated',
+                    current_editor_id=current_user.id
+                )
+            
+            # Notificação geral de atualização da tarefa (para criador, autor do evento e outros atribuídos que não foram notificados por atribuição/status)
+            general_recipients = set(task_obj.assignees)
+            if task_obj.creator_user_obj:
+                general_recipients.add(task_obj.creator_user_obj)
+            if task_obj.event and task_obj.event.author:
+                general_recipients.add(task_obj.event.author)
+
+            # Filtra os que já receberam notificação específica de atribuição/remoção ou status
+            users_for_general_update = [
+                u for u in general_recipients 
+                if u.id != current_user.id and \
+                   u.id not in added_assignees_ids and \
+                   u.id not in removed_assignees_ids and \
+                   (task_obj.task_status_id == old_status_id or u.id not in [r.id for r in recipients_status_change])
+            ]
+            
+            # Notifica se o título ou a descrição mudaram significativamente (além do status e atribuídos)
+            # Para isso, seria ideal comparar mais a fundo old_task_data_for_changelog com new_data para identificar outras mudanças.
+            significant_general_change = False
+            if old_task_data_for_changelog['title'] != task_obj.title:
+                significant_general_change = True
+            if old_task_data_for_changelog['description'] != task_obj.description:
+                significant_general_change = True
+            # Adicione outras condições para "mudança significativa" se necessário (ex: due_date)
+
+            if significant_general_change and users_for_general_update:
+                 _notify_users_about_task(
+                    users_to_notify=users_for_general_update,
+                    message_template="A tarefa '{task_title}' no evento '{event_title}' foi atualizada.",
+                    task=task_obj,
+                    action_type='task_updated',
+                    current_editor_id=current_user.id
+                )
+
+            # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
 
             ChangeLogEntry.log_update(
                 user_id=current_user.id,
@@ -2182,7 +2460,7 @@ def delete_task(task_id):
 @login_required
 @permission_required('can_complete_task') # Usando o decorator consolidado
 def complete_task(task_id):
-    task_obj = Task.query.get_or_404(task_id)
+    task_obj = Task.query.options(joinedload(Task.assignees_associations).joinedload(TaskAssignment.user), joinedload(Task.creator_user_obj), joinedload(Task.event).joinedload(Event.author)).get_or_404(task_id)
     comment = request.form.get('completion_comment')
 
     if task_obj.is_completed:
@@ -2216,6 +2494,22 @@ def complete_task(task_id):
         db.session.add(history_entry)
         db.session.commit() 
 
+        # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+        recipients = set(task_obj.assignees) # Adiciona todos os atribuídos
+        if task_obj.creator_user_obj:
+            recipients.add(task_obj.creator_user_obj) # Adiciona o criador da tarefa
+        if task_obj.event and task_obj.event.author:
+            recipients.add(task_obj.event.author) # Adiciona o autor do evento
+
+        _notify_users_about_task(
+            users_to_notify=list(recipients),
+            message_template=f"A tarefa '{{task_title}}' em '{{event_title}}' foi **concluída** por {current_user.username}.",
+            task=task_obj,
+            action_type='task_completed',
+            current_editor_id=current_user.id
+        )
+        # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
+
         new_data_for_changelog = task_obj.to_dict()
         ChangeLogEntry.log_update(
             user_id=current_user.id,
@@ -2241,7 +2535,7 @@ def complete_task(task_id):
 @login_required
 @permission_required('can_uncomplete_task') # Usando o decorator consolidado
 def uncomplete_task(task_id):
-    task_obj = Task.query.get_or_404(task_id)
+    task_obj = Task.query.options(joinedload(Task.assignees_associations).joinedload(TaskAssignment.user), joinedload(Task.creator_user_obj), joinedload(Task.event).joinedload(Event.author)).get_or_404(task_id)
 
     if not task_obj.is_completed:
         flash('Esta tarefa não está concluída.', 'info')
@@ -2273,6 +2567,22 @@ def uncomplete_task(task_id):
         db.session.add(history_entry)
         db.session.commit() 
 
+        # --- INÍCIO DA LÓGICA DE NOTIFICAÇÃO ---
+        recipients = set(task_obj.assignees) # Adiciona todos os atribuídos
+        if task_obj.creator_user_obj:
+            recipients.add(task_obj.creator_user_obj) # Adiciona o criador da tarefa
+        if task_obj.event and task_obj.event.author:
+            recipients.add(task_obj.event.author) # Adiciona o autor do evento
+
+        _notify_users_about_task(
+            users_to_notify=list(recipients),
+            message_template=f"A conclusão da tarefa '{{task_title}}' em '{{event_title}}' foi **desfeita** por {current_user.username}.",
+            task=task_obj,
+            action_type='task_uncompleted',
+            current_editor_id=current_user.id
+        )
+        # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
+
         new_data_for_changelog = task_obj.to_dict()
         ChangeLogEntry.log_update(
             user_id=current_user.id,
@@ -2291,8 +2601,6 @@ def uncomplete_task(task_id):
         current_app.logger.error(f"Erro ao desmarcar tarefa {task_id}: {e}", exc_info=True)
         flash(f'Ocorreu um erro ao marcar a tarefa como não concluída: {str(e)}. Por favor, tente novamente.', 'danger')
         return redirect(url_for('main.task_detail', task_id=task_obj.id) if request.referrer and 'task/' in request.referrer else url_for('main.event', event_id=task_obj.event.id))
-
-
 # =========================================================================
 # NOVA ROTA: VISUALIZAR HISTÓRICO DA TAREFA
 # =========================================================================
@@ -2446,7 +2754,7 @@ def manage_event_permissions(event_id):
     permissions = EventPermission.query.filter_by(event_id=event.id).options(joinedload(EventPermission.user)).all()
     return render_template('manage_event_permissions.html', 
                             title='Gerenciar Permissões', 
-                            event=event, 
+                            event=event,
                             permission_form=permission_form,
                             permissions=permissions)
 
@@ -2495,13 +2803,12 @@ def changelog():
             'id': log_entry.id,
             'user': log_entry.user.username if log_entry.user else 'Desconhecido',
             'timestamp': log_entry.timestamp.isoformat(),
+            'action': log_entry.action,
             'record_type': log_entry.record_type,
             'record_id': log_entry.record_id,
-            'action': log_entry.action,
-            'description': log_entry.description,
             'old_data': old_data,
             'new_data': new_data,
-            'differences': differences
+            'description': log_entry.description
         }
         serialized_changelogs_items.append(log_data_for_js)
     return render_template(
@@ -3103,8 +3410,9 @@ def delete_custom_task_checklist_item(item_id):
     old_data = item.to_dict()
     try:
         # Se houver anexos associados, desvincular ou deletar (decisão de negócio)
-        if item.attachments_list: # Corrigido para attachments_list
-            for att in item.attachments_list:
+        # item.attachments_list foi corrigido no models.py para item.attachments
+        if item.attachments: 
+            for att in item.attachments:
                 att.task_checklist_item_id = None # Desvincula
                 db.session.add(att)
 
@@ -3336,7 +3644,7 @@ def search_users_api():
 
 
 # =========================================================================================
-# ROTA PARA SERVIR O SERVICE WORKER 
+# ROTA PARA SERVIR O SERVICE WORKER
 # =========================================================================================
 @main.route('/service-worker.js')
 def serve_service_worker():

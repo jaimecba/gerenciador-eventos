@@ -356,7 +356,6 @@ class TaskForm(FlaskForm):
         # Removido widget=ListWidget(prefix_label=False) e option_widget=CheckboxInput()
         # para que o campo seja renderizado como um <select multiple> por padrão.
         # Adicionado render_kw para o placeholder do Select2 e classes CSS
-        render_kw={"class": "select2-multiple", "data-placeholder": "Selecione os usuários atribuídos"},
         allow_blank=True # Mantemos isso, embora Select2 lide com o placeholder.
     )
 

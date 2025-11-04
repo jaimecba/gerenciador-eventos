@@ -80,18 +80,23 @@
                 </ul>
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
+
                         <li class="nav-item position-relative me-3">
-                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}"  rel="noopener noreferrer" title="Notificações">
-                                <i class="fas fa-bell"></i>
+                            <a class="nav-link fs-6 text-primary" href="{{ url_for('main.notifications') }}" rel="noopener noreferrer" title="Notificações">
+                                <i class="fas fa-bell" id="notification-bell" 
+                                {% if unread_notifications_count > 0 %}style="color: red;"{% else %}style="color: green;"{% endif %}>
+                                </i>
                                 <span id="unread-notifications-badge"
-                                      class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle"
-style="font-size: 0.65em; padding: 0.3em 0.5em;"
-                                      {% if unread_notifications_count == 0 %}hidden{% endif %}>
+                                    class="badge rounded-pill position-absolute top-0 start-100 translate-middle 
+                                            {% if unread_notifications_count > 0 %}bg-danger{% else %}bg-success{% endif %}"
+                                    style="font-size: 0.65em; padding: 0.3em 0.5em;"
+                                    {% if unread_notifications_count == 0 %}hidden{% endif %}>
                                     {{ unread_notifications_count }}
                                     <span class="visually-hidden">notificações não lidas</span>
                                 </span>
                             </a>
                         </li>
+
                         <li class="nav-item">
                             <span class="nav-link text-primary fw-bold fs-6">
                                 <i class="fas fa-user-circle me-1"></i> Olá, {{ current_user.username }}!
@@ -326,27 +331,16 @@ style="font-size: 0.65em; padding: 0.3em 0.5em;"
 
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{{ url_for("main.serve_service_worker") }}', { scope: '/' })
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                        // Tentar subscrever para push notifications APÓS o SW estar registrado
-                        subscribeUserToPush(); 
-                    }, function(err) {
-                        console.log('ServiceWorker registration failed: ', err);
-                        const flashMessagesContainer = document.querySelector('.flash-messages-container');
-                        if (flashMessagesContainer) {
-                            const alertDiv = document.createElement('div');
-                            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-                            alertDiv.setAttribute('role', 'alert');
-                            alertDiv.innerHTML = `Não foi possível registrar o Service Worker (necessário para notificações). Erro: ${err.message || err}. Por favor, tente novamente mais tarde.
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-                            flashMessagesContainer.prepend(alertDiv);
-                        }
-                    });
+        window.addEventListener('load', () => {
+            navigator.serviceWorker
+            .register('/service-worker.js') // Caminho para o service worker
+            .then((registration) => {
+                console.log('Service Worker registrado com sucesso:', registration);
+            })
+            .catch((error) => {
+                console.error('Falha ao registrar o Service Worker:', error);
             });
-        } else {
-            console.warn('Navegador não suporta Service Workers.');
+        });
         }
     </script>
 </body>

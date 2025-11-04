@@ -20,6 +20,7 @@ import requests
 import re
 from markupsafe import Markup, escape
 from sqlalchemy.orm import joinedload # ADICIONADO: Importado para usar em Flask-Admin QuerySelectField options
+from firebase_config import initialize_firebase
 
 # Importações de WTForms para CustomFieldTypeEnumField e para o formulário customizado
 from wtforms import Field, widgets, Form, DateTimeField, SelectField # ADICIONADO Form e DateTimeField
@@ -42,6 +43,10 @@ from forms import RegistrationForm, LoginForm, UpdateAccountForm, RequestResetFo
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
+
+# Instanciação do Flask app
+app = Flask(__name__)
+initialize_firebase()
 
 # Instanciação do bcrypt
 bcrypt = Bcrypt()

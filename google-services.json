@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "682317279751",
+    "project_id": "gerenciador-eventos-29edc",
+    "storage_bucket": "gerenciador-eventos-29edc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:682317279751:android:131cb4d0a7d1a5ae12f0a2",
+        "android_client_info": {
+          "package_name": "com.flexx.get"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCr8rzOpCitn5uZTR7RbwHSSCd0_MpfgSI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

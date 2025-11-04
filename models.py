@@ -12,6 +12,7 @@ import uuid
 from flask_login import UserMixin
 from sqlalchemy.orm import joinedload, relationship
 from sqlalchemy import CheckConstraint, Index, UniqueConstraint, Enum, Numeric
+from sqlalchemy.orm import validates
 import enum
 
 # --- ADICIONADO PARA DEPURAR A VERSÃO DO ITSDANGEROUS ---
@@ -142,7 +143,6 @@ class User(db.Model, UserMixin):
     user_groups = db.relationship('UserGroup', back_populates='user', lazy=True, cascade='all, delete-orphan')
     event_permissions = db.relationship('EventPermission', back_populates='user', lazy=True, cascade='all, delete-orphan')
     password_reset_tokens = db.relationship('PasswordResetToken', backref='user', lazy=True, cascade='all, delete-orphan')
-
     tasks_completed_by_me = db.relationship('Task', foreign_keys='Task.completed_by_id', back_populates='completed_by_user_obj')
     tasks_created_by_me = db.relationship('Task', foreign_keys='Task.creator_id', back_populates='creator_user_obj')
 
@@ -563,11 +563,11 @@ class TaskSubcategory(db.Model):
     task_category_id = db.Column(db.Integer, db.ForeignKey('task_category.id'), nullable=False)
 
     parent_category = db.relationship('TaskCategory', back_populates='subcategories')
+    tasks = db.relationship('Task', back_populates='task_subcategory', lazy=True)
 
     requires_art_approval_on_images = db.Column(db.Boolean, default=False, nullable=False)
     checklist_template_id = db.Column(db.Integer, db.ForeignKey('checklist_template.id'), nullable=True)
     checklist_template = db.relationship('ChecklistTemplate', back_populates='task_subcategories_using_this_template')
-    tasks = db.relationship('Task', back_populates='task_subcategory', lazy=True)
 
     # NOVO CAMPO para o ID do papel do aprovador
     approver_role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=True)
@@ -601,7 +601,7 @@ class ChecklistTemplate(db.Model):
 
     task_subcategories_using_this_template = db.relationship('TaskSubcategory', back_populates='checklist_template', lazy=True, cascade='all, delete-orphan')
     items = db.relationship('ChecklistItemTemplate', back_populates='template', lazy=True, cascade='all, delete-orphan')
-
+    
     def __repr__(self):
         return f"<ChecklistTemplate '{self.name}'>"
     
@@ -615,37 +615,73 @@ class ChecklistTemplate(db.Model):
             'items': [item.to_dict() for item in self.items]
         }
 
-# Model para Itens do Template do Checklist (Os itens que compõem um ChecklistTemplate)
+# Itens que compõem um ChecklistTemplate
 class ChecklistItemTemplate(db.Model):
+    __tablename__ = 'checklist_item_template'
+
     id = db.Column(db.Integer, primary_key=True)
-    checklist_template_id = db.Column(db.Integer, db.ForeignKey('checklist_template.id'), nullable=False)
-    
-    template = db.relationship('ChecklistTemplate', back_populates='items')
-    label = db.Column(db.String(255), nullable=False)
-    
+    # Relacionamento obrigatório com ChecklistTemplate
+    checklist_template_id = db.Column(
+        db.Integer,
+        db.ForeignKey('checklist_template.id', ondelete='CASCADE'),
+        nullable=False  # Este campo não pode ser nulo
+    )
+
+    # Relacionamento com ChecklistTemplate
+    template = db.relationship(
+        'ChecklistTemplate',
+        back_populates='items',
+        lazy=True
+    )
+
+    label = db.Column(db.String(255), nullable=False)  # Etiqueta/descrição do item (não pode ser nulo)
+
     # Coluna do Enum: Usa o CustomFieldTypeEnum
-    field_type = db.Column(db.Enum(CustomFieldTypeEnum, name='custom_field_type_enum', create_type=False), nullable=False)
-    
-    is_required = db.Column(db.Boolean, default=False, nullable=False)
-    order = db.Column(db.Integer, default=0, nullable=False)
-    
+    field_type = db.Column(
+        db.Enum(CustomFieldTypeEnum, name='custom_field_type_enum', create_type=False),
+        nullable=False  # Tipo de campo é obrigatório
+    )
+
+    is_required = db.Column(db.Boolean, default=False, nullable=False)  # Indica se o item é obrigatório
+    order = db.Column(db.Integer, default=0, nullable=False)  # Ordem do campo dentro do checklist
+
     min_images = db.Column(db.Integer, nullable=True)
     max_images = db.Column(db.Integer, nullable=True)
-    options = db.Column(db.Text, nullable=True)
-    placeholder = db.Column(db.String(255), nullable=True)
+    options = db.Column(db.Text, nullable=True)  # Opções (caso seja um campo com multisseleção)
+    placeholder = db.Column(db.String(255), nullable=True)  # Texto alternativo/sugestão exibido no campo
 
-    task_checklist_items = db.relationship('TaskChecklistItem', back_populates='template_item', lazy=True, cascade='all, delete-orphan')
+    # Relacionamento com os itens do checklist da tarefa
+    task_checklist_items = db.relationship(
+        'TaskChecklistItem',
+        back_populates='template_item',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
 
     def __repr__(self):
         return f"<ChecklistItemTemplate '{self.label}' ({self.field_type.value})>"
-    
+
+    # Validações de entrada para campos críticos
+    @validates('checklist_template_id')
+    def validate_checklist_template_id(self, key, value):
+        if value is None:
+            raise ValueError("checklist_template_id não pode ser nulo.")
+        return value
+
+    @validates('label')  # Exemplo de validação adicional
+    def validate_label(self, key, value):
+        if not value or not value.strip():
+            raise ValueError("O campo 'label' é obrigatório e não pode estar vazio.")
+        return value.strip()  # Remove espaços desnecessários
+
+    # Método para transformar o modelo em um dicionário (serializar)
     def to_dict(self):
         return {
             'id': self.id,
             'checklist_template_id': self.checklist_template_id,
             'label': self.label,
-            'field_type': self.field_type.name, # Retorna o nome do enum (TEXT, IMAGE, etc.)
-            'field_type_value': self.field_type.value, # Retorna o valor do enum (Texto Curto, Imagem/Arquivo Visual, etc.)
+            'field_type': self.field_type.name,  # Nome do Enum (p. ex. TEXT, IMAGE)
+            'field_type_value': self.field_type.value,  # Valor do Enum (Texto Curto, Imagem, etc.)
             'is_required': self.is_required,
             'order': self.order,
             'min_images': self.min_images,
@@ -669,7 +705,7 @@ class Task(db.Model):
     priority = db.Column(db.String(20), nullable=False, default='medium')
     
     # Única relação para attachments diretos da tarefa
-    attachments = db.relationship('Attachment', back_populates='task', lazy=True, cascade='all, delete-orphan') # <-- MANTER ESTA
+    attachments = db.relationship('Attachment', back_populates='task', lazy=True, cascade='all, delete-orphan')
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -712,21 +748,6 @@ class Task(db.Model):
     history = db.relationship('TaskHistory', backref='task', lazy='dynamic', cascade='all, delete-orphan')
     comments = db.relationship('Comment', back_populates='task', lazy=True, cascade='all, delete-orphan', order_by="Comment.timestamp.asc()")
 
-    # REMOVIDO: a relação 'direct_attachments' era redundante e causava conflito.
-    # A relação 'attachments' no início da classe Task já cumpre este papel.
-    # direct_attachments = db.relationship(
-    #     'Attachment',
-    #     foreign_keys='Attachment.task_id',
-    #     back_populates='task', # Vincula à propriedade 'task' em Attachment
-    #     lazy=True,
-    #     cascade='all, delete-orphan'
-    # )
-
-
-    @property
-    def assignees(self):
-        return [assignment.user for assignment in self.assignees_associations]
-
     def to_dict(self):
         assigned_user_ids = [assign.user_id for assign in self.assignees_associations]
         assigned_usernames = [assign.user.username for assign in self.assignees_associations if assign.user]
@@ -759,7 +780,7 @@ class Task(db.Model):
             'attachments_count': len(self.attachments) if self.attachments is not None else 0,
             'checklist': self.checklist.to_dict() if self.checklist else None,
             'creator_id': self.creator_id,
-            'creator_username': self.creator_user_obj.username if self.creator_user_obj else None, # <-- Vírgula adicionada aqui
+            'creator_username': self.creator_user_obj.username if self.creator_user_obj else None,
             'priority': self.priority 
         }
 
@@ -1109,14 +1130,14 @@ class Attachment(db.Model):
     task_checklist_item_id = db.Column(db.Integer, db.ForeignKey('task_checklist_item.id'), nullable=True)
 
     # Relacionamentos com back_populates para evitar conflitos
-    task = db.relationship('Task', foreign_keys=[task_id], back_populates='attachments') # <-- CORRIGIDO AQUI
+    task = db.relationship('Task', foreign_keys=[task_id], back_populates='attachments')
     event = db.relationship('Event', back_populates='attachments')
     uploader = db.relationship('User', back_populates='uploaded_attachments', foreign_keys=[uploaded_by_user_id])
     art_approved_by = db.relationship('User', foreign_keys=[art_approved_by_id], back_populates='approved_attachments')
     task_checklist_item = db.relationship('TaskChecklistItem', back_populates='attachments')
 
     def to_dict(self):
-        from flask import url_for 
+        from flask import url_for # Imported locally to avoid circular dependency
         return {
             'id': self.id,
             'task_id': self.task_id,

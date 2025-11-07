@@ -16,3 +16,4 @@ instance/uploads/
 # Arquivos de texto temporários ou backups que não devem ir para o repositório
 TXT/
 arquivos dvs analisar/
+firebase-admin-sdk.json

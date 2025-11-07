@@ -960,6 +960,34 @@ def create_app():
     admin.add_view(CommentAdminView(Comment, db.session, name='Comentários', category='Eventos e Tarefas'))
     admin.add_view(EventPermissionAdminView(EventPermission, db.session, name='Permissões de Evento', category='Eventos e Tarefas'))
 
+    @app.context_processor
+    def inject_global_template_variables():
+        unread_notifications_count = 0 # Valor padrão
+
+        # Verifica se o usuário está logado e tem um ID válido
+        # Apenas tenta buscar notificações se houver um usuário autenticado
+        if current_user.is_authenticated and hasattr(current_user, 'id'):
+            try:
+                # Certifique-se de que o modelo Notification está importado
+                # A importação aqui dentro da função é uma medida de segurança
+                # para evitar problemas de importação circular em alguns setups.
+                from models import Notification 
+
+                # Consulta ao banco para contar notificações não lidas para o usuário logado
+                unread_notifications_count = Notification.query.filter_by(
+                    user_id=current_user.id,
+                    read=False
+                ).count()
+            except Exception as e:
+                # Em caso de erro na consulta ao banco ou no modelo,
+                # registra o erro e mantém a contagem como 0 para não quebrar a aplicação.
+                print(f"Erro ao buscar notificações no context_processor: {e}")
+                unread_notifications_count = 0
+
+        # O retorno da função do context_processor DEVE ser um dicionário
+        return dict(unread_notifications_count=unread_notifications_count)
+
+
     # =========================================================================
     # REGISTRA O BLUEPRINT 'MAIN' DA SUA APLICAÇÃO
     # =========================================================================

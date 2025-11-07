@@ -2,27 +2,20 @@
 
 import firebase_admin
 from firebase_admin import credentials
-import os # Importar para lidar com caminhos
+import os
 
 def initialize_firebase():
-    """
-    Inicializa o Firebase Admin SDK.
-    Esta função verifica se o Firebase já foi inicializado para evitar erros.
-    """
-    if not firebase_admin._apps: # Verifica se o Firebase Admin SDK já foi inicializado
+    if not firebase_admin._apps:
         try:
-            # Caminho para o arquivo google-services.json
-            # Assumimos que 'google-services.json' está na raiz do projeto,
-            # no mesmo nível do wsgi.py e firebase_config.py
-            cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'google-services.json')
-            
-            # Se você tem certeza que o script SEMPRE será executado da raiz do projeto,
-            # 'google-services.json' direto também funcionaria.
-            # No entanto, cred_path com os.path.join torna mais robusto.
-            
+            # Modifique ESTA LINHA para apontar para o nome do SEU novo arquivo JSON
+            # Exemplo: 'firebase-admin-sdk.json' ou 'serviceAccountKey.json'
+            # Use o nome exato que você deu ao arquivo baixado.
+            cred_filename = 'firebase-admin-sdk.json' # <--- ALTERE AQUI PARA O NOME DO SEU ARQUIVO
+
+            cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), cred_filename)
+
             if not os.path.exists(cred_path):
-                print(f"ERRO: Arquivo de credenciais do Firebase não encontrado em: {cred_path}")
-                # Você pode levantar uma exceção ou lidar com este erro de outra forma
+                print(f"ERRO: Arquivo de credenciais do Firebase Admin SDK não encontrado em: {cred_path}")
                 return
 
             cred = credentials.Certificate(cred_path)
@@ -30,8 +23,5 @@ def initialize_firebase():
             print("Firebase Admin SDK inicializado com sucesso!")
         except Exception as e:
             print(f"Erro FATAL ao inicializar Firebase Admin SDK: {e}")
-            # Em uma aplicação real, você pode querer registrar este erro e sair
-            # ou levantar uma exceção para impedir que o app inicie sem Firebase.
-            # raise e # Descomente para parar a aplicação se a inicialização falhar
     else:
         print("Firebase Admin SDK já está inicializado (pulando nova inicialização).")
